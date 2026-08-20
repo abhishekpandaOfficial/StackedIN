@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^13.15.1",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "^1.33.0",
     "react": "latest",

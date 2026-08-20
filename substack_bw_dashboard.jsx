@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
+import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
 
 const POSTS = [
   { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
@@ -89,12 +90,17 @@ const StatusBadge = ({ status }) => {
 };
 
 const TAG_ICONS = {
-  AI: Bot, Algorithms: Brain, Architecture: Network, Azure: Cloud, Backend: Server, Classification: BarChart3, Cloud, Containers: Boxes,
-  Data: Database, "Deep Learning": Brain, DevOps: GitBranch, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
-  Glossary: BookOpen, Journey: Route, Kubernetes: Boxes, LLM: Bot, ML: Brain, MLflow: ChartNoAxesCombined, MLOps: Server,
-  Messaging: Network, NumPy: Code2, Pandas: Database, Production: Server, Project: FlaskConical, Python: Code2, RAG: Network,
+  AI: Bot, Algorithms: Brain, Architecture: Network, Azure: Cloud, Backend: Server, Classification: BarChart3, Cloud,
+  Containers: SiDocker, Data: Database, "Deep Learning": Brain, DevOps: Git, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
+  Glossary: BookOpen, Journey: Route, Kubernetes: SiKubernetes, LLM: Bot, ML: Brain, MLflow: SiMlflow, MLOps: Server,
+  Messaging: Network, NumPy: SiNumpy, Pandas: SiPandas, Production: Server, Project: FlaskConical, Python: SiPython, RAG: Network,
   Roadmap: Route, Seaborn: ChartNoAxesCombined, Tracking: Eye, Trees: GitBranch, Vectors: Network, Visualisation: BarChart3,
-  ".NET": Code2,
+  ".NET": SiDotnet, Jupyter: SiJupyter, Git: SiGit, Docker: SiDocker, PyTorch: SiPytorch, TensorFlow: SiTensorflow,
+};
+
+const TopicIcon = ({ topic }) => {
+  const Icon = TAG_ICONS[topic] || Tag;
+  return <span title={topic} aria-label={topic} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#555" }}><Icon size={15} strokeWidth={2} aria-hidden="true" /></span>;
 };
 
 const TagPill = ({ tag }) => {
@@ -343,7 +349,7 @@ export default function Dashboard() {
                         <div style={{ fontSize: 11, color: "#999", lineHeight: 1.4 }}>{p.description}</div>
                       </td>
                       <td style={{ ...s.td }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "#555", background: "#f0f0f0", borderRadius: 3, padding: "2px 7px" }}>{p.topic}</span>
+                        <span title={p.topic} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#555", background: "#f0f0f0", borderRadius: 3, padding: "3px 7px" }}><TopicIcon topic={p.topic} />{p.topic}</span>
                       </td>
                       <td style={s.td}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -413,7 +419,7 @@ export default function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
                 {stats.topTopics.map(([topic, v]) => (
                   <div key={topic} style={{ border: "1px solid #e8e8e8", borderRadius: 4, padding: "12px 14px" }}>
-                    <div style={{ fontSize: 10, color: "#999", fontWeight: 600, marginBottom: 4 }}>{topic}</div>
+                    <div title={topic} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#999", fontWeight: 600, marginBottom: 4 }}><TopicIcon topic={topic} />{topic}</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#111", marginBottom: 6 }}>{v.toLocaleString()}</div>
                     <div style={{ height: 2, background: "#f0f0f0" }}>
                       <div style={{ height: 2, background: "#111", width: `${(v / maxTopicViews) * 100}%` }} />
@@ -451,7 +457,7 @@ export default function Dashboard() {
                   {[...posts].sort((a, b) => b.views - a.views).map((p, i) => (
                     <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...s.td, fontSize: 12, color: "#111" }}>{p.title}</td>
-                      <td style={{ ...s.td, fontSize: 11, color: "#666" }}>{p.topic}</td>
+                      <td style={{ ...s.td, fontSize: 11, color: "#666" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={p.topic} />{p.topic}</span></td>
                       <td style={{ ...s.td, fontWeight: 700 }}>{p.views.toLocaleString()}</td>
                       <td style={{ ...s.td, color: "#666" }}>{p.shares.toLocaleString()}</td>
                       <td style={s.td}><StatusBadge status={p.status} /></td>
@@ -519,7 +525,7 @@ export default function Dashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Views by topic</div>
-                {stats.topTopics.slice(0, 5).map(([topic, views]) => <div key={topic} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}><span>{topic}</span><strong>{views.toLocaleString()}</strong></div>)}
+                {stats.topTopics.slice(0, 5).map(([topic, views]) => <div key={topic} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={topic} />{topic}</span><strong>{views.toLocaleString()}</strong></div>)}
               </div>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Recently published</div>
