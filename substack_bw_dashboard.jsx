@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 
 const POSTS = [
   { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
@@ -87,9 +88,19 @@ const StatusBadge = ({ status }) => {
   return <span style={{ background: st.bg, color: st.color, borderRadius: 3, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>{status}</span>;
 };
 
-const TagPill = ({ tag }) => (
-  <span style={{ border: "1px solid #ddd", borderRadius: 3, padding: "1px 7px", fontSize: 10, fontWeight: 600, color: "#555", background: "#fafafa", whiteSpace: "nowrap", display: "inline-block" }}>{tag}</span>
-);
+const TAG_ICONS = {
+  AI: Bot, Algorithms: Brain, Architecture: Network, Azure: Cloud, Backend: Server, Classification: BarChart3, Cloud, Containers: Boxes,
+  Data: Database, "Deep Learning": Brain, DevOps: GitBranch, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
+  Glossary: BookOpen, Journey: Route, Kubernetes: Boxes, LLM: Bot, ML: Brain, MLflow: ChartNoAxesCombined, MLOps: Server,
+  Messaging: Network, NumPy: Code2, Pandas: Database, Production: Server, Project: FlaskConical, Python: Code2, RAG: Network,
+  Roadmap: Route, Seaborn: ChartNoAxesCombined, Tracking: Eye, Trees: GitBranch, Vectors: Network, Visualisation: BarChart3,
+  ".NET": Code2,
+};
+
+const TagPill = ({ tag }) => {
+  const Icon = TAG_ICONS[tag] || Tag;
+  return <span title={tag} aria-label={tag} style={{ border: "1px solid #ddd", borderRadius: 3, width: 26, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#555", background: "#fafafa" }}><Icon size={13} strokeWidth={2} aria-hidden="true" /></span>;
+};
 
 export default function Dashboard() {
   const [posts, setPosts] = useState(() => POSTS.map(post => ({ ...post, linkedinPublished: false })));
@@ -348,16 +359,16 @@ export default function Dashboard() {
                       </td>
                       <td style={s.td}>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <a href={p.url} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: "#111", textDecoration: "none", fontWeight: 700 }} title="Open">↗</a>
+                          <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#111", textDecoration: "none", display: "inline-flex" }} title="Open article" aria-label={`Open ${p.title}`}><ExternalLink size={14} /></a>
                           <button onClick={() => copyLink(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: copiedId === p.id ? "#090" : "#aaa", padding: 0 }} title="Copy link">
-                            {copiedId === p.id ? "✓" : "⎘"}
+                            {copiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
                           </button>
                         </div>
                       </td>
                       <td style={s.td}>
                         <div style={{ display: "flex", gap: 5 }}>
-                          <button onClick={() => openEdit(p)} style={s.btnEdit}>Edit</button>
-                          <button onClick={() => del(p.id)} style={s.btnDanger}>Del</button>
+                          <button onClick={() => openEdit(p)} style={{ ...s.btnEdit, display: "inline-flex", alignItems: "center" }} title="Edit post" aria-label={`Edit ${p.title}`}><Pencil size={13} /></button>
+                          <button onClick={() => del(p.id)} style={{ ...s.btnDanger, display: "inline-flex", alignItems: "center" }} title="Delete post" aria-label={`Delete ${p.title}`}><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </tr>
@@ -418,7 +429,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {stats.topTags.map(([tag, v]) => (
                   <div key={tag} style={{ border: "1px solid #e8e8e8", borderRadius: 3, padding: "6px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#555" }}>{tag}</span>
+                    <TagPill tag={tag} />
                     <span style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{v.toLocaleString()}</span>
                   </div>
                 ))}
