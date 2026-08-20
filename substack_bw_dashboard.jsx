@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
 
@@ -109,7 +109,7 @@ const TagPill = ({ tag }) => {
 };
 
 export default function Dashboard() {
-  const [posts, setPosts] = useState(() => POSTS.map(post => ({ ...post, linkedinPublished: false })));
+  const [posts, setPosts] = useState(POSTS);
   const [tab, setTab] = useState("posts");
   const [search, setSearch] = useState("");
   const [fTopic, setFTopic] = useState("");
@@ -124,16 +124,6 @@ export default function Dashboard() {
   const [copiedId, setCopiedId] = useState(null);
   const [importState, setImportState] = useState(null);
   const csvRef = useRef();
-
-  useEffect(() => {
-    let saved = {};
-    try { saved = JSON.parse(localStorage.getItem("substack-linkedin-status") || "{}"); } catch (error) { saved = {}; }
-    setPosts(current => current.map(post => ({ ...post, linkedinPublished: Boolean(saved[post.id]) })));
-    fetch("/api/linkedin")
-      .then(response => response.ok ? response.json() : {})
-      .then(linkedin => setPosts(current => current.map(post => ({ ...post, linkedinPublished: Boolean(linkedin[post.id] ?? saved[post.id]) }))))
-      .catch(() => {});
-  }, []);
 
   const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
   const nextId = useMemo(() => Math.max(0, ...posts.map(p => p.id)) + 1, [posts]);
@@ -253,16 +243,6 @@ export default function Dashboard() {
     reader.readAsText(file); e.target.value = "";
   };
 
-  const toggleLinkedIn = (post) => {
-    const linkedinPublished = !post.linkedinPublished;
-    setPosts(current => current.map(item => item.id === post.id ? { ...item, linkedinPublished } : item));
-    try {
-      const saved = JSON.parse(localStorage.getItem("substack-linkedin-status") || "{}");
-      localStorage.setItem("substack-linkedin-status", JSON.stringify({ ...saved, [post.id]: linkedinPublished }));
-    } catch (error) { notify("Could not save LinkedIn status in this browser."); }
-    fetch(`/api/posts/${post.id}/linkedin`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ published: linkedinPublished }) }).catch(() => {});
-  };
-
   const maxTopicViews = Math.max(1, ...stats.topTopics.map(([, v]) => v));
   const maxPostViews = Math.max(1, ...stats.topPosts.map(p => p.views));
 
@@ -274,14 +254,9 @@ export default function Dashboard() {
           <div style={s.brand}>
             <img src="https://substack.com/favicon.ico" alt="Substack" style={{ width: 32, height: 32, borderRadius: 4 }} onError={e => { e.currentTarget.style.display = "none"; }} />
             <div>
-              <div style={s.brandName}>Substack Dashboard</div>
-              <div style={s.brandSub}>pandaabhishek.substack.com</div>
+              <div style={s.brandName}>ABHISHEK PANDA BLOGs</div>
+              <div style={s.brandSub}>Enterprise-grade learning</div>
             </div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => csvRef.current.click()} style={s.btnGhost}>Import CSV</button>
-            <input ref={csvRef} type="file" accept=".csv" onChange={importCSV} style={{ display: "none" }} />
-            <button onClick={openAdd} style={s.btnPrimary}>+ New post</button>
           </div>
         </div>
 
@@ -290,8 +265,6 @@ export default function Dashboard() {
           {[
             { label: "Total posts", val: posts.length },
             { label: "Published", val: stats.published },
-            { label: "Total views", val: stats.totalViews.toLocaleString() },
-            { label: "Total shares", val: stats.totalShares.toLocaleString() },
             { label: "Topics", val: ALL_TOPICS.length },
           ].map(({ label, val }) => (
             <div key={label} style={s.statBox}>
@@ -301,12 +274,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div style={s.tabs}>
-          {[["posts", "Posts"], ["analytics", "Analytics"]].map(([v, l]) => (
-            <button key={v} style={s.tab(tab === v)} onClick={() => setTab(v)}>{l}</button>
-          ))}
-        </div>
       </div>
 
       <div style={s.body}>
@@ -333,7 +300,7 @@ export default function Dashboard() {
               <table style={s.table}>
                 <thead>
                   <tr>
-                    {[["#", "id", 36], ["Title", "title", "auto"], ["Topic", "topic", 120], ["Tags", null, 150], ["Status", "status", 96], ["Views", "views", 72], ["Shares", "shares", 72], ["LinkedIn", null, 86], ["Link", null, 70], ["Actions", null, 100]].map(([l, col, w]) => (
+                    {[["#", "id", 36], ["Title", "title", "auto"], ["Topic", "topic", 120], ["Tags", null, 150], ["Status", "status", 96], ["Link", null, 86]].map(([l, col, w]) => (
                       <th key={l} style={{ ...s.th, width: w }} onClick={col ? () => handleSort(col) : undefined}>
                         {l}{col && <Arr col={col} />}
                       </th>
@@ -358,11 +325,6 @@ export default function Dashboard() {
                         </div>
                       </td>
                       <td style={s.td}><StatusBadge status={p.status} /></td>
-                      <td style={{ ...s.td, fontWeight: 700, fontSize: 12 }}>{p.views.toLocaleString()}</td>
-                      <td style={{ ...s.td, fontWeight: 700, fontSize: 12, color: "#666" }}>{p.shares.toLocaleString()}</td>
-                      <td style={s.td}>
-                        <input type="checkbox" checked={Boolean(p.linkedinPublished)} onChange={() => toggleLinkedIn(p)} aria-label={`Published ${p.title} on LinkedIn`} />
-                      </td>
                       <td style={s.td}>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                           <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#111", textDecoration: "none", display: "inline-flex" }} title="Open article" aria-label={`Open ${p.title}`}><ExternalLink size={14} /></a>
@@ -371,16 +333,10 @@ export default function Dashboard() {
                           </button>
                         </div>
                       </td>
-                      <td style={s.td}>
-                        <div style={{ display: "flex", gap: 5 }}>
-                          <button onClick={() => openEdit(p)} style={{ ...s.btnEdit, display: "inline-flex", alignItems: "center" }} title="Edit post" aria-label={`Edit ${p.title}`}><Pencil size={13} /></button>
-                          <button onClick={() => del(p.id)} style={{ ...s.btnDanger, display: "inline-flex", alignItems: "center" }} title="Delete post" aria-label={`Delete ${p.title}`}><Trash2 size={13} /></button>
-                        </div>
-                      </td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
-                    <tr><td colSpan={10} style={{ ...s.td, textAlign: "center", padding: 40, color: "#ccc" }}>No posts match.</td></tr>
+                    <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", padding: 40, color: "#ccc" }}>No posts match.</td></tr>
                   )}
                 </tbody>
               </table>
