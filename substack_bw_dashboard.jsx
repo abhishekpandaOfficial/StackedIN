@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
-import pandaLogo from "./assets/panda-logo.svg";
+import stackcraftLogo from "./assets/stackcraft-logo.svg";
 
 const POSTS = [
   { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
@@ -82,6 +82,7 @@ const s = {
   fullInput: { border: "1px solid #ccc", borderRadius: 4, padding: "7px 10px", fontSize: 12, color: "#111", background: "#fff", width: "100%", outline: "none" },
   toast: { position: "fixed", bottom: 24, right: 24, zIndex: 200, background: "#111", color: "#fff", borderRadius: 4, padding: "10px 18px", fontSize: 12, fontWeight: 600, letterSpacing: 0.2 },
   logPanel: { background: "#111", color: "#d8d8d8", borderRadius: 4, padding: "12px 14px", fontFamily: "ui-monospace, SFMono-Regular, monospace", fontSize: 11, lineHeight: 1.7, maxHeight: 180, overflowY: "auto" },
+  launchPanel: { border: "1px solid #dfe3f5", borderRadius: 6, padding: "12px 14px", background: "linear-gradient(135deg, #fafbff, #f1f3ff)", maxWidth: 330 },
 };
 
 const StatusBadge = ({ status }) => {
@@ -269,14 +270,22 @@ export default function Dashboard() {
       <div style={s.header}>
         <div style={s.headerTop}>
           <div style={s.brand}>
-            <img src={pandaLogo} alt="The Panda Blog" style={{ width: 42, height: 42, borderRadius: 10, boxShadow: "0 2px 8px rgba(17,24,39,.14)" }} />
+            <img src={stackcraftLogo} alt="StackCraft" style={{ width: 42, height: 42, borderRadius: 10, boxShadow: "0 2px 8px rgba(17,24,39,.14)" }} />
             <div>
-              <div style={s.brandName}>The Panda Blog</div>
-              <div style={s.brandSub}>Enterprise-grade learning</div>
+              <div style={s.brandName}>StackCraft</div>
+              <div style={s.brandSub}>Connect · Write · Develop</div>
             </div>
             <a href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
-              Read on Substack <ExternalLink size={12} />
+              Current writing <ExternalLink size={12} />
             </a>
+          </div>
+          <div style={s.launchPanel}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
+              <strong style={{ fontSize: 13, color: "#111" }}>StackCraft.io is coming soon</strong>
+              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.7, color: "#5d43c8", textTransform: "uppercase" }}>In progress</span>
+            </div>
+            <div style={{ fontSize: 11, color: "#5b6278", lineHeight: 1.45, marginBottom: 7 }}>A future-native home to connect, write, and build beyond today’s LinkedIn and Substack workflows.</div>
+            <a href="https://www.stackcraft.io/" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#2448c8", textDecoration: "none" }}>Visit stackcraft.io <ExternalLink size={12} /></a>
           </div>
         </div>
 
