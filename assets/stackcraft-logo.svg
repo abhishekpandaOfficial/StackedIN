@@ -1,18 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
   <title id="title">StackCraft</title>
-  <desc id="desc">StackCraft S mark</desc>
-  <defs>
-    <linearGradient id="top" x1="32" y1="22" x2="220" y2="118" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#12d7e8"/><stop offset="1" stop-color="#1760ff"/>
-    </linearGradient>
-    <linearGradient id="bottom" x1="39" y1="122" x2="216" y2="231" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6c37ff"/><stop offset="1" stop-color="#9a3eea"/>
-    </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#1d2b64" flood-opacity=".22"/>
-    </filter>
-  </defs>
-  <rect width="256" height="256" rx="48" fill="#f8f9fd"/>
-  <path d="M55 73c0-16 13-29 29-29h95c12 0 22 7 27 18l18 38c6 13-4 28-18 28h-51l-19-19h55c4 0 7-4 5-8l-8-17c-2-4-6-6-10-6H84c-7 0-13 6-13 13v15L55 94V73Z" fill="url(#top)" filter="url(#shadow)"/>
-  <path d="M201 183c0 16-13 29-29 29H77c-12 0-22-7-27-18l-18-38c-6-13 4-28 18-28h51l19 19H65c-4 0-7 4-5 8l8 17c2 4 6 6 10 6h94c7 0 13-6 13-13v-15l16 12v21Z" fill="url(#bottom)" filter="url(#shadow)"/>
+  <desc id="desc">Black and white StackCraft S monogram</desc>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#111111"/>
+  <path d="M178 70c-17-14-39-21-64-21-34 0-60 15-60 38 0 24 25 34 63 43 39 9 61 19 61 42 0 25-29 39-66 39-29 0-53-8-72-25" fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M55 102c7 8 19 14 36 18" fill="none" stroke="#111111" stroke-width="8" stroke-linecap="round"/>
+  <path d="M201 154c-7-8-19-14-36-18" fill="none" stroke="#111111" stroke-width="8" stroke-linecap="round"/>
 </svg>
