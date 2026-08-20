@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
+import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
 
 const POSTS = [
@@ -117,6 +117,7 @@ export default function Dashboard() {
   const [fStatus, setFStatus] = useState("");
   const [sortCol, setSortCol] = useState("id");
   const [sortDir, setSortDir] = useState("asc");
+  const [expandedTopics, setExpandedTopics] = useState(() => new Set(ALL_TOPICS));
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({});
@@ -142,6 +143,21 @@ export default function Dashboard() {
       return sortDir === "asc" ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
     });
   }, [posts, search, fTopic, fTag, fStatus, sortCol, sortDir]);
+
+  const groupedPosts = useMemo(() => {
+    const groups = new Map();
+    filtered.forEach(post => groups.set(post.topic, [...(groups.get(post.topic) || []), post]));
+    return [...groups.entries()];
+  }, [filtered]);
+
+  const toggleTopic = (topic) => {
+    setExpandedTopics(current => {
+      const next = new Set(current);
+      if (next.has(topic)) next.delete(topic);
+      else next.add(topic);
+      return next;
+    });
+  };
 
   const stats = useMemo(() => {
     const totalViews = posts.reduce((s, p) => s + p.views, 0);
@@ -254,9 +270,12 @@ export default function Dashboard() {
           <div style={s.brand}>
             <img src="https://substack.com/favicon.ico" alt="Substack" style={{ width: 32, height: 32, borderRadius: 4 }} onError={e => { e.currentTarget.style.display = "none"; }} />
             <div>
-              <div style={s.brandName}>ABHISHEK PANDA BLOGs</div>
+              <div style={s.brandName}>The Panda Blog</div>
               <div style={s.brandSub}>Enterprise-grade learning</div>
             </div>
+            <a href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
+              Read on Substack <ExternalLink size={12} />
+            </a>
           </div>
         </div>
 
@@ -296,27 +315,30 @@ export default function Dashboard() {
               <span style={s.count}>{filtered.length} posts</span>
             </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={s.table}>
-                <thead>
-                  <tr>
-                    {[["#", "id", 36], ["Title", "title", "auto"], ["Topic", "topic", 120], ["Tags", null, 150], ["Status", "status", 96], ["Link", null, 86]].map(([l, col, w]) => (
-                      <th key={l} style={{ ...s.th, width: w }} onClick={col ? () => handleSort(col) : undefined}>
-                        {l}{col && <Arr col={col} />}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((p, i) => (
+            {groupedPosts.map(([topic, topicPosts]) => (
+              <section key={topic} style={{ marginBottom: 14, border: "1px solid #e5e5e5", borderRadius: 5, overflow: "hidden" }}>
+                <button onClick={() => toggleTopic(topic)} aria-expanded={expandedTopics.has(topic)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "none", borderBottom: expandedTopics.has(topic) ? "1px solid #e5e5e5" : "none", background: "#fafafa", cursor: "pointer", color: "#111" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800 }}><TopicIcon topic={topic} />{topic}<span style={{ color: "#999", fontSize: 11, fontWeight: 600 }}>{topicPosts.length} articles</span></span>
+                  {expandedTopics.has(topic) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                {expandedTopics.has(topic) && <div style={{ overflowX: "auto" }}>
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        {[["#", "id", 36], ["Title", "title", "auto"], ["Tags", null, 150], ["Status", "status", 96], ["Link", null, 86]].map(([l, col, w]) => (
+                          <th key={l} style={{ ...s.th, width: w }} onClick={col ? () => handleSort(col) : undefined}>
+                            {l}{col && <Arr col={col} />}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                  {topicPosts.map((p, i) => (
                     <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...s.td, color: "#bbb", fontWeight: 700, fontSize: 11 }}>{p.id}</td>
                       <td style={{ ...s.td, maxWidth: 300 }}>
                         <div style={{ fontWeight: 600, color: "#111", fontSize: 12, marginBottom: 2 }}>{p.title}</div>
                         <div style={{ fontSize: 11, color: "#999", lineHeight: 1.4 }}>{p.description}</div>
-                      </td>
-                      <td style={{ ...s.td }}>
-                        <span title={p.topic} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#555", background: "#f0f0f0", borderRadius: 3, padding: "3px 7px" }}><TopicIcon topic={p.topic} />{p.topic}</span>
                       </td>
                       <td style={s.td}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
@@ -335,12 +357,12 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ))}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={6} style={{ ...s.td, textAlign: "center", padding: 40, color: "#ccc" }}>No posts match.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    </tbody>
+                  </table>
+                </div>}
+              </section>
+            ))}
+            {groupedPosts.length === 0 && <div style={{ ...s.td, textAlign: "center", padding: 40, color: "#ccc" }}>No posts match.</div>}
           </>
         )}
 
