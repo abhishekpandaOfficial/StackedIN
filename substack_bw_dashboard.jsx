@@ -91,7 +91,7 @@ const StatusBadge = ({ status }) => {
 
 const TAG_ICONS = {
   AI: Bot, Algorithms: Brain, Architecture: Network, Azure: Cloud, Backend: Server, Classification: BarChart3, Cloud,
-  Containers: SiDocker, Data: Database, "Deep Learning": Brain, DevOps: Git, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
+  Containers: SiDocker, Data: Database, "Deep Learning": Brain, DevOps: SiGit, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
   Glossary: BookOpen, Journey: Route, Kubernetes: SiKubernetes, LLM: Bot, ML: Brain, MLflow: SiMlflow, MLOps: Server,
   Messaging: Network, NumPy: SiNumpy, Pandas: SiPandas, Production: Server, Project: FlaskConical, Python: SiPython, RAG: Network,
   Roadmap: Route, Seaborn: ChartNoAxesCombined, Tracking: Eye, Trees: GitBranch, Vectors: Network, Visualisation: BarChart3,
