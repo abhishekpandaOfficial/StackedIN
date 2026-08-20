@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
+import pandaLogo from "./assets/panda-logo.svg";
 
 const POSTS = [
   { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
@@ -268,7 +269,7 @@ export default function Dashboard() {
       <div style={s.header}>
         <div style={s.headerTop}>
           <div style={s.brand}>
-            <img src="https://substack.com/favicon.ico" alt="Substack" style={{ width: 32, height: 32, borderRadius: 4 }} onError={e => { e.currentTarget.style.display = "none"; }} />
+            <img src={pandaLogo} alt="The Panda Blog" style={{ width: 42, height: 42, borderRadius: 10, boxShadow: "0 2px 8px rgba(17,24,39,.14)" }} />
             <div>
               <div style={s.brandName}>The Panda Blog</div>
               <div style={s.brandSub}>Enterprise-grade learning</div>
