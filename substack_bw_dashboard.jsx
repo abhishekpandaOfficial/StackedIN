@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
-import stackcraftLogo from "./assets/stackcraft-logo.svg";
+const stackcraftLogo = `${import.meta.env.BASE_URL}stackcraft-logo.svg`;
 
 const POSTS = [
   { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
