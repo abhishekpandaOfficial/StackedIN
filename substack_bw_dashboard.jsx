@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
 import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
 const stackcraftLogo = `${import.meta.env.BASE_URL}stackcraft-logo.svg`;
@@ -126,7 +126,27 @@ export default function Dashboard() {
   const [toast, setToast] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [importState, setImportState] = useState(null);
+  const [visitCount, setVisitCount] = useState(0);
+  const [clickCount, setClickCount] = useState(0);
   const csvRef = useRef();
+
+  useEffect(() => {
+    try {
+      const visits = Number(localStorage.getItem("stackcraft-visits") || 0) + 1;
+      const clicks = Number(localStorage.getItem("stackcraft-clicks") || 0);
+      localStorage.setItem("stackcraft-visits", String(visits));
+      setVisitCount(visits);
+      setClickCount(clicks);
+    } catch (error) {}
+  }, []);
+
+  const trackClick = () => {
+    try {
+      const clicks = Number(localStorage.getItem("stackcraft-clicks") || 0) + 1;
+      localStorage.setItem("stackcraft-clicks", String(clicks));
+      setClickCount(clicks);
+    } catch (error) {}
+  };
 
   const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
   const nextId = useMemo(() => Math.max(0, ...posts.map(p => p.id)) + 1, [posts]);
@@ -275,7 +295,7 @@ export default function Dashboard() {
               <div style={s.brandName}>StackCraft</div>
               <div style={s.brandSub}>Connect · Write · Develop</div>
             </div>
-            <a href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
+            <a href="https://pandaabhishek.substack.com/" onClick={trackClick} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
               Current writing <ExternalLink size={12} />
             </a>
           </div>
@@ -285,7 +305,7 @@ export default function Dashboard() {
               <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.7, color: "#5d43c8", textTransform: "uppercase" }}>In progress</span>
             </div>
             <div style={{ fontSize: 11, color: "#5b6278", lineHeight: 1.45, marginBottom: 7 }}>A future-native home to connect, write, and build beyond today’s LinkedIn and Substack workflows.</div>
-            <a href="https://www.stackcraft.io/" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#2448c8", textDecoration: "none" }}>Visit stackcraft.io <ExternalLink size={12} /></a>
+            <a href="https://www.stackcraft.io/" onClick={trackClick} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#2448c8", textDecoration: "none" }}>Visit stackcraft.io <ExternalLink size={12} /></a>
           </div>
         </div>
 
@@ -359,7 +379,7 @@ export default function Dashboard() {
                       <td style={s.td}><StatusBadge status={p.status} /></td>
                       <td style={s.td}>
                         <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <a href={p.url} target="_blank" rel="noreferrer" style={{ color: "#111", textDecoration: "none", display: "inline-flex" }} title="Open article" aria-label={`Open ${p.title}`}><ExternalLink size={14} /></a>
+                          <a href={p.url} onClick={trackClick} target="_blank" rel="noreferrer" style={{ color: "#111", textDecoration: "none", display: "inline-flex" }} title="Open article" aria-label={`Open ${p.title}`}><ExternalLink size={14} /></a>
                           <button onClick={() => copyLink(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: copiedId === p.id ? "#090" : "#aaa", padding: 0 }} title="Copy link">
                             {copiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
                           </button>
@@ -525,6 +545,11 @@ export default function Dashboard() {
       )}
 
       {toast && <div style={s.toast}>{toast}</div>}
+
+      <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", margin: "28px 32px 0", padding: "16px 0 22px", borderTop: "1px solid #e8e8e8", color: "#888", fontSize: 10 }}>
+        <span>StackCraft · Connect · Write · Develop</span>
+        <span title="Counts are stored privately in this browser">This browser · {visitCount.toLocaleString()} opens · {clickCount.toLocaleString()} link clicks</span>
+      </footer>
 
       <style>{`* { box-sizing: border-box; } input, select, textarea { font-family: inherit; } button { font-family: inherit; }`}</style>
     </div>
