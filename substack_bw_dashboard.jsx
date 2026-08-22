@@ -46,8 +46,6 @@ const POSTS = [
   { id: 40, title: "Deep Learning Fundamentals — Part 1", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1", views: 0, shares: 0, description: "Part 2 — core deep learning fundamentals and neural network concepts." },
 ];
 
-const ALL_TOPICS = [...new Set(POSTS.map(p => p.topic))].sort();
-const ALL_TAGS = [...new Set(POSTS.flatMap(p => p.tags))].sort();
 const STATUSES = ["Published", "Draft", "Archived"];
 
 const s = {
@@ -101,8 +99,11 @@ const TAG_ICONS = {
   ".NET": SiDotnet, Jupyter: SiJupyter, Git: SiGit, Docker: SiDocker, PyTorch: SiPytorch, TensorFlow: SiTensorflow,
 };
 
-const TopicIcon = ({ topic }) => {
-  const Icon = TAG_ICONS[topic] || Tag;
+const ICON_OPTIONS = ["Tag", "Code2", "Brain", "Cloud", "Database", "Server", "Network", "BookOpen", "BarChart3", "SiPython", "SiNumpy", "SiPandas", "SiKubernetes", "SiDocker", "SiDotnet", "SiGit", "SiMlflow", "SiPytorch", "SiTensorflow"];
+const ICON_COMPONENTS = { ...TAG_ICONS, Tag, Code2, Brain, Cloud, Database, Server, Network, BookOpen, BarChart3 };
+
+const TopicIcon = ({ topic, iconKey }) => {
+  const Icon = ICON_COMPONENTS[iconKey || topic] || Tag;
   return <span title={topic} aria-label={topic} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#555" }}><Icon size={15} strokeWidth={2} aria-hidden="true" /></span>;
 };
 
@@ -113,6 +114,8 @@ const TagPill = ({ tag }) => {
 
 export default function Dashboard() {
   const [posts, setPosts] = useState(POSTS);
+  const [modules, setModules] = useState(() => [...new Set(POSTS.map(post => post.topic))].sort());
+  const [moduleIcons, setModuleIcons] = useState(() => Object.fromEntries([...new Set(POSTS.map(post => post.topic))].map(module => [module, module])));
   const [tab, setTab] = useState("posts");
   const [search, setSearch] = useState("");
   const [fTopic, setFTopic] = useState("");
@@ -120,8 +123,12 @@ export default function Dashboard() {
   const [fStatus, setFStatus] = useState("");
   const [sortCol, setSortCol] = useState("id");
   const [sortDir, setSortDir] = useState("asc");
-  const [expandedTopics, setExpandedTopics] = useState(() => new Set(ALL_TOPICS));
+  const [expandedTopics, setExpandedTopics] = useState(() => new Set(POSTS.map(post => post.topic)));
   const [modal, setModal] = useState(false);
+  const [moduleModal, setModuleModal] = useState(false);
+  const [moduleName, setModuleName] = useState("");
+  const [moduleIcon, setModuleIcon] = useState("Tag");
+  const [editingModule, setEditingModule] = useState(null);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({});
   const [toast, setToast] = useState(null);
@@ -141,6 +148,14 @@ export default function Dashboard() {
     } catch (error) {}
   }, []);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("stackcraft-posts", JSON.stringify(posts));
+      localStorage.setItem("stackcraft-modules", JSON.stringify(modules));
+      localStorage.setItem("stackcraft-module-icons", JSON.stringify(moduleIcons));
+    } catch (error) {}
+  }, [posts, modules, moduleIcons]);
+
   const trackClick = () => {
     try {
       const clicks = Number(localStorage.getItem("stackcraft-clicks") || 0) + 1;
@@ -151,6 +166,8 @@ export default function Dashboard() {
 
   const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
   const nextId = useMemo(() => Math.max(0, ...posts.map(p => p.id)) + 1, [posts]);
+  const allTopics = useMemo(() => [...new Set([...modules, ...posts.map(post => post.topic).filter(Boolean)])].sort(), [modules, posts]);
+  const allTags = useMemo(() => [...new Set(posts.flatMap(p => p.tags))].sort(), [posts]);
 
   const filtered = useMemo(() => {
     let out = posts.filter(p => {
@@ -202,15 +219,40 @@ export default function Dashboard() {
   };
   const Arr = ({ col }) => <span style={{ opacity: sortCol === col ? 1 : 0.25, fontSize: 9, marginLeft: 3 }}>{sortCol === col && sortDir === "desc" ? "▼" : "▲"}</span>;
 
-  const openAdd = () => { setForm({ title: "", topic: "", tags: "", status: "Draft", url: "", views: 0, shares: 0, linkedinPublished: false, description: "" }); setEditId(null); setModal(true); };
+  const openAdd = () => { setForm({ title: "", topic: modules[0] || "", tags: "", status: "Draft", url: "", views: 0, shares: 0, linkedinPublished: false, description: "" }); setEditId(null); setModal(true); };
   const openEdit = (p) => { setForm({ ...p, tags: p.tags.join(", ") }); setEditId(p.id); setModal(true); };
   const save = () => {
-    if (!form.title?.trim() || !form.url?.trim()) { notify("Title and URL required."); return; }
+    if (!form.title?.trim() || !form.url?.trim() || !form.topic?.trim()) { notify("Title, module, and URL required."); return; }
     const tags = (form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
     const post = { ...form, id: editId || nextId, tags, views: Number(form.views) || 0, shares: Number(form.shares) || 0 };
+    if (!modules.includes(post.topic)) setModules(current => [...current, post.topic].sort());
+    setExpandedTopics(current => new Set([...current, post.topic]));
     if (editId) { setPosts(ps => ps.map(p => p.id === editId ? post : p)); notify("Post updated."); }
     else { setPosts(ps => [...ps, post]); notify("Post added."); }
     setModal(false);
+  };
+  const openModuleManager = () => { setModuleName(""); setModuleIcon("Tag"); setEditingModule(null); setModuleModal(true); };
+  const saveModule = () => {
+    const name = moduleName.trim();
+    if (!name) { notify("Module name required."); return; }
+    if (editingModule) {
+      if (name !== editingModule && modules.includes(name)) { notify("That module already exists."); return; }
+      setModules(current => current.map(module => module === editingModule ? name : module).sort());
+      setModuleIcons(current => { const next = { ...current, [name]: moduleIcon }; delete next[editingModule]; return next; });
+      setPosts(current => current.map(post => post.topic === editingModule ? { ...post, topic: name } : post));
+      setExpandedTopics(current => { const next = new Set(current); if (next.delete(editingModule)) next.add(name); return next; });
+      notify("Module updated.");
+    } else if (modules.includes(name)) notify("That module already exists.");
+    else { setModules(current => [...current, name].sort()); setModuleIcons(current => ({ ...current, [name]: moduleIcon })); setExpandedTopics(current => new Set([...current, name])); notify("Module added."); }
+    setModuleModal(false);
+  };
+  const updateModuleIcon = (module, iconKey) => setModuleIcons(current => ({ ...current, [module]: iconKey }));
+  const editModule = (module) => { setEditingModule(module); setModuleName(module); setModuleIcon(moduleIcons[module] || module); };
+  const deleteModule = (module) => {
+    if (posts.some(post => post.topic === module)) { notify("Move its posts before deleting this module."); return; }
+    setModules(current => current.filter(item => item !== module));
+    setExpandedTopics(current => { const next = new Set(current); next.delete(module); return next; });
+    notify("Module deleted.");
   };
   const del = (id) => { if (!confirm("Delete this post?")) return; setPosts(ps => ps.filter(p => p.id !== id)); notify("Deleted."); };
 
@@ -299,6 +341,8 @@ export default function Dashboard() {
             <a href="https://pandaabhishek.substack.com/" onClick={trackClick} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
               Current writing <ExternalLink size={12} />
             </a>
+            <button onClick={openAdd} style={s.btnPrimary}><Pencil size={13} /> Add post</button>
+            <button onClick={openModuleManager} style={s.btnGhost}><Boxes size={13} /> Manage modules</button>
           </div>
           <div style={s.launchPanel}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
@@ -315,7 +359,7 @@ export default function Dashboard() {
           {[
             { label: "Total posts", val: posts.length },
             { label: "Published", val: stats.published },
-            { label: "Topics", val: ALL_TOPICS.length },
+            { label: "Modules", val: modules.length },
           ].map(({ label, val }) => (
             <div key={label} style={s.statBox}>
               <div style={s.statNum}>{val}</div>
@@ -333,11 +377,11 @@ export default function Dashboard() {
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search posts…" style={{ ...s.input, minWidth: 200 }} />
               <select value={fTopic} onChange={e => setFTopic(e.target.value)} style={s.input}>
                 <option value="">All topics</option>
-                {ALL_TOPICS.map(t => <option key={t}>{t}</option>)}
+                {allTopics.map(t => <option key={t}>{t}</option>)}
               </select>
               <select value={fTag} onChange={e => setFTag(e.target.value)} style={s.input}>
                 <option value="">All tags</option>
-                {ALL_TAGS.map(t => <option key={t}>{t}</option>)}
+                {allTags.map(t => <option key={t}>{t}</option>)}
               </select>
               <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={s.input}>
                 <option value="">All status</option>
@@ -349,7 +393,7 @@ export default function Dashboard() {
             {groupedPosts.map(([topic, topicPosts]) => (
               <section key={topic} style={{ marginBottom: 14, border: "1px solid #e5e5e5", borderRadius: 5, overflow: "hidden" }}>
                 <button onClick={() => toggleTopic(topic)} aria-expanded={expandedTopics.has(topic)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "none", borderBottom: expandedTopics.has(topic) ? "1px solid #e5e5e5" : "none", background: "#fafafa", cursor: "pointer", color: "#111" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800 }}><TopicIcon topic={topic} />{topic}<span style={{ color: "#999", fontSize: 11, fontWeight: 600 }}>{topicPosts.length} articles</span></span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}<span style={{ color: "#999", fontSize: 11, fontWeight: 600 }}>{topicPosts.length} articles</span></span>
                   {expandedTopics.has(topic) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
                 {expandedTopics.has(topic) && <div style={{ overflowX: "auto" }}>
@@ -384,6 +428,8 @@ export default function Dashboard() {
                           <button onClick={() => copyLink(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: copiedId === p.id ? "#090" : "#aaa", padding: 0 }} title="Copy link">
                             {copiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
                           </button>
+                          <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: 0 }} title="Edit post" aria-label={`Edit ${p.title}`}><Pencil size={14} /></button>
+                          <button onClick={() => del(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#b00", padding: 0 }} title="Delete post" aria-label={`Delete ${p.title}`}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -428,7 +474,7 @@ export default function Dashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
                 {stats.topTopics.map(([topic, v]) => (
                   <div key={topic} style={{ border: "1px solid #e8e8e8", borderRadius: 4, padding: "12px 14px" }}>
-                    <div title={topic} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#999", fontWeight: 600, marginBottom: 4 }}><TopicIcon topic={topic} />{topic}</div>
+                    <div title={topic} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#999", fontWeight: 600, marginBottom: 4 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: "#111", marginBottom: 6 }}>{v.toLocaleString()}</div>
                     <div style={{ height: 2, background: "#f0f0f0" }}>
                       <div style={{ height: 2, background: "#111", width: `${(v / maxTopicViews) * 100}%` }} />
@@ -466,7 +512,7 @@ export default function Dashboard() {
                   {[...posts].sort((a, b) => b.views - a.views).map((p, i) => (
                     <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...s.td, fontSize: 12, color: "#111" }}>{p.title}</td>
-                      <td style={{ ...s.td, fontSize: 11, color: "#666" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={p.topic} />{p.topic}</span></td>
+                      <td style={{ ...s.td, fontSize: 11, color: "#666" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={p.topic} iconKey={moduleIcons[p.topic]} />{p.topic}</span></td>
                       <td style={{ ...s.td, fontWeight: 700 }}>{p.views.toLocaleString()}</td>
                       <td style={{ ...s.td, color: "#666" }}>{p.shares.toLocaleString()}</td>
                       <td style={s.td}><StatusBadge status={p.status} /></td>
@@ -487,12 +533,18 @@ export default function Dashboard() {
             {[["Title", "title", "text"], ["Topic", "topic", "text"], ["Tags (comma-separated)", "tags", "text"], ["URL", "url", "text"], ["Description", "description", "textarea"], ["Views", "views", "number"], ["Shares", "shares", "number"]].map(([label, key, type]) => (
               <div key={key} style={s.formField}>
                 <label style={s.label}>{label}</label>
-                {type === "textarea"
+                {key === "topic"
+                  ? <select value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={s.fullInput}>
+                    <option value="">Select a module</option>
+                    {modules.map(module => <option key={module}>{module}</option>)}
+                  </select>
+                  : type === "textarea"
                   ? <textarea value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} rows={3} style={{ ...s.fullInput, resize: "vertical" }} />
                   : <input type={type} value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={s.fullInput} />
                 }
               </div>
             ))}
+            <button onClick={openModuleManager} style={{ ...s.btnGhost, marginBottom: 10 }}><Boxes size={13} /> Add or update modules</button>
             <div style={s.formField}>
               <label style={s.label}>Status</label>
               <select value={form.status || "Draft"} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={s.fullInput}>
@@ -502,6 +554,40 @@ export default function Dashboard() {
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
               <button onClick={() => setModal(false)} style={s.btnGhost}>Cancel</button>
               <button onClick={save} style={s.btnPrimary}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moduleModal && (
+        <div style={s.overlay}>
+          <div style={{ ...s.modal, maxWidth: 460 }}>
+            <div style={s.modalTitle}>{editingModule ? "Update module" : "Manage modules"}</div>
+            <div style={s.formField}>
+              <label style={s.label}>{editingModule ? "Module name" : "New module name"}</label>
+              <input autoFocus value={moduleName} onChange={e => setModuleName(e.target.value)} onKeyDown={e => e.key === "Enter" && saveModule()} placeholder="e.g. Cloud Architecture" style={s.fullInput} />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              {modules.map(module => (
+                <div key={module} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12 }}><TopicIcon topic={module} iconKey={moduleIcons[module]} />{module}</span>
+                  <span style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => editModule(module)} style={{ ...s.btnEdit, display: "inline-flex", alignItems: "center", gap: 4 }}><Pencil size={12} /> Edit</button>
+                    <button onClick={() => deleteModule(module)} style={{ ...s.btnDanger, display: "inline-flex", alignItems: "center", gap: 4 }}><Trash2 size={12} /> Delete</button>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={s.formField}>
+              <label style={s.label}>Module icon</label>
+              <select value={moduleIcon} onChange={e => setModuleIcon(e.target.value)} style={s.fullInput}>
+                {ICON_OPTIONS.map(iconKey => <option key={iconKey} value={iconKey}>{iconKey.replace(/^Si/, "")}</option>)}
+              </select>
+              <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, color: "#777" }}><TopicIcon topic={moduleName || "Module"} iconKey={moduleIcon} /> Preview</div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => setModuleModal(false)} style={s.btnGhost}>Close</button>
+              <button onClick={saveModule} style={s.btnPrimary}>{editingModule ? "Update module" : "Add module"}</button>
             </div>
           </div>
         </div>
@@ -534,7 +620,7 @@ export default function Dashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Views by topic</div>
-                {stats.topTopics.slice(0, 5).map(([topic, views]) => <div key={topic} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={topic} />{topic}</span><strong>{views.toLocaleString()}</strong></div>)}
+                {stats.topTopics.slice(0, 5).map(([topic, views]) => <div key={topic} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}</span><strong>{views.toLocaleString()}</strong></div>)}
               </div>
               <div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Recently published</div>
