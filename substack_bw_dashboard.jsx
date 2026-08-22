@@ -44,6 +44,7 @@ const POSTS = [
   { id: 38, title: "XGBoost Classification — Bank Marketing", topic: "ML Algorithms", tags: ["ML", "Classification", "XGBoost", "Ensemble"], status: "Published", url: "https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing", views: 0, shares: 0, description: "XGBoost from theory to practice on a real bank marketing dataset." },
   { id: 39, title: "Deep Learning Mastery — From Neural Networks to Production", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural", views: 0, shares: 0, description: "Part 1 — perceptrons, activation functions, backpropagation." },
   { id: 40, title: "Deep Learning Fundamentals — Part 1", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1", views: 0, shares: 0, description: "Part 2 — core deep learning fundamentals and neural network concepts." },
+  { id: 41, title: "The Multi-Cloud AI Architect", topic: "AI Multicloud", tags: ["AI", "Cloud", "Architecture"], status: "Published", url: "https://pandaabhishek.substack.com/p/the-multi-cloud-ai-architect", views: 0, shares: 0, description: "Designing scalable AI systems across multiple cloud platforms." },
 ];
 
 const STATUSES = ["Published", "Draft", "Archived"];
