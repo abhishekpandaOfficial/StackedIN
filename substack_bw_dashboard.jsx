@@ -43,6 +43,7 @@ const POSTS = [
   { id: 37, title: "Random Forest Classifier", topic: "ML Algorithms", tags: ["ML", "Classification", "Ensemble", "Trees"], status: "Published", url: "https://pandaabhishek.substack.com/p/random-forest-classifier", views: 0, shares: 0, description: "Ensemble learning with bagging, feature randomness, and forest tuning." },
   { id: 38, title: "XGBoost Classification — Bank Marketing", topic: "ML Algorithms", tags: ["ML", "Classification", "XGBoost", "Ensemble"], status: "Published", url: "https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing", views: 0, shares: 0, description: "XGBoost from theory to practice on a real bank marketing dataset." },
   { id: 39, title: "Deep Learning Mastery — From Neural Networks to Production", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural", views: 0, shares: 0, description: "Part 1 — perceptrons, activation functions, backpropagation." },
+  { id: 40, title: "Deep Learning Fundamentals — Part 1", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1", views: 0, shares: 0, description: "Part 2 — core deep learning fundamentals and neural network concepts." },
 ];
 
 const ALL_TOPICS = [...new Set(POSTS.map(p => p.topic))].sort();
