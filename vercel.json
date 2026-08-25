@@ -4,9 +4,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "crons": [
-    { "path": "/api/publish-scheduled", "schedule": "*/15 * * * *" }
-  ],
   "headers": [
     {
       "source": "/(.*)",

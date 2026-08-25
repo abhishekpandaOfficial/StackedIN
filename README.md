@@ -75,9 +75,10 @@ The production XStudio CMS, revisions, scheduling, and distribution queue are
 introduced by migration `009`.
 
 For scheduled publishing on Vercel, configure the server-only
-`SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables. Never prefix either
-secret with `VITE_`. The scheduled endpoint is `/api/publish-scheduled` and can
-only execute the service-role-only `publish_due_articles()` RPC.
+`SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables, then configure a Vercel
+Cron for `/api/publish-scheduled` at a frequency supported by the project plan.
+Never prefix either secret with `VITE_`. The endpoint can only execute the
+service-role-only `publish_due_articles()` RPC.
 
 See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
 environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth

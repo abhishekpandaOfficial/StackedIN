@@ -25,9 +25,12 @@ For XStudio scheduled publishing, add these as **server-only Production variable
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key; never expose it to the browser |
 | `CRON_SECRET` | A long random secret used by Vercel Cron as its bearer token |
 
-The repository schedules `/api/publish-scheduled` every 15 minutes. The endpoint
-rejects requests without `Authorization: Bearer $CRON_SECRET` and calls only the
-service-role-protected `publish_due_articles()` database function.
+After adding the variables, create a Vercel Cron for
+`/api/publish-scheduled` at the frequency supported by your Vercel plan. The
+endpoint rejects requests without `Authorization: Bearer $CRON_SECRET` and
+calls only the service-role-protected `publish_due_articles()` database
+function. The schedule is deliberately not hard-coded in `vercel.json`, so a
+plan-specific cadence cannot block the application deployment.
 
 ## 2. Create the multitenant database
 
