@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, ArrowUpRight, BarChart3, BookOpen, CalendarDays, CheckCircle2,
+  Activity, ArrowRight, ArrowUpRight, BarChart3, BookOpen, BrainCircuit, CalendarDays, CheckCircle2,
   ChevronRight, Clock3, ExternalLink, FileText, Filter, Grid2X2, Layers3,
-  Library, ListFilter, RefreshCw, Rss, Search, Share2, Sparkles, Upload,
-  Workflow, X,
+  Globe2, Library, ListFilter, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, Sparkles, Upload,
+  Users, Workflow, X, Zap,
 } from "lucide-react";
 import { SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import "./studio.css";
@@ -109,7 +109,68 @@ function PostRow({ post, tone }) {
   </article>;
 }
 
-export default function Dashboard() {
+function MarketingLanding({ openStudio }) {
+  const base = import.meta.env.BASE_URL;
+  const features = [
+    { icon: PenTool, number: "01", title: "Publish with depth", text: "Long-form ideas, technical series, architecture notes, and lessons that deserve more than a disappearing feed." },
+    { icon: Layers3, number: "02", title: "Build a knowledge graph", text: "Every post becomes part of a topic, module, and learning path—your expertise finally compounds." },
+    { icon: BrainCircuit, number: "03", title: "Be discovered by intent", text: "AI-native discovery connects readers to the right expert, not merely the loudest timeline." },
+    { icon: ShieldCheck, number: "04", title: "Own your professional signal", text: "One credible profile shaped by what you know, what you build, and what you teach." },
+  ];
+  return <div className="stackedin-site">
+    <header className="marketing-nav">
+      <a className="marketing-brand" href="#top" aria-label="StackedIN home"><img src={`${base}stackedin-wordmark.webp`} alt="StackedIN" /></a>
+      <nav aria-label="Marketing navigation"><a href="#why">Why StackedIN</a><a href="#experience">Experience</a><a href="#how">How it works</a></nav>
+      <button className="nav-cta" onClick={openStudio}>Open Studio <ArrowUpRight size={15} /></button>
+    </header>
+
+    <main id="top">
+      <section className="marketing-hero">
+        <div className="hero-noise" />
+        <div className="hero-copy">
+          <span className="launch-pill"><i />The professional knowledge network</span>
+          <h1>Your expertise deserves a stage.<br /><span>Not another feed.</span></h1>
+          <p>StackedIN is where builders publish deeply, map what they know, and turn every useful idea into professional gravity.</p>
+          <div className="hero-actions"><a className="hero-primary" href="#why">Explore StackedIN <ArrowRight size={17} /></a><button className="hero-secondary" onClick={openStudio}>View publishing studio</button></div>
+          <div className="hero-proof"><div><strong>45+</strong><span>published ideas</span></div><i /><div><strong>11</strong><span>knowledge domains</span></div><i /><div><strong>4</strong><span>publishing platforms</span></div></div>
+        </div>
+        <div className="hero-stage" aria-label="Animated StackedIN publishing preview">
+          <div className="orbit orbit-one" /><div className="orbit orbit-two" />
+          <img className="hero-product-icon" src={`${base}stackedin-icon.webp`} alt="StackedIN layered IN logo" />
+          <article className="float-card float-card-one"><span>NEW SERIES</span><strong>Multi-Cloud AI Architect</strong><small>Azure · AWS · Google Cloud</small></article>
+          <article className="float-card float-card-two"><Globe2 size={16} /><div><strong>Publish once</strong><small>Build authority everywhere</small></div></article>
+          <article className="float-card float-card-three"><span>KNOWLEDGE SIGNAL</span><strong>92%</strong><small>Architecture & AI</small></article>
+        </div>
+        <div className="scroll-cue"><span>Scroll to enter</span><i /></div>
+      </section>
+
+      <section className="signal-marquee" aria-label="StackedIN topics"><div>{["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"].concat(["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"]).map((item, index) => <span key={`${item}-${index}`}>{item}<i /></span>)}</div></section>
+
+      <section className="manifesto-section" id="why">
+        <div className="manifesto-kicker">Why StackedIN</div>
+        <div className="manifesto-copy"><h2>The internet has enough noise.<br />We’re building <em>signal.</em></h2><p>Professional identity should be earned through ideas, systems, and real work—not optimized posting rituals. StackedIN turns knowledge into a living portfolio that keeps working long after you hit publish.</p></div>
+      </section>
+
+      <section className="feature-grid" id="experience">{features.map(({ icon: Icon, number, title, text }) => <article className="marketing-feature" key={number}><div><span>{number}</span><Icon size={22} /></div><h3>{title}</h3><p>{text}</p><ArrowUpRight className="feature-arrow" size={19} /></article>)}</section>
+
+      <section className="product-story">
+        <div className="product-story-copy"><span>Built for people who build</span><h2>Your body of work.<br />Finally, in one orbit.</h2><p>Articles from Substack, Medium, Hashnode, and LinkedIn become one modular, searchable map of your professional thinking.</p><button onClick={openStudio}>See it in action <ArrowRight size={16} /></button></div>
+        <div className="story-canvas">
+          <div className="story-profile"><img src={`${base}stackedin-icon.webp`} alt="" /><div><strong>Abhishek Panda</strong><span>AI Architect · Builder · Writer</span></div><em>STACKED</em></div>
+          <div className="story-columns"><article><span>TOPIC 01</span><strong>AI & Machine Learning</strong><small>18 articles · 4 series</small></article><article><span>TOPIC 02</span><strong>System Architecture</strong><small>12 articles · 3 series</small></article><article><span>TOPIC 03</span><strong>Cloud Engineering</strong><small>15 articles · 5 series</small></article></div>
+          <div className="story-track"><i /><i /><i /><i /><i /></div>
+        </div>
+      </section>
+
+      <section className="how-section" id="how"><div className="how-heading"><span>From thought to authority</span><h2>Stack it. Connect it.<br />Let it compound.</h2></div><div className="how-steps"><article><b>01</b><div><PenTool /><h3>Write where you love</h3><p>Publish through your official Substack, Medium, Hashnode, or LinkedIn editor.</p></div></article><article><b>02</b><div><Zap /><h3>StackedIN organizes</h3><p>Your public work is classified into topics, series, tags, and learning paths.</p></div></article><article><b>03</b><div><Users /><h3>Your signal travels</h3><p>Readers discover the ideas, expertise, and professional story behind the profile.</p></div></article></div></section>
+
+      <section className="closing-cta"><img src={`${base}stackedin-wordmark-mono.webp`} alt="StackedIN" /><h2>Don’t just post.<br /><span>Build a body of work.</span></h2><p>Your knowledge already has value. Give it an architecture.</p><button onClick={openStudio}>Enter StackCraft Studio <ArrowUpRight size={18} /></button></section>
+    </main>
+    <footer className="marketing-footer"><img src={`${base}stackedin-wordmark.webp`} alt="StackedIN" /><span>Knowledge compounds here.</span><div><a href="https://www.linkedin.com/in/iamabhishekpanda/" target="_blank" rel="noreferrer">LinkedIn</a><a href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Substack</a><a href="https://hashnode.com/@abhishekpanda" target="_blank" rel="noreferrer">Hashnode</a></div><small>© 2026 StackedIN by StackCraft</small></footer>
+  </div>;
+}
+
+function Dashboard({ onExit }) {
   const [catalogue, setCatalogue] = useState({ posts: [], source: "", lastSyncedAt: null });
   const [metrics, setMetrics] = useState(loadMetrics);
   const [view, setView] = useState("overview");
@@ -217,7 +278,7 @@ export default function Dashboard() {
 
   return <div className="studio-shell">
     <aside className="sidebar">
-      <div className="studio-brand"><img className="studio-brand__mark" src={`${import.meta.env.BASE_URL}stackcraft-studio-logo.jpg`} alt="StackCraft Studio" /><div><strong>StackCraft Studio</strong><span>Multi-platform publishing OS</span></div></div>
+      <button className="studio-brand brand-button" onClick={onExit}><img className="studio-brand__mark" src={`${import.meta.env.BASE_URL}stackcraft-studio-logo.jpg`} alt="StackCraft Studio" /><div><strong>StackCraft Studio</strong><span>Back to StackedIN</span></div></button>
       <nav aria-label="Studio navigation">{NAV_ITEMS.map(item => {
         const Icon = item.icon;
         return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={17} /><span>{item.label}</span>{item.id === "library" && <em>{posts.length}</em>}</button>;
@@ -321,4 +382,16 @@ export default function Dashboard() {
     </main>
     {toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
+}
+
+export default function App() {
+  const [studioOpen, setStudioOpen] = useState(() => window.location.hash === "#studio");
+  useEffect(() => {
+    const onHashChange = () => setStudioOpen(window.location.hash === "#studio");
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+  const openStudio = () => { window.location.hash = "studio"; window.scrollTo({ top: 0, behavior: "instant" }); };
+  const closeStudio = () => { history.pushState(null, "", window.location.pathname + window.location.search); setStudioOpen(false); window.scrollTo({ top: 0, behavior: "instant" }); };
+  return studioOpen ? <Dashboard onExit={closeStudio} /> : <MarketingLanding openStudio={openStudio} />;
 }
