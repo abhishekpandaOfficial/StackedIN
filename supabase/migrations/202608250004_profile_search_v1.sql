@@ -220,7 +220,7 @@ features as (
   from eligible candidate
   left join lateral (
     select
-      coalesce(array_agg(skill_name order by confidence desc), '{}'::text[])[1:5] as key_skills,
+      (coalesce(array_agg(skill_name order by confidence desc), '{}'::text[]))[1:5] as key_skills,
       coalesce(array_agg(skill_name order by confidence desc) filter (where is_match), '{}'::text[]) as matched_skills,
       count(*) filter (where is_match)::integer as matched_count
     from (
@@ -345,7 +345,7 @@ select
   s.current_job_title,
   s.years_experience,
   s.key_skills,
-  (coalesce(s.matched_skills, '{}'::text[]) || coalesce(s.matched_topics, '{}'::text[]))[1:8] as matched_terms,
+  ((coalesce(s.matched_skills, '{}'::text[]) || coalesce(s.matched_topics, '{}'::text[])))[1:8] as matched_terms,
   case when s.computed_score >= 0.62 then 'Strong match' when s.computed_score >= 0.38 then 'Relevant' else 'Suggested' end as match_label,
   s.computed_score as rank_score,
   to_jsonb(array_remove(array[

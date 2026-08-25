@@ -253,7 +253,7 @@ begin
       cover_image_url, visibility, reading_minutes, source_type
     ) values (
       requested_tenant_id, auth.uid(), trim(requested_title), left(trim(coalesce(requested_description, '')), 1000), plain_body,
-      'StackedIN', coalesce(requested_tags, '{}'::text[])[1:20], coalesce(requested_hashtags, '{}'::text[])[1:20],
+      'StackedIN', (coalesce(requested_tags, '{}'::text[]))[1:20], (coalesce(requested_hashtags, '{}'::text[]))[1:20],
       requested_status, case when requested_status = 'published' then now() else null end,
       requested_content_type, 'BLOCKS_V1', requested_blocks, nullif(trim(requested_cover_image_url), ''),
       'public', greatest(1, ceil(word_count / 220.0)::integer), 'USER'
@@ -263,8 +263,8 @@ begin
     set title = trim(requested_title),
         description = left(trim(coalesce(requested_description, '')), 1000),
         body = plain_body,
-        tags = coalesce(requested_tags, '{}'::text[])[1:20],
-        hashtags = coalesce(requested_hashtags, '{}'::text[])[1:20],
+        tags = (coalesce(requested_tags, '{}'::text[]))[1:20],
+        hashtags = (coalesce(requested_hashtags, '{}'::text[]))[1:20],
         status = requested_status,
         published_at = case when requested_status = 'published' then coalesce(article.published_at, now()) else article.published_at end,
         content_type = requested_content_type,

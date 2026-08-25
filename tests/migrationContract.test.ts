@@ -87,6 +87,11 @@ describe("people recommendations V1 migration contract", () => {
 });
 
 describe("profile search V1 migration contract", () => {
+  it("parenthesizes computed arrays before applying slices", () => {
+    expect(searchMigration).not.toContain("coalesce(array_agg(skill_name order by confidence desc), '{}'::text[])[1:5]");
+    expect(searchMigration).toContain("(coalesce(array_agg(skill_name order by confidence desc), '{}'::text[]))[1:5]");
+  });
+
   it("provides guarded search and privacy-preserving impression RPCs", () => {
     expect(searchMigration).toContain("create or replace function public.search_profiles");
     expect(searchMigration).toContain("create or replace function public.record_profile_search_impressions");
@@ -124,6 +129,12 @@ describe("profile search V1 migration contract", () => {
 });
 
 describe("native publishing and realtime migration contract", () => {
+  it("parenthesizes computed arrays before applying slices", () => {
+    expect(publishingMigration).not.toContain("coalesce(requested_tags, '{}'::text[])[1:20]");
+    expect(publishingMigration).not.toContain("coalesce(requested_hashtags, '{}'::text[])[1:20]");
+    expect(publishingMigration).toContain("(coalesce(requested_tags, '{}'::text[]))[1:20]");
+  });
+
   it.each([
     "create table if not exists public.article_reactions",
     "create table if not exists public.article_comments",
