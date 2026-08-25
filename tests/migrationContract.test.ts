@@ -7,6 +7,7 @@ const peopleMigration = readFileSync(resolve("supabase/migrations/202608250003_p
 const searchMigration = readFileSync(resolve("supabase/migrations/202608250004_profile_search_v1.sql"), "utf8");
 const publishingMigration = readFileSync(resolve("supabase/migrations/202608250005_native_publishing_realtime.sql"), "utf8");
 const socialFeedMigration = readFileSync(resolve("supabase/migrations/202608250006_social_feed_interactions.sql"), "utf8");
+const profileHubMigration = readFileSync(resolve("supabase/migrations/202608250007_profile_journey_and_inbox.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -197,5 +198,61 @@ describe("realtime social feed migration contract", () => {
     expect(socialFeedMigration).toContain("restack_count = (select count(*) from public.article_restacks");
     expect(socialFeedMigration).toContain("alter publication supabase_realtime add table public.article_restacks");
     expect(socialFeedMigration).toContain("alter publication supabase_realtime add table public.profile_subscriptions");
+  });
+});
+
+describe("professional profile journey and inbox migration contract", () => {
+  it.each([
+    "create table if not exists public.profile_experiences",
+    "create table if not exists public.profile_education",
+    "create table if not exists public.profile_projects",
+    "create table if not exists public.profile_achievements",
+    "create table if not exists public.profile_links",
+    "create table if not exists public.notifications",
+    "create table if not exists public.conversations",
+    "create table if not exists public.conversation_members",
+    "create table if not exists public.messages",
+  ])("contains %s", statement => expect(profileHubMigration.toLowerCase()).toContain(statement));
+
+  it("limits profile record writes to the owning authenticated profile", () => {
+    expect(profileHubMigration).toContain("profile_id = auth.uid() and public.is_tenant_member(tenant_id)");
+    expect(profileHubMigration).toContain("foreach table_name in array array['profile_experiences','profile_education','profile_projects','profile_achievements','profile_links']");
+    expect(profileHubMigration).toContain("alter table public.%I enable row level security");
+  });
+
+  it("allows direct messaging only between accepted connections", () => {
+    expect(profileHubMigration).toContain("create or replace function public.start_direct_conversation");
+    expect(profileHubMigration).toContain("c.status = 'ACCEPTED'");
+    expect(profileHubMigration).toContain("messaging requires an accepted connection");
+    expect(profileHubMigration).toContain("public.is_conversation_member(conversation_id)");
+  });
+
+  it("protects inbox data with recipient and membership RLS", () => {
+    expect(profileHubMigration).toContain("recipient_profile_id = auth.uid()");
+    expect(profileHubMigration).toContain("Members read conversations");
+    expect(profileHubMigration).toContain("Members read messages");
+    expect(profileHubMigration).toContain("Members send messages");
+    expect(profileHubMigration).toContain("create or replace function public.mark_notifications_read");
+    expect(profileHubMigration).toContain("create or replace function public.mark_conversation_read");
+    expect(profileHubMigration).toContain("revoke insert, update, delete on public.conversation_members");
+  });
+
+  it("supports profile media without exposing privileged credentials", () => {
+    expect(profileHubMigration).toContain("values ('profile-media','profile-media',true,10485760");
+    expect(profileHubMigration).toContain("(storage.foldername(name))[1] = auth.uid()::text");
+    expect(profileHubMigration).not.toMatch(/service_role|client_secret|password/i);
+  });
+
+  it("publishes live inbox and profile updates to Realtime", () => {
+    for (const table of ["notifications", "messages", "conversation_members", "profile_experiences", "profile_projects"]) {
+      expect(profileHubMigration).toContain(`alter publication supabase_realtime add table public.${table}`);
+    }
+  });
+
+  it("creates notifications for network and publication activity", () => {
+    expect(profileHubMigration).toContain("create or replace function public.notify_social_activity");
+    for (const trigger of ["follows_create_notifications", "profile_subscriptions_create_notifications", "article_reactions_create_notifications", "article_comments_create_notifications", "article_restacks_create_notifications"]) {
+      expect(profileHubMigration).toContain(`create trigger ${trigger}`);
+    }
   });
 });
