@@ -457,7 +457,7 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
       await load();
     } catch (error) { setMessage(error.message); } finally { setBusy(false); }
   };
-  if (!bundle) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><RefreshCw className="spin" /></div>;
+  if (!bundle) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" />{busy ? <RefreshCw className="spin" /> : <ShieldCheck size={24} />}<p>{message || "Loading the professional journey…"}</p>{message && <button onClick={openFeed}>Return to feed</button>}</div>;
   const profile = bundle.profile; const name = profile.display_name || "StackedIN member";
   const socialLinks = [["Website",profile.website_url,Globe2],["GitHub",profile.github_url,SiGithub],["GitLab",profile.gitlab_url,SiGitlab],["LinkedIn",profile.linkedin_url,ExternalLink],["Medium",profile.medium_url,SiMedium],["Hashnode",profile.hashnode_url,SiHashnode],...(bundle.links || []).map(link => [link.label,link.url,Link2])].filter(item => isSafeExternalUrl(item[1]));
   const completionSignals = [profile.display_name,profile.headline,profile.about || profile.bio,profile.location,profile.industry,profile.avatar_url,profile.banner_url,profile.current_company,bundle.experiences.length,bundle.education.length,(profile.featured_skills || []).length,socialLinks.length];
