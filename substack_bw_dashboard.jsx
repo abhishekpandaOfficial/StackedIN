@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity, ArrowRight, ArrowUpRight, BarChart3, BookOpen, BrainCircuit, CalendarDays, CheckCircle2,
-  ChevronRight, Clock3, ExternalLink, FileText, Filter, Grid2X2, Layers3,
-  Globe2, Library, ListFilter, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, Sparkles, Upload,
-  Users, Workflow, X, Zap,
+  Activity, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, Bookmark, BrainCircuit, CalendarDays, CheckCircle2,
+  ChevronRight, Clock3, ExternalLink, Eye, FileText, Filter, Grid2X2, Heart, Home, KeyRound, Layers3,
+  Globe2, Library, ListFilter, LockKeyhole, LogOut, Mail, MessageCircle, MoreHorizontal, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, Sparkles, Upload,
+  UserRound, Users, Workflow, X, Zap,
 } from "lucide-react";
-import { SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
+import { SiGithub, SiGitlab, SiGoogle, SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
+import { supabase, supabasePublicConfig } from "./supabase.js";
 import "./studio.css";
 
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
@@ -167,6 +168,103 @@ function MarketingLanding({ openStudio }) {
       <section className="closing-cta"><img src={`${base}stackedin-wordmark-mono.webp`} alt="StackedIN" /><h2>Don’t just post.<br /><span>Build a body of work.</span></h2><p>Your knowledge already has value. Give it an architecture.</p><button onClick={openStudio}>Enter StackCraft Studio <ArrowUpRight size={18} /></button></section>
     </main>
     <footer className="marketing-footer"><img src={`${base}stackedin-wordmark.webp`} alt="StackedIN" /><span>Knowledge compounds here.</span><div><a href="https://www.linkedin.com/in/iamabhishekpanda/" target="_blank" rel="noreferrer">LinkedIn</a><a href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Substack</a><a href="https://hashnode.com/@abhishekpanda" target="_blank" rel="noreferrer">Hashnode</a></div><small>© 2026 StackedIN by StackCraft</small></footer>
+  </div>;
+}
+
+function AuthView({ onBack }) {
+  const [mode, setMode] = useState("signin");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [providers, setProviders] = useState({ google: null, github: null });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+  useEffect(() => {
+    fetch(`${supabasePublicConfig.url}/auth/v1/settings`, { headers: { apikey: supabasePublicConfig.anonKey } })
+      .then(response => response.json()).then(settings => setProviders({ google: Boolean(settings.external?.google), github: Boolean(settings.external?.github) }))
+      .catch(() => setProviders({ google: null, github: null }));
+  }, []);
+
+  const submit = async event => {
+    event.preventDefault(); setBusy(true); setError(""); setMessage("");
+    try {
+      if (password.length < 8) throw new Error("Use at least 8 characters for your password.");
+      if (mode === "signup") {
+        const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, emailRedirectTo: redirectTo } });
+        if (authError) throw authError;
+        if (!data.session) setMessage("Check your inbox to confirm your email, then return here to sign in.");
+      } else {
+        const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        if (authError) throw authError;
+      }
+    } catch (authError) { setError(authError.message || "Authentication could not be completed."); }
+    finally { setBusy(false); }
+  };
+  const oauth = async provider => {
+    setBusy(true); setError("");
+    const { error: authError } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+    if (authError) { setError(authError.message); setBusy(false); }
+  };
+  const resetPassword = async () => {
+    if (!email) { setError("Enter your email first, then choose reset password."); return; }
+    setBusy(true); setError("");
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    authError ? setError(authError.message) : setMessage("Password reset instructions are on the way.");
+    setBusy(false);
+  };
+  return <div className="auth-page">
+    <button className="auth-back" onClick={onBack}><ArrowLeft size={16} />Back to StackedIN</button>
+    <section className="auth-brand-panel"><div className="auth-orbit" /><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><span>Knowledge becomes identity</span><h1>Build a professional signal that compounds.</h1><p>Publish deeply. Connect your ideas. Let the right people discover what you actually know.</p><div className="auth-trust"><ShieldCheck size={18} /><div><strong>Secure by Supabase</strong><small>Encrypted sessions · Provider-managed OAuth · No passwords stored by StackedIN</small></div></div></section>
+    <section className="auth-form-panel"><div className="auth-form-wrap"><img src={`${import.meta.env.BASE_URL}stackedin-wordmark.webp`} alt="StackedIN" /><span className="auth-eyebrow">{mode === "signin" ? "Welcome back" : "Create your professional knowledge profile"}</span><h2>{mode === "signin" ? "Sign in to your feed" : "Join StackedIN"}</h2><p>{mode === "signin" ? "Your ideas are waiting where you left them." : "Start turning your work into a living body of knowledge."}</p>
+      <div className="oauth-grid"><button disabled={busy || providers.google === false} onClick={() => oauth("google")}><SiGoogle size={16} /><span>Continue with Google{providers.google === false && <small>Setup required</small>}</span></button><button disabled={busy || providers.github === false} onClick={() => oauth("github")}><SiGithub size={17} /><span>Continue with GitHub{providers.github === false && <small>Setup required</small>}</span></button></div>
+      {(providers.google === false || providers.github === false) && <div className="provider-note"><ShieldCheck size={14} />Email registration is live. Social login activates when its provider is enabled in Supabase.</div>}
+      <div className="auth-divider"><span>or continue with email</span></div>
+      <form onSubmit={submit}>{mode === "signup" && <label><span>Full name</span><div><UserRound size={16} /><input required value={name} onChange={event => setName(event.target.value)} placeholder="Your professional name" autoComplete="name" /></div></label>}<label><span>Email address</span><div><Mail size={16} /><input required type="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" /></div></label><label><span>Password</span><div><KeyRound size={16} /><input required minLength={8} type="password" value={password} onChange={event => setPassword(event.target.value)} placeholder="At least 8 characters" autoComplete={mode === "signin" ? "current-password" : "new-password"} /></div></label>{mode === "signin" && <button type="button" className="forgot-link" onClick={resetPassword}>Forgot password?</button>}{error && <div className="auth-alert error"><X size={15} />{error}</div>}{message && <div className="auth-alert success"><CheckCircle2 size={15} />{message}</div>}<button className="auth-submit" disabled={busy}>{busy ? <RefreshCw className="spin" size={16} /> : <LockKeyhole size={16} />}{mode === "signin" ? "Sign in securely" : "Create account"}</button></form>
+      <div className="auth-switch">{mode === "signin" ? "New to StackedIN?" : "Already have an account?"}<button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setError(""); setMessage(""); }}>{mode === "signin" ? "Create an account" : "Sign in"}</button></div><small className="auth-legal">By continuing, you agree to build useful things and avoid adding more internet noise. The serious legal copy can arrive before commercial launch.</small>
+    </div></section>
+  </div>;
+}
+
+function FeedCard({ post, liked, saved, onLike, onSave, onShare }) {
+  return <article className="feed-card">
+    <header><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><div><strong>Abhishek Panda <CheckCircle2 size={13} /></strong><span>AI Architect · .NET · Multi-Cloud · FDE Mindset</span><small>{formatDate(post.publishedAt)} · <Globe2 size={11} /></small></div><button aria-label="More options"><MoreHorizontal size={18} /></button></header>
+    <div className="feed-copy"><p>{post.description}</p><div className="feed-tags">{(post.tags || []).slice(0, 4).map(tag => <span key={tag}>#{tag.replace(/\s+/g, "")}</span>)}</div></div>
+    <a className={`feed-article-cover feed-cover-${(post.pillar || "architecture").length % 5}`} href={post.url} target="_blank" rel="noreferrer"><span><PlatformIcon name={post.platform || "Substack"} size={14} />{post.platform || "Substack"}</span><small>{post.pillar}</small><h2>{post.title}</h2><p>{post.series}</p><div>Read full article <ArrowUpRight size={15} /></div></a>
+    <div className="feed-engagement"><span><Eye size={13} />{compactNumber.format(post.views || 0)} views</span><span>{compactNumber.format(post.shares || 0)} shares</span></div>
+    <footer><button className={liked ? "active" : ""} onClick={onLike}><Heart size={17} fill={liked ? "currentColor" : "none"} />Like</button><a href={post.url} target="_blank" rel="noreferrer"><MessageCircle size={17} />Discuss</a><button onClick={onShare}><Share2 size={17} />Share</button><button className={saved ? "active" : ""} onClick={onSave}><Bookmark size={17} fill={saved ? "currentColor" : "none"} />Save</button></footer>
+  </article>;
+}
+
+function FeedExperience({ session, openStudio, signOut }) {
+  const [catalogue, setCatalogue] = useState({ posts: [] });
+  const [search, setSearch] = useState("");
+  const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
+  const [saved, setSaved] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-saved-${session.user.id}`) || "[]")));
+  const [toast, setToast] = useState("");
+  useEffect(() => { fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" }).then(response => response.json()).then(setCatalogue).catch(() => setCatalogue({ posts: [] })); }, []);
+  useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2200); return () => clearTimeout(timer); }, [toast]);
+  const posts = useMemo(() => [...(catalogue.posts || [])].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
+  const visible = useMemo(() => posts.filter(post => `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30), [posts, search]);
+  const recent = posts.slice(0, 10);
+  const toggle = (type, url) => {
+    const current = type === "liked" ? liked : saved;
+    const next = new Set(current); next.has(url) ? next.delete(url) : next.add(url);
+    localStorage.setItem(`stackedin-${type}-${session.user.id}`, JSON.stringify([...next]));
+    type === "liked" ? setLiked(next) : setSaved(next);
+  };
+  const share = async post => { try { await navigator.clipboard.writeText(post.url); setToast("Article link copied."); } catch { window.open(post.url, "_blank", "noopener"); } };
+  const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
+  const initial = name.charAt(0).toUpperCase();
+  const featureLinks = [{ label: "Home feed", icon: Home, active: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
+  return <div className="feed-page">
+    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search articles, topics, people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
+    <div className="feed-layout">
+      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && openStudio()}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={() => openStudio()}>Share an article, lesson, or system design…</button></div><footer><button onClick={openStudio}><PenTool size={16} />Write article</button><button onClick={openStudio}><Layers3 size={16} />Add to series</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Showing your knowledge network</span><button>Newest first <ChevronRight size={13} /></button></div>{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or clear your search.</p></div>}</main>
+      <aside className="feed-right"><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></a>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
+    </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
 }
 
@@ -385,13 +483,29 @@ function Dashboard({ onExit }) {
 }
 
 export default function App() {
-  const [studioOpen, setStudioOpen] = useState(() => window.location.hash === "#studio");
+  const [route, setRoute] = useState(() => window.location.hash.replace("#", "") || "home");
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   useEffect(() => {
-    const onHashChange = () => setStudioOpen(window.location.hash === "#studio");
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      setSession(nextSession); setAuthReady(true);
+      if (nextSession && ["home", "login"].includes(window.location.hash.replace("#", "") || "home")) window.location.hash = "feed";
+      if (event === "SIGNED_OUT") window.location.hash = "";
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+  useEffect(() => {
+    const onHashChange = () => setRoute(window.location.hash.replace("#", "") || "home");
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
-  const openStudio = () => { window.location.hash = "studio"; window.scrollTo({ top: 0, behavior: "instant" }); };
-  const closeStudio = () => { history.pushState(null, "", window.location.pathname + window.location.search); setStudioOpen(false); window.scrollTo({ top: 0, behavior: "instant" }); };
-  return studioOpen ? <Dashboard onExit={closeStudio} /> : <MarketingLanding openStudio={openStudio} />;
+  const navigate = next => { window.location.hash = next; setRoute(next); window.scrollTo({ top: 0, behavior: "instant" }); };
+  const openStudio = () => navigate(session ? "studio" : "login");
+  const signOut = async () => { await supabase.auth.signOut(); navigate("home"); };
+  if (!authReady) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><RefreshCw className="spin" /></div>;
+  if (route === "login" || (["feed", "studio"].includes(route) && !session)) return <AuthView onBack={() => navigate("home")} />;
+  if (route === "feed" && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} signOut={signOut} />;
+  if (route === "studio" && session) return <Dashboard onExit={() => navigate("feed")} />;
+  return <MarketingLanding openStudio={openStudio} />;
 }

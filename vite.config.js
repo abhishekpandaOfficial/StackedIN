@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: process.env.GITHUB_ACTIONS ? "/substack_dashboard/" : "/",
+  base: process.env.GITHUB_ACTIONS ? "/StackedIN/" : "/",
   server: {
     proxy: {
       "/api": "http://127.0.0.1:8787",
