@@ -1,46 +1,671 @@
 [
-  {"id":1,"title":"Python for Machine Learning and Deep Learning","url":"https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep","pillar":"Python & Data Tools","series":"Foundations","code":"PY-001","tags":["Python","ML","Deep Learning"],"description":"Python foundations for production-minded ML and deep-learning practitioners."},
-  {"id":2,"title":"NumPy for Machine Learning and Deep Learning","url":"https://pandaabhishek.substack.com/p/numpy-for-machine-learning-and-deep","pillar":"Python & Data Tools","series":"Foundations","code":"NP-001","tags":["NumPy","ML","Data"],"description":"Arrays, vectorisation, and numerical computing for machine learning."},
-  {"id":3,"title":"Pandas for Machine Learning and Deep Learning","url":"https://pandaabhishek.substack.com/p/pandas-for-machine-learning-and-deep","pillar":"Python & Data Tools","series":"Foundations","code":"PD-001","tags":["Pandas","ML","Data"],"description":"DataFrames, wrangling, and preprocessing for model-ready data."},
-  {"id":4,"title":"Matplotlib for Machine Learning and Deep Learning","url":"https://pandaabhishek.substack.com/p/matplotlib-for-machine-learning-and","pillar":"Python & Data Tools","series":"Foundations","code":"VIZ-001","tags":["Matplotlib","Visualisation","ML"],"description":"Plotting fundamentals and clear visual communication for ML work."},
-  {"id":5,"title":"Seaborn for Statistical EDA","url":"https://pandaabhishek.substack.com/p/seaborn-for-statistical-eda","pillar":"Python & Data Tools","series":"Foundations","code":"VIZ-002","tags":["Seaborn","EDA","Visualisation"],"description":"Statistical plots and exploratory data analysis with Seaborn."},
-  {"id":6,"title":"From Senior .NET Developer to AI Architect","url":"https://pandaabhishek.substack.com/p/from-senior-net-developer-to-ai-architect","pillar":"AI Journey","series":"100 Days AI Journey","code":"DAY-001","journeyDay":1,"tags":["Journey","AI","Career"],"description":"The opening chapter of a senior engineer's journey toward AI architecture."},
-  {"id":7,"title":"100 Days of Machine Learning — Day 2","url":"https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and","pillar":"AI Journey","series":"100 Days AI Journey","code":"DAY-002","journeyDay":2,"tags":["Journey","ML"],"description":"The learning system, environment, and commitments behind the journey."},
-  {"id":8,"title":"100 Days of Machine Learning — Day 3","url":"https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-51b","pillar":"AI Journey","series":"100 Days AI Journey","code":"DAY-003","journeyDay":3,"tags":["Journey","ML","Data"],"description":"Datasets, feature types, and the data lifecycle in ML projects."},
-  {"id":9,"title":"100 Days of Machine Learning — Day 4","url":"https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-65a","pillar":"AI Journey","series":"100 Days AI Journey","code":"DAY-004","journeyDay":4,"tags":["Journey","ML","Data"],"description":"Hands-on data cleaning and missing-value strategies."},
-  {"id":10,"title":"100 Days of Machine Learning — Day 5","url":"https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-484","pillar":"AI Journey","series":"100 Days AI Journey","code":"DAY-005","journeyDay":5,"tags":["Journey","ML","Features"],"description":"Feature engineering techniques and their effect on model performance."},
-  {"id":11,"title":"ML-001: What Is Artificial Intelligence?","url":"https://pandaabhishek.substack.com/p/ml-001-what-is-artificial-intelligence","pillar":"AI Journey","series":"ML Foundations","code":"ML-001","journeyDay":6,"tags":["AI","ML","Fundamentals"],"description":"A practical definition of AI, its scope, and why it matters."},
-  {"id":12,"title":"ML-002: The Untold Story of Artificial Intelligence","url":"https://pandaabhishek.substack.com/p/ml-002-the-untold-story-of-artificial","pillar":"AI Journey","series":"ML Foundations","code":"ML-002","journeyDay":7,"tags":["AI","History","ML"],"description":"AI history from early theory to the modern foundation-model era."},
-  {"id":13,"title":"ML-003: Understanding the Types of AI","url":"https://pandaabhishek.substack.com/p/ml-003-understanding-the-types-of","pillar":"AI Journey","series":"ML Foundations","code":"ML-003","journeyDay":8,"tags":["AI","ML","Fundamentals"],"description":"Narrow AI, general intelligence, and the taxonomy surrounding them."},
-  {"id":14,"title":"ML-004: What Is Machine Learning?","url":"https://pandaabhishek.substack.com/p/ml-004-what-is-machine-learning","pillar":"AI Journey","series":"ML Foundations","code":"ML-004","journeyDay":9,"tags":["ML","Fundamentals"],"description":"Machine learning defined through the end-to-end modelling workflow."},
-  {"id":15,"title":"ML-005: Machine Learning Fundamentals","url":"https://pandaabhishek.substack.com/p/ml-005-machine-learning-fundamentals","pillar":"AI Journey","series":"ML Foundations","code":"ML-005","journeyDay":10,"tags":["ML","Fundamentals"],"description":"Bias, variance, overfitting, underfitting, and generalisation."},
-  {"id":16,"title":"ML-006: Machine Learning Terminology","url":"https://pandaabhishek.substack.com/p/ml-006-machine-learning-terminology","pillar":"AI Journey","series":"ML Foundations","code":"ML-006","journeyDay":11,"tags":["ML","Fundamentals","Glossary"],"description":"The essential vocabulary used across modern ML systems."},
-  {"id":17,"title":"ML-007: The Complete Machine Learning Roadmap","url":"https://pandaabhishek.substack.com/p/ml-007-the-complete-machine-learning","pillar":"AI Journey","series":"ML Foundations","code":"ML-007","journeyDay":12,"tags":["ML","Roadmap"],"description":"A structured path from fundamentals to production ML engineering."},
-  {"id":18,"title":"ML-008: Exploratory Data Analysis","url":"https://pandaabhishek.substack.com/p/day-12-ml-008-exploratory-data-analysis","pillar":"AI Journey","series":"ML Foundations","code":"ML-008","journeyDay":13,"tags":["EDA","ML","Data"],"description":"A systematic EDA workflow for distributions, relationships, and quality."},
-  {"id":19,"title":"Kubernetes Mastery — Part 1: From Containers to Clusters","url":"https://pandaabhishek.substack.com/p/kubernetes-mastery-from-containers","pillar":"Cloud Native","series":"Kubernetes Mastery","code":"K8S-001","tags":["Kubernetes","DevOps","Containers"],"description":"Pods, nodes, clusters, and Kubernetes architecture from first principles."},
-  {"id":20,"title":"Kubernetes Mastery — Part 2: Workloads and Configuration","url":"https://pandaabhishek.substack.com/p/kubernetes-mastery-workloads-configuration","pillar":"Cloud Native","series":"Kubernetes Mastery","code":"K8S-002","tags":["Kubernetes","DevOps","Configuration"],"description":"Deployments, configuration, secrets, and production workloads."},
-  {"id":21,"title":"RAG Is the Future of AI Apps","url":"https://pandaabhishek.substack.com/p/rag-is-the-future-of-ai-apps-heres","pillar":"GenAI & RAG","series":"RAG Systems","code":"RAG-001","tags":["RAG","AI","LLM"],"description":"Retrieval-augmented generation architecture, value, and implementation."},
-  {"id":22,"title":"Vector RAG vs Vectorless RAG","url":"https://pandaabhishek.substack.com/p/vector-rag-vs-vectorless-rag","pillar":"GenAI & RAG","series":"RAG Systems","code":"RAG-002","tags":["RAG","Retrieval","LLM"],"description":"Vector, lexical, and hybrid retrieval strategies compared."},
-  {"id":23,"title":"Multithreading in .NET Core","url":"https://pandaabhishek.substack.com/p/multithreading-in-net-core-building","pillar":".NET & Azure","series":".NET Engineering","code":"NET-001","tags":[".NET","Concurrency","Backend"],"description":"Concurrent applications with async/await, threads, tasks, and synchronisation."},
-  {"id":24,"title":"Queues vs Topics in Azure Service Bus","url":"https://pandaabhishek.substack.com/p/queues-vs-topics-in-messaging-frameworks","pillar":".NET & Azure","series":"Azure Messaging","code":"AZSB-001","tags":["Azure","Messaging","Cloud"],"description":"Queue and publish-subscribe patterns for enterprise messaging."},
-  {"id":25,"title":"Building a Production-Ready Azure Service Bus Topic","url":"https://pandaabhishek.substack.com/p/building-a-production-ready-azure","pillar":".NET & Azure","series":"Azure Messaging","code":"AZSB-002","tags":["Azure","Messaging","Production"],"description":"Subscriptions, filters, reliability, and dead-letter handling."},
-  {"id":26,"title":"System Design Mastery — Complete Syllabus","url":"https://pandaabhishek.substack.com/p/the-complete-system-design-mastery","pillar":"System Design","series":"System Design Mastery","code":"SD-SYLLABUS","tags":["System Design","Architecture","Roadmap"],"description":"A complete roadmap from fundamentals to distributed architecture."},
-  {"id":27,"title":"SD-001: What Is System Design?","url":"https://pandaabhishek.substack.com/p/sd-001-what-is-system-design","pillar":"System Design","series":"System Design Mastery","code":"SD-001","tags":["System Design","Architecture","Fundamentals"],"description":"Requirements, constraints, trade-offs, and the system-design process."},
-  {"id":28,"title":"From Foundations to Production ML","url":"https://pandaabhishek.substack.com/p/from-foundations-to-production-ml","pillar":"ML Engineering","series":"Production ML","code":"MLE-001","tags":["ML","MLOps","Production"],"description":"The bridge from notebook experiments to production-grade ML systems."},
-  {"id":29,"title":"ML-009: Logistic Regression","url":"https://pandaabhishek.substack.com/p/ml-009-logistic-regression","pillar":"ML Engineering","series":"ML Algorithms","code":"ML-009","tags":["ML","Classification","Algorithms"],"description":"Sigmoid, loss, optimisation, evaluation, and production use cases."},
-  {"id":30,"title":"ML-010: K-Nearest Neighbors (KNN)","url":"https://pandaabhishek.substack.com/p/k-nearest-neighbors-knn-ml-010","pillar":"ML Engineering","series":"ML Algorithms","code":"ML-010","tags":["ML","Classification","Algorithms"],"description":"Distance metrics, scaling, model selection, and choosing K."},
-  {"id":31,"title":"Decision Tree Classification","url":"https://pandaabhishek.substack.com/p/decision-tree-classification","pillar":"ML Engineering","series":"ML Algorithms","code":"ML-011","tags":["ML","Classification","Trees"],"description":"Impurity, information gain, pruning, and explainable classification."},
-  {"id":32,"title":"MLOps — Part 1: Enterprise ML Operations","url":"https://pandaabhishek.substack.com/p/enterprise-mlops-and-ai-operations","pillar":"MLOps","series":"Enterprise MLOps","code":"MLOPS-001","tags":["MLOps","Production","DevOps"],"description":"MLOps principles, maturity models, and enterprise AI operations."},
-  {"id":33,"title":"MLOps Phase 1: Credit Card Fraud Detection","url":"https://pandaabhishek.substack.com/p/phase-01-enterprise-credit-card-fraud","pillar":"MLOps","series":"Enterprise MLOps","code":"MLOPS-P1","tags":["MLOps","Production","Project"],"description":"Data foundations and feature engineering for fraud detection."},
-  {"id":34,"title":"MLOps Phase 2: Reproducible ML Engineering","url":"https://pandaabhishek.substack.com/p/phase-2-reproducible-ml-engineering","pillar":"MLOps","series":"Enterprise MLOps","code":"MLOPS-P2","tags":["MLOps","Reproducibility","DVC"],"description":"Versioned data, code, environments, and reproducible experiments."},
-  {"id":35,"title":"MLOps Phase 3: MLflow Experiment Tracking","url":"https://pandaabhishek.substack.com/p/mlflow-experiment-tracking-model","pillar":"MLOps","series":"Enterprise MLOps","code":"MLOPS-P3","tags":["MLOps","MLflow","Tracking"],"description":"Experiment tracking, run comparison, and model registry workflows."},
-  {"id":36,"title":"MLOps Phase 4: Production Model Serving","url":"https://pandaabhishek.substack.com/p/production-model-serving-phase-4","pillar":"MLOps","series":"Enterprise MLOps","code":"MLOPS-P4","tags":["MLOps","Serving","Production"],"description":"Serving models through APIs, containers, and monitoring."},
-  {"id":37,"title":"Random Forest Classifier","url":"https://pandaabhishek.substack.com/p/random-forest-classifier","pillar":"ML Engineering","series":"ML Algorithms","code":"ML-012","tags":["ML","Classification","Ensemble"],"description":"Bagging, feature randomness, tuning, and interpretable ensembles."},
-  {"id":38,"title":"XGBoost Classification — Bank Marketing","url":"https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing","pillar":"ML Engineering","series":"ML Algorithms","code":"ML-013","tags":["ML","Classification","XGBoost"],"description":"Gradient boosting from theory to a real bank-marketing solution."},
-  {"id":39,"title":"Deep Learning Mastery — From Neural Networks to Production","url":"https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural","pillar":"Deep Learning","series":"Deep Learning Mastery","code":"DL-001","tags":["Deep Learning","Neural Networks","AI"],"description":"A practical roadmap from neurons and backpropagation to production."},
-  {"id":40,"title":"Deep Learning Fundamentals — Part 1","url":"https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1","pillar":"Deep Learning","series":"Deep Learning Mastery","code":"DL-002","tags":["Deep Learning","Neural Networks","Fundamentals"],"description":"Core neural-network concepts, training mechanics, and intuition."},
-  {"id":41,"title":"The Multi-Cloud AI Architect","url":"https://pandaabhishek.substack.com/p/the-multi-cloud-ai-architect","pillar":"Architecture & Career","series":"Multi-Cloud AI Architect","code":"MCAI-001","tags":["AI","Cloud","Architecture"],"description":"Designing AI platforms across Azure, AWS, and Google Cloud."},
-  {"id":42,"title":"Forward Deployed Engineer (FDE) Mindset","url":"https://pandaabhishek.substack.com/p/forward-deployed-engineer-fde","pillar":"Architecture & Career","series":"FDE","code":"FDE-001","tags":["Career","Engineering","Delivery"],"description":"The field-first mindset for solving real customer problems with technology."},
-  {"id":43,"title":"Design Patterns: From Zero to Architecture","url":"https://pandaabhishek.substack.com/p/design-patterns-from-zero-to-architecture","pillar":"Software & Data Architecture","series":"Design Patterns","code":"DP-SYLLABUS","tags":["Design Patterns","Architecture",".NET"],"description":"A structured curriculum across creational, structural, and behavioural patterns."},
-  {"id":44,"title":"Data Engineering & Data Architect Mastery","url":"https://pandaabhishek.substack.com/p/data-engineering-data-architect-mastery","pillar":"Software & Data Architecture","series":"Data Engineering Mastery","code":"DE-SYLLABUS","tags":["Data Engineering","Architecture","Roadmap"],"description":"A complete path through data platforms, pipelines, streaming, and governance."}
+  {
+    "id": 1,
+    "title": "Python for Machine Learning and Deep Learning",
+    "url": "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep",
+    "pillar": "Python & Data Tools",
+    "series": "Foundations",
+    "code": "PY-001",
+    "tags": [
+      "Python",
+      "ML",
+      "Deep Learning"
+    ],
+    "description": "Python foundations for production-minded ML and deep-learning practitioners.",
+    "platform": "Substack"
+  },
+  {
+    "id": 2,
+    "title": "NumPy for Machine Learning and Deep Learning",
+    "url": "https://pandaabhishek.substack.com/p/numpy-for-machine-learning-and-deep",
+    "pillar": "Python & Data Tools",
+    "series": "Foundations",
+    "code": "NP-001",
+    "tags": [
+      "NumPy",
+      "ML",
+      "Data"
+    ],
+    "description": "Arrays, vectorisation, and numerical computing for machine learning.",
+    "platform": "Substack"
+  },
+  {
+    "id": 3,
+    "title": "Pandas for Machine Learning and Deep Learning",
+    "url": "https://pandaabhishek.substack.com/p/pandas-for-machine-learning-and-deep",
+    "pillar": "Python & Data Tools",
+    "series": "Foundations",
+    "code": "PD-001",
+    "tags": [
+      "Pandas",
+      "ML",
+      "Data"
+    ],
+    "description": "DataFrames, wrangling, and preprocessing for model-ready data.",
+    "platform": "Substack"
+  },
+  {
+    "id": 4,
+    "title": "Matplotlib for Machine Learning and Deep Learning",
+    "url": "https://pandaabhishek.substack.com/p/matplotlib-for-machine-learning-and",
+    "pillar": "Python & Data Tools",
+    "series": "Foundations",
+    "code": "VIZ-001",
+    "tags": [
+      "Matplotlib",
+      "Visualisation",
+      "ML"
+    ],
+    "description": "Plotting fundamentals and clear visual communication for ML work.",
+    "platform": "Substack"
+  },
+  {
+    "id": 5,
+    "title": "Seaborn for Statistical EDA",
+    "url": "https://pandaabhishek.substack.com/p/seaborn-for-statistical-eda",
+    "pillar": "Python & Data Tools",
+    "series": "Foundations",
+    "code": "VIZ-002",
+    "tags": [
+      "Seaborn",
+      "EDA",
+      "Visualisation"
+    ],
+    "description": "Statistical plots and exploratory data analysis with Seaborn.",
+    "platform": "Substack"
+  },
+  {
+    "id": 6,
+    "title": "From Senior .NET Developer to AI Architect",
+    "url": "https://pandaabhishek.substack.com/p/from-senior-net-developer-to-ai-architect",
+    "pillar": "AI Journey",
+    "series": "100 Days AI Journey",
+    "code": "DAY-001",
+    "journeyDay": 1,
+    "tags": [
+      "Journey",
+      "AI",
+      "Career"
+    ],
+    "description": "The opening chapter of a senior engineer's journey toward AI architecture.",
+    "platform": "Substack"
+  },
+  {
+    "id": 7,
+    "title": "100 Days of Machine Learning — Day 2",
+    "url": "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and",
+    "pillar": "AI Journey",
+    "series": "100 Days AI Journey",
+    "code": "DAY-002",
+    "journeyDay": 2,
+    "tags": [
+      "Journey",
+      "ML"
+    ],
+    "description": "The learning system, environment, and commitments behind the journey.",
+    "platform": "Substack"
+  },
+  {
+    "id": 8,
+    "title": "100 Days of Machine Learning — Day 3",
+    "url": "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-51b",
+    "pillar": "AI Journey",
+    "series": "100 Days AI Journey",
+    "code": "DAY-003",
+    "journeyDay": 3,
+    "tags": [
+      "Journey",
+      "ML",
+      "Data"
+    ],
+    "description": "Datasets, feature types, and the data lifecycle in ML projects.",
+    "platform": "Substack"
+  },
+  {
+    "id": 9,
+    "title": "100 Days of Machine Learning — Day 4",
+    "url": "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-65a",
+    "pillar": "AI Journey",
+    "series": "100 Days AI Journey",
+    "code": "DAY-004",
+    "journeyDay": 4,
+    "tags": [
+      "Journey",
+      "ML",
+      "Data"
+    ],
+    "description": "Hands-on data cleaning and missing-value strategies.",
+    "platform": "Substack"
+  },
+  {
+    "id": 10,
+    "title": "100 Days of Machine Learning — Day 5",
+    "url": "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-484",
+    "pillar": "AI Journey",
+    "series": "100 Days AI Journey",
+    "code": "DAY-005",
+    "journeyDay": 5,
+    "tags": [
+      "Journey",
+      "ML",
+      "Features"
+    ],
+    "description": "Feature engineering techniques and their effect on model performance.",
+    "platform": "Substack"
+  },
+  {
+    "id": 11,
+    "title": "ML-001: What Is Artificial Intelligence?",
+    "url": "https://pandaabhishek.substack.com/p/ml-001-what-is-artificial-intelligence",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-001",
+    "journeyDay": 6,
+    "tags": [
+      "AI",
+      "ML",
+      "Fundamentals"
+    ],
+    "description": "A practical definition of AI, its scope, and why it matters.",
+    "platform": "Substack"
+  },
+  {
+    "id": 12,
+    "title": "ML-002: The Untold Story of Artificial Intelligence",
+    "url": "https://pandaabhishek.substack.com/p/ml-002-the-untold-story-of-artificial",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-002",
+    "journeyDay": 7,
+    "tags": [
+      "AI",
+      "History",
+      "ML"
+    ],
+    "description": "AI history from early theory to the modern foundation-model era.",
+    "platform": "Substack"
+  },
+  {
+    "id": 13,
+    "title": "ML-003: Understanding the Types of AI",
+    "url": "https://pandaabhishek.substack.com/p/ml-003-understanding-the-types-of",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-003",
+    "journeyDay": 8,
+    "tags": [
+      "AI",
+      "ML",
+      "Fundamentals"
+    ],
+    "description": "Narrow AI, general intelligence, and the taxonomy surrounding them.",
+    "platform": "Substack"
+  },
+  {
+    "id": 14,
+    "title": "ML-004: What Is Machine Learning?",
+    "url": "https://pandaabhishek.substack.com/p/ml-004-what-is-machine-learning",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-004",
+    "journeyDay": 9,
+    "tags": [
+      "ML",
+      "Fundamentals"
+    ],
+    "description": "Machine learning defined through the end-to-end modelling workflow.",
+    "platform": "Substack"
+  },
+  {
+    "id": 15,
+    "title": "ML-005: Machine Learning Fundamentals",
+    "url": "https://pandaabhishek.substack.com/p/ml-005-machine-learning-fundamentals",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-005",
+    "journeyDay": 10,
+    "tags": [
+      "ML",
+      "Fundamentals"
+    ],
+    "description": "Bias, variance, overfitting, underfitting, and generalisation.",
+    "platform": "Substack"
+  },
+  {
+    "id": 16,
+    "title": "ML-006: Machine Learning Terminology",
+    "url": "https://pandaabhishek.substack.com/p/ml-006-machine-learning-terminology",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-006",
+    "journeyDay": 11,
+    "tags": [
+      "ML",
+      "Fundamentals",
+      "Glossary"
+    ],
+    "description": "The essential vocabulary used across modern ML systems.",
+    "platform": "Substack"
+  },
+  {
+    "id": 17,
+    "title": "ML-007: The Complete Machine Learning Roadmap",
+    "url": "https://pandaabhishek.substack.com/p/ml-007-the-complete-machine-learning",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-007",
+    "journeyDay": 12,
+    "tags": [
+      "ML",
+      "Roadmap"
+    ],
+    "description": "A structured path from fundamentals to production ML engineering.",
+    "platform": "Substack"
+  },
+  {
+    "id": 18,
+    "title": "ML-008: Exploratory Data Analysis",
+    "url": "https://pandaabhishek.substack.com/p/day-12-ml-008-exploratory-data-analysis",
+    "pillar": "AI Journey",
+    "series": "ML Foundations",
+    "code": "ML-008",
+    "journeyDay": 13,
+    "tags": [
+      "EDA",
+      "ML",
+      "Data"
+    ],
+    "description": "A systematic EDA workflow for distributions, relationships, and quality.",
+    "platform": "Substack"
+  },
+  {
+    "id": 19,
+    "title": "Kubernetes Mastery — Part 1: From Containers to Clusters",
+    "url": "https://pandaabhishek.substack.com/p/kubernetes-mastery-from-containers",
+    "pillar": "Cloud Native",
+    "series": "Kubernetes Mastery",
+    "code": "K8S-001",
+    "tags": [
+      "Kubernetes",
+      "DevOps",
+      "Containers"
+    ],
+    "description": "Pods, nodes, clusters, and Kubernetes architecture from first principles.",
+    "platform": "Substack"
+  },
+  {
+    "id": 20,
+    "title": "Kubernetes Mastery — Part 2: Workloads and Configuration",
+    "url": "https://pandaabhishek.substack.com/p/kubernetes-mastery-workloads-configuration",
+    "pillar": "Cloud Native",
+    "series": "Kubernetes Mastery",
+    "code": "K8S-002",
+    "tags": [
+      "Kubernetes",
+      "DevOps",
+      "Configuration"
+    ],
+    "description": "Deployments, configuration, secrets, and production workloads.",
+    "platform": "Substack"
+  },
+  {
+    "id": 21,
+    "title": "RAG Is the Future of AI Apps",
+    "url": "https://pandaabhishek.substack.com/p/rag-is-the-future-of-ai-apps-heres",
+    "pillar": "GenAI & RAG",
+    "series": "RAG Systems",
+    "code": "RAG-001",
+    "tags": [
+      "RAG",
+      "AI",
+      "LLM"
+    ],
+    "description": "Retrieval-augmented generation architecture, value, and implementation.",
+    "platform": "Substack"
+  },
+  {
+    "id": 22,
+    "title": "Vector RAG vs Vectorless RAG",
+    "url": "https://pandaabhishek.substack.com/p/vector-rag-vs-vectorless-rag",
+    "pillar": "GenAI & RAG",
+    "series": "RAG Systems",
+    "code": "RAG-002",
+    "tags": [
+      "RAG",
+      "Retrieval",
+      "LLM"
+    ],
+    "description": "Vector, lexical, and hybrid retrieval strategies compared.",
+    "platform": "Substack"
+  },
+  {
+    "id": 23,
+    "title": "Multithreading in .NET Core",
+    "url": "https://pandaabhishek.substack.com/p/multithreading-in-net-core-building",
+    "pillar": ".NET & Azure",
+    "series": ".NET Engineering",
+    "code": "NET-001",
+    "tags": [
+      ".NET",
+      "Concurrency",
+      "Backend"
+    ],
+    "description": "Concurrent applications with async/await, threads, tasks, and synchronisation.",
+    "platform": "Substack"
+  },
+  {
+    "id": 24,
+    "title": "Queues vs Topics in Azure Service Bus",
+    "url": "https://pandaabhishek.substack.com/p/queues-vs-topics-in-messaging-frameworks",
+    "pillar": ".NET & Azure",
+    "series": "Azure Messaging",
+    "code": "AZSB-001",
+    "tags": [
+      "Azure",
+      "Messaging",
+      "Cloud"
+    ],
+    "description": "Queue and publish-subscribe patterns for enterprise messaging.",
+    "platform": "Substack"
+  },
+  {
+    "id": 25,
+    "title": "Building a Production-Ready Azure Service Bus Topic",
+    "url": "https://pandaabhishek.substack.com/p/building-a-production-ready-azure",
+    "pillar": ".NET & Azure",
+    "series": "Azure Messaging",
+    "code": "AZSB-002",
+    "tags": [
+      "Azure",
+      "Messaging",
+      "Production"
+    ],
+    "description": "Subscriptions, filters, reliability, and dead-letter handling.",
+    "platform": "Substack"
+  },
+  {
+    "id": 26,
+    "title": "System Design Mastery — Complete Syllabus",
+    "url": "https://pandaabhishek.substack.com/p/the-complete-system-design-mastery",
+    "pillar": "System Design",
+    "series": "System Design Mastery",
+    "code": "SD-SYLLABUS",
+    "tags": [
+      "System Design",
+      "Architecture",
+      "Roadmap"
+    ],
+    "description": "A complete roadmap from fundamentals to distributed architecture.",
+    "platform": "Substack"
+  },
+  {
+    "id": 27,
+    "title": "SD-001: What Is System Design?",
+    "url": "https://pandaabhishek.substack.com/p/sd-001-what-is-system-design",
+    "pillar": "System Design",
+    "series": "System Design Mastery",
+    "code": "SD-001",
+    "tags": [
+      "System Design",
+      "Architecture",
+      "Fundamentals"
+    ],
+    "description": "Requirements, constraints, trade-offs, and the system-design process.",
+    "platform": "Substack"
+  },
+  {
+    "id": 28,
+    "title": "From Foundations to Production ML",
+    "url": "https://pandaabhishek.substack.com/p/from-foundations-to-production-ml",
+    "pillar": "ML Engineering",
+    "series": "Production ML",
+    "code": "MLE-001",
+    "tags": [
+      "ML",
+      "MLOps",
+      "Production"
+    ],
+    "description": "The bridge from notebook experiments to production-grade ML systems.",
+    "platform": "Substack"
+  },
+  {
+    "id": 29,
+    "title": "ML-009: Logistic Regression",
+    "url": "https://pandaabhishek.substack.com/p/ml-009-logistic-regression",
+    "pillar": "ML Engineering",
+    "series": "ML Algorithms",
+    "code": "ML-009",
+    "tags": [
+      "ML",
+      "Classification",
+      "Algorithms"
+    ],
+    "description": "Sigmoid, loss, optimisation, evaluation, and production use cases.",
+    "platform": "Substack"
+  },
+  {
+    "id": 30,
+    "title": "ML-010: K-Nearest Neighbors (KNN)",
+    "url": "https://pandaabhishek.substack.com/p/k-nearest-neighbors-knn-ml-010",
+    "pillar": "ML Engineering",
+    "series": "ML Algorithms",
+    "code": "ML-010",
+    "tags": [
+      "ML",
+      "Classification",
+      "Algorithms"
+    ],
+    "description": "Distance metrics, scaling, model selection, and choosing K.",
+    "platform": "Substack"
+  },
+  {
+    "id": 31,
+    "title": "Decision Tree Classification",
+    "url": "https://pandaabhishek.substack.com/p/decision-tree-classification",
+    "pillar": "ML Engineering",
+    "series": "ML Algorithms",
+    "code": "ML-011",
+    "tags": [
+      "ML",
+      "Classification",
+      "Trees"
+    ],
+    "description": "Impurity, information gain, pruning, and explainable classification.",
+    "platform": "Substack"
+  },
+  {
+    "id": 32,
+    "title": "MLOps — Part 1: Enterprise ML Operations",
+    "url": "https://pandaabhishek.substack.com/p/enterprise-mlops-and-ai-operations",
+    "pillar": "MLOps",
+    "series": "Enterprise MLOps",
+    "code": "MLOPS-001",
+    "tags": [
+      "MLOps",
+      "Production",
+      "DevOps"
+    ],
+    "description": "MLOps principles, maturity models, and enterprise AI operations.",
+    "platform": "Substack"
+  },
+  {
+    "id": 33,
+    "title": "MLOps Phase 1: Credit Card Fraud Detection",
+    "url": "https://pandaabhishek.substack.com/p/phase-01-enterprise-credit-card-fraud",
+    "pillar": "MLOps",
+    "series": "Enterprise MLOps",
+    "code": "MLOPS-P1",
+    "tags": [
+      "MLOps",
+      "Production",
+      "Project"
+    ],
+    "description": "Data foundations and feature engineering for fraud detection.",
+    "platform": "Substack"
+  },
+  {
+    "id": 34,
+    "title": "MLOps Phase 2: Reproducible ML Engineering",
+    "url": "https://pandaabhishek.substack.com/p/phase-2-reproducible-ml-engineering",
+    "pillar": "MLOps",
+    "series": "Enterprise MLOps",
+    "code": "MLOPS-P2",
+    "tags": [
+      "MLOps",
+      "Reproducibility",
+      "DVC"
+    ],
+    "description": "Versioned data, code, environments, and reproducible experiments.",
+    "platform": "Substack"
+  },
+  {
+    "id": 35,
+    "title": "MLOps Phase 3: MLflow Experiment Tracking",
+    "url": "https://pandaabhishek.substack.com/p/mlflow-experiment-tracking-model",
+    "pillar": "MLOps",
+    "series": "Enterprise MLOps",
+    "code": "MLOPS-P3",
+    "tags": [
+      "MLOps",
+      "MLflow",
+      "Tracking"
+    ],
+    "description": "Experiment tracking, run comparison, and model registry workflows.",
+    "platform": "Substack"
+  },
+  {
+    "id": 36,
+    "title": "MLOps Phase 4: Production Model Serving",
+    "url": "https://pandaabhishek.substack.com/p/production-model-serving-phase-4",
+    "pillar": "MLOps",
+    "series": "Enterprise MLOps",
+    "code": "MLOPS-P4",
+    "tags": [
+      "MLOps",
+      "Serving",
+      "Production"
+    ],
+    "description": "Serving models through APIs, containers, and monitoring.",
+    "platform": "Substack"
+  },
+  {
+    "id": 37,
+    "title": "Random Forest Classifier",
+    "url": "https://pandaabhishek.substack.com/p/random-forest-classifier",
+    "pillar": "ML Engineering",
+    "series": "ML Algorithms",
+    "code": "ML-012",
+    "tags": [
+      "ML",
+      "Classification",
+      "Ensemble"
+    ],
+    "description": "Bagging, feature randomness, tuning, and interpretable ensembles.",
+    "platform": "Substack"
+  },
+  {
+    "id": 38,
+    "title": "XGBoost Classification — Bank Marketing",
+    "url": "https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing",
+    "pillar": "ML Engineering",
+    "series": "ML Algorithms",
+    "code": "ML-013",
+    "tags": [
+      "ML",
+      "Classification",
+      "XGBoost"
+    ],
+    "description": "Gradient boosting from theory to a real bank-marketing solution.",
+    "platform": "Substack"
+  },
+  {
+    "id": 39,
+    "title": "Deep Learning Mastery — From Neural Networks to Production",
+    "url": "https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural",
+    "pillar": "Deep Learning",
+    "series": "Deep Learning Mastery",
+    "code": "DL-001",
+    "tags": [
+      "Deep Learning",
+      "Neural Networks",
+      "AI"
+    ],
+    "description": "A practical roadmap from neurons and backpropagation to production.",
+    "platform": "Substack"
+  },
+  {
+    "id": 40,
+    "title": "Deep Learning Fundamentals — Part 1",
+    "url": "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1",
+    "pillar": "Deep Learning",
+    "series": "Deep Learning Mastery",
+    "code": "DL-002",
+    "tags": [
+      "Deep Learning",
+      "Neural Networks",
+      "Fundamentals"
+    ],
+    "description": "Core neural-network concepts, training mechanics, and intuition.",
+    "platform": "Substack"
+  },
+  {
+    "id": 41,
+    "title": "The Multi-Cloud AI Architect",
+    "url": "https://pandaabhishek.substack.com/p/the-multi-cloud-ai-architect",
+    "pillar": "Architecture & Career",
+    "series": "Multi-Cloud AI Architect",
+    "code": "MCAI-001",
+    "tags": [
+      "AI",
+      "Cloud",
+      "Architecture"
+    ],
+    "description": "Designing AI platforms across Azure, AWS, and Google Cloud.",
+    "platform": "Substack"
+  },
+  {
+    "id": 42,
+    "title": "Forward Deployed Engineer (FDE) Mindset",
+    "url": "https://pandaabhishek.substack.com/p/forward-deployed-engineer-fde",
+    "pillar": "Architecture & Career",
+    "series": "FDE",
+    "code": "FDE-001",
+    "tags": [
+      "Career",
+      "Engineering",
+      "Delivery"
+    ],
+    "description": "The field-first mindset for solving real customer problems with technology.",
+    "platform": "Substack"
+  },
+  {
+    "id": 43,
+    "title": "Design Patterns: From Zero to Architecture",
+    "url": "https://pandaabhishek.substack.com/p/design-patterns-from-zero-to-architecture",
+    "pillar": "Software & Data Architecture",
+    "series": "Design Patterns",
+    "code": "DP-SYLLABUS",
+    "tags": [
+      "Design Patterns",
+      "Architecture",
+      ".NET"
+    ],
+    "description": "A structured curriculum across creational, structural, and behavioural patterns.",
+    "platform": "Substack"
+  },
+  {
+    "id": 44,
+    "title": "Data Engineering & Data Architect Mastery",
+    "url": "https://pandaabhishek.substack.com/p/data-engineering-data-architect-mastery",
+    "pillar": "Software & Data Architecture",
+    "series": "Data Engineering Mastery",
+    "code": "DE-SYLLABUS",
+    "tags": [
+      "Data Engineering",
+      "Architecture",
+      "Roadmap"
+    ],
+    "description": "A complete path through data platforms, pipelines, streaming, and governance.",
+    "platform": "Substack"
+  }
 ]

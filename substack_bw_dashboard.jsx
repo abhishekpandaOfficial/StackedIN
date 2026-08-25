@@ -5,16 +5,24 @@ import {
   Library, ListFilter, RefreshCw, Rss, Search, Share2, Sparkles, Upload,
   Workflow, X,
 } from "lucide-react";
+import { SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import "./studio.css";
 
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
-const METRICS_KEY = "abhishek-studio-article-metrics-v1";
+const METRICS_KEY = "stackcraft-studio-article-metrics-v1";
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "library", label: "Post library", icon: Library },
+  { id: "platforms", label: "Platforms", icon: Share2 },
   { id: "modules", label: "Topic modules", icon: Grid2X2 },
   { id: "series", label: "Series map", icon: Workflow },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+];
+const PLATFORMS = [
+  { name: "Substack", handle: "pandaabhishek", profile: "https://pandaabhishek.substack.com/", editor: "https://pandaabhishek.substack.com/publish/post", color: "#ff6719", feed: "Automatic public feed" },
+  { name: "Medium", handle: "@official.abhishekpanda", profile: "https://medium.com/@official.abhishekpanda", editor: "https://medium.com/new-story", color: "#111111", feed: "Automatic public feed" },
+  { name: "Hashnode", handle: "@abhishekpanda", profile: "https://hashnode.com/@abhishekpanda", editor: "https://hashnode.com/draft/new", color: "#2962ff", feed: "Automatic public API" },
+  { name: "LinkedIn", handle: "iamabhishekpanda", profile: "https://www.linkedin.com/in/iamabhishekpanda/", editor: "https://www.linkedin.com/article/new/", color: "#0a66c2", feed: "Profile + secure editor handoff" },
 ];
 const PILLAR_TONES = ["violet", "cyan", "lime", "amber", "rose", "blue", "mint", "orange", "indigo", "teal", "slate"];
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
@@ -67,6 +75,13 @@ const parseCSV = text => {
   return rows.slice(1).map(values => Object.fromEntries(headers.map((header, index) => [header, values[index] || ""])));
 };
 
+function PlatformIcon({ name, size = 15 }) {
+  if (name === "Substack") return <SiSubstack size={size} aria-hidden="true" />;
+  if (name === "Medium") return <SiMedium size={size} aria-hidden="true" />;
+  if (name === "Hashnode") return <SiHashnode size={size} aria-hidden="true" />;
+  return <span className="linkedin-glyph" style={{ width: size, height: size, fontSize: size * .72 }} aria-hidden="true">in</span>;
+}
+
 function MetricCard({ label, value, note, icon: Icon, accent }) {
   return <article className={`metric-card tone-${accent}`}>
     <div className="metric-card__icon"><Icon size={18} /></div>
@@ -82,7 +97,7 @@ function PostRow({ post, tone }) {
   return <article className="post-row">
     <div className={`post-index tone-${tone}`}>{String(post.id).padStart(2, "0")}</div>
     <div className="post-main">
-      <div className="post-meta"><span>{post.code || "ARTICLE"}</span><i /><span>{post.series}</span><i /><span>{formatDate(post.publishedAt)}</span></div>
+      <div className="post-meta"><span>{post.code || "ARTICLE"}</span><i /><span className={`platform-chip platform-${(post.platform || "Substack").toLowerCase()}`}><PlatformIcon name={post.platform || "Substack"} size={11} />{post.platform || "Substack"}</span><i /><span>{post.series}</span><i /><span>{formatDate(post.publishedAt)}</span></div>
       <h3>{post.title}</h3>
       <p>{post.description}</p>
       <div className="tag-line">{(post.tags || []).slice(0, 4).map(tag => <span key={tag}>{tag}</span>)}</div>
@@ -104,6 +119,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [pillar, setPillar] = useState("");
   const [series, setSeries] = useState("");
+  const [platform, setPlatform] = useState("");
   const [sort, setSort] = useState("index");
   const [toast, setToast] = useState("");
   const [importReport, setImportReport] = useState(null);
@@ -142,6 +158,7 @@ export default function Dashboard() {
   const seriesGroups = useMemo(() => groupBy(posts, "series"), [posts]);
   const pillarNames = useMemo(() => Object.keys(pillars).sort(), [pillars]);
   const seriesNames = useMemo(() => Object.keys(seriesGroups).sort(), [seriesGroups]);
+  const platformNames = useMemo(() => [...new Set(posts.map(post => post.platform || "Substack"))].sort(), [posts]);
   const toneFor = name => PILLAR_TONES[Math.max(0, pillarNames.indexOf(name)) % PILLAR_TONES.length];
   const totals = useMemo(() => ({
     published: posts.filter(post => post.status !== "Draft").length,
@@ -151,22 +168,22 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     const query = search.toLowerCase().trim();
     return posts.filter(post => {
-      const searchable = `${post.title} ${post.description} ${post.pillar} ${post.series} ${(post.tags || []).join(" ")}`.toLowerCase();
-      return (!query || searchable.includes(query)) && (!pillar || post.pillar === pillar) && (!series || post.series === series);
+      const searchable = `${post.title} ${post.description} ${post.pillar} ${post.series} ${post.platform || "Substack"} ${(post.tags || []).join(" ")}`.toLowerCase();
+      return (!query || searchable.includes(query)) && (!pillar || post.pillar === pillar) && (!series || post.series === series) && (!platform || (post.platform || "Substack") === platform);
     }).sort((a, b) => {
       if (sort === "title") return a.title.localeCompare(b.title);
       if (sort === "newest") return (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id);
       if (sort === "views") return (b.views || 0) - (a.views || 0);
       return a.id - b.id;
     });
-  }, [posts, search, pillar, series, sort]);
+  }, [posts, search, pillar, series, platform, sort]);
   const latestPosts = useMemo(() => [...posts].sort((a, b) => {
     const dateDelta = (safeDate(b.publishedAt)?.getTime() || 0) - (safeDate(a.publishedAt)?.getTime() || 0);
     return dateDelta || b.id - a.id;
   }).slice(0, 6), [posts]);
   const openModule = name => { setPillar(name); setSeries(""); setSearch(""); setView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const openSeries = name => { setSeries(name); setPillar(""); setSearch(""); setView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const clearFilters = () => { setSearch(""); setPillar(""); setSeries(""); setSort("index"); };
+  const clearFilters = () => { setSearch(""); setPillar(""); setSeries(""); setPlatform(""); setSort("index"); };
   const navTitle = NAV_ITEMS.find(item => item.id === view)?.label || "Overview";
 
   const importMetrics = event => {
@@ -200,20 +217,20 @@ export default function Dashboard() {
 
   return <div className="studio-shell">
     <aside className="sidebar">
-      <div className="studio-brand"><div className="studio-brand__mark">AP</div><div><strong>Abhishek Studio</strong><span>Knowledge publishing OS</span></div></div>
+      <div className="studio-brand"><img className="studio-brand__mark" src={`${import.meta.env.BASE_URL}stackcraft-studio-logo.jpg`} alt="StackCraft Studio" /><div><strong>StackCraft Studio</strong><span>Multi-platform publishing OS</span></div></div>
       <nav aria-label="Studio navigation">{NAV_ITEMS.map(item => {
         const Icon = item.icon;
         return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={17} /><span>{item.label}</span>{item.id === "library" && <em>{posts.length}</em>}</button>;
       })}</nav>
-      <div className="sidebar-sync"><span className="live-dot" /><div><strong>Auto-discovery active</strong><span>Checks Substack every 6 hours</span></div></div>
-      <a className="sidebar-link" href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Open publication <ExternalLink size={14} /></a>
+      <div className="sidebar-sync"><span className="live-dot" /><div><strong>Auto-discovery active</strong><span>Checks public publishing feeds every 6 hours</span></div></div>
+      <a className="sidebar-link" href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Open main publication <ExternalLink size={14} /></a>
     </aside>
     <main className="studio-main">
       <header className="topbar">
         <div><span>Content intelligence</span><h1>{navTitle}</h1></div>
         <div className="topbar-actions">
           <button className="button secondary" onClick={() => fetchCatalogue(true)} disabled={syncing}><RefreshCw size={15} className={syncing ? "spin" : ""} />{syncing ? "Refreshing" : "Refresh snapshot"}</button>
-          <a className="button primary" href="https://pandaabhishek.substack.com/publish/post" target="_blank" rel="noreferrer"><Sparkles size={15} />Write on Substack</a>
+          <button className="button primary" onClick={() => setView("platforms")}><Sparkles size={15} />Create a post</button>
         </div>
       </header>
       <div className="mobile-nav" aria-label="Mobile navigation">{NAV_ITEMS.map(item => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
@@ -221,14 +238,14 @@ export default function Dashboard() {
       {loading ? <div className="loading-state"><RefreshCw className="spin" /><p>Building your publishing map…</p></div> : <div className="view-frame">
         {view === "overview" && <>
           <section className="intro-row">
-            <div><span className="eyebrow">The signal behind the writing</span><h2>Your ideas, mapped like a living system.</h2><p>Every published Substack post is organised into pillars and series, ready to search, audit, and extend.</p></div>
+            <div><span className="eyebrow">The signal behind the writing</span><h2>Your ideas, mapped like a living system.</h2><p>Published work across Substack, Medium, Hashnode, and LinkedIn is organised into platforms, pillars, and series—ready to search, audit, and extend.</p></div>
             <div className="sync-card"><div><Rss size={19} /><span>Catalogue health</span></div><strong>All systems current</strong><p>Last snapshot: {formatSyncTime(catalogue.lastSyncedAt)}</p><small>Source: {catalogue.source || "Substack catalogue"}</small></div>
           </section>
           <section className="metric-grid">
             <MetricCard label="Published posts" value={totals.published} note="Live content library" icon={FileText} accent="violet" />
+            <MetricCard label="Publishing platforms" value={PLATFORMS.length} note="One secure writing launchpad" icon={Share2} accent="rose" />
             <MetricCard label="Topic pillars" value={pillarNames.length} note="Modular knowledge domains" icon={Layers3} accent="cyan" />
             <MetricCard label="Structured series" value={seriesNames.length} note="Curricula and deep dives" icon={Workflow} accent="lime" />
-            <MetricCard label="Imported views" value={compactNumber.format(totals.views)} note="Private analytics on this device" icon={BarChart3} accent="amber" />
           </section>
           <section className="overview-grid">
             <div className="panel">
@@ -241,12 +258,27 @@ export default function Dashboard() {
             </div>
           </section>
         </>}
+        {view === "platforms" && <>
+          <SectionHeading eyebrow="Publishing launchpad" title="Write securely on every platform" />
+          <div className="security-note"><CheckCircle2 size={18} /><div><strong>Your passwords never touch StackCraft Studio.</strong><span>Each Write button opens the official platform. If you are signed out, that platform handles verification before opening its editor.</span></div></div>
+          <section className="platform-grid">{PLATFORMS.map(item => {
+            const count = posts.filter(post => (post.platform || "Substack") === item.name).length;
+            return <article className="platform-card" key={item.name} style={{ "--platform-color": item.color }}>
+              <div className="platform-card__head"><div className="platform-logo"><PlatformIcon name={item.name} size={25} /></div><span className="verified-chip"><CheckCircle2 size={12} />Official handoff</span></div>
+              <h3>{item.name}</h3><a className="platform-handle" href={item.profile} target="_blank" rel="noreferrer">{item.handle}<ExternalLink size={12} /></a>
+              <div className="platform-stats"><div><strong>{count}</strong><span>tracked posts</span></div><div><strong>{item.name === "LinkedIn" ? "Secure" : "6 hr"}</strong><span>{item.feed}</span></div></div>
+              <div className="platform-actions"><a className="button primary" href={item.editor} target="_blank" rel="noreferrer"><PlatformIcon name={item.name} size={15} />Write on {item.name}</a><a className="button secondary" href={item.profile} target="_blank" rel="noreferrer">View profile</a></div>
+            </article>;
+          })}</section>
+          <div className="panel platform-help"><SectionHeading eyebrow="How it works" title="One dashboard, provider-managed security" /><p>StackCraft Studio indexes public articles and opens official editors. It does not impersonate you, store credentials, or publish without your confirmation. LinkedIn does not provide a public author feed for this static dashboard, so LinkedIn publishing and article history stay inside LinkedIn.</p></div>
+        </>}
         {view === "library" && <section className="panel library-panel">
           <SectionHeading eyebrow="Master catalogue" title={`${filtered.length} of ${posts.length} articles`} action={<button className="text-button" onClick={clearFilters}>Clear filters <X size={14} /></button>} />
           <div className="filterbar">
             <label className="searchbox"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, topic, tag…" /></label>
             <label><Filter size={14} /><select value={pillar} onChange={event => setPillar(event.target.value)}><option value="">All pillars</option>{pillarNames.map(name => <option key={name}>{name}</option>)}</select></label>
             <label><ListFilter size={14} /><select value={series} onChange={event => setSeries(event.target.value)}><option value="">All series</option>{seriesNames.map(name => <option key={name}>{name}</option>)}</select></label>
+            <label><Share2 size={14} /><select value={platform} onChange={event => setPlatform(event.target.value)}><option value="">All platforms</option>{platformNames.map(name => <option key={name}>{name}</option>)}</select></label>
             <select aria-label="Sort posts" value={sort} onChange={event => setSort(event.target.value)}><option value="index">Series order</option><option value="newest">Newest first</option><option value="title">Title A–Z</option><option value="views">Most viewed</option></select>
           </div>
           <div className="post-list">{filtered.map(post => <PostRow key={post.url} post={post} tone={toneFor(post.pillar)} />)}{!filtered.length && <div className="empty-state"><BookOpen /><h3>No matching articles</h3><p>Try removing a filter or using a broader search.</p></div>}</div>
@@ -265,15 +297,15 @@ export default function Dashboard() {
         </section>}
         {view === "analytics" && <>
           <section className="metric-grid analytics-metrics">
-            <MetricCard label="Article views" value={compactNumber.format(totals.views)} note="From your imported Substack CSV" icon={BarChart3} accent="violet" />
-            <MetricCard label="Shares" value={compactNumber.format(totals.shares)} note="From your imported Substack CSV" icon={Share2} accent="cyan" />
+            <MetricCard label="Article views" value={compactNumber.format(totals.views)} note="From your imported platform CSV" icon={BarChart3} accent="violet" />
+            <MetricCard label="Shares" value={compactNumber.format(totals.shares)} note="From your imported platform CSV" icon={Share2} accent="cyan" />
             <MetricCard label="Measured posts" value={posts.filter(post => post.views || post.shares).length} note={`Out of ${posts.length} published posts`} icon={CheckCircle2} accent="lime" />
             <MetricCard label="Last content sync" value={formatDate(catalogue.lastSyncedAt)} note="Public catalogue freshness" icon={Clock3} accent="amber" />
           </section>
           <section className="analytics-grid">
             <div className="panel import-panel">
-              <SectionHeading eyebrow="Private performance" title="Import Substack analytics" />
-              <p>Substack does not expose private view and share counts publicly. Export your analytics as CSV and import it here; the data stays only in this browser.</p>
+              <SectionHeading eyebrow="Private performance" title="Import platform analytics" />
+              <p>Platforms do not expose private view and share counts in public feeds. Export your analytics as CSV and import it here; the data stays only in this browser.</p>
               <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={importMetrics} />
               <button className="upload-zone" onClick={() => fileRef.current?.click()}><Upload size={22} /><strong>Choose analytics CSV</strong><span>Recommended columns: title, views, shares, url</span></button>
               {importReport && <div className="import-result"><CheckCircle2 size={18} /><div><strong>{importReport.matched} posts updated</strong><span>{importReport.file} · {importReport.rows} rows processed</span></div></div>}
@@ -285,7 +317,7 @@ export default function Dashboard() {
           </section>
         </>}
       </div>}
-      <footer className="site-footer"><span>Abhishek Studio · Built for deliberate technical publishing</span><span><CalendarDays size={13} /> Auto-sync every 6 hours</span></footer>
+      <footer className="site-footer"><span>StackCraft Studio · Built for deliberate multi-platform publishing</span><span><CalendarDays size={13} /> Auto-sync every 6 hours</span></footer>
     </main>
     {toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;

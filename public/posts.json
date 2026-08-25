@@ -1,7 +1,13 @@
 {
   "publication": "https://pandaabhishek.substack.com",
-  "source": "cached seed fallback",
-  "lastSyncedAt": "2026-08-25T14:05:49.791Z",
+  "profiles": {
+    "Substack": "https://pandaabhishek.substack.com",
+    "Medium": "https://medium.com/@official.abhishekpanda",
+    "Hashnode": "https://hashnode.com/@abhishekpanda",
+    "LinkedIn": "https://www.linkedin.com/in/iamabhishekpanda/"
+  },
+  "source": "cached multi-platform catalogue",
+  "lastSyncedAt": "2026-08-25T14:14:42.796Z",
   "discoveredThisRun": 0,
   "posts": [
     {
@@ -17,6 +23,7 @@
         "Deep Learning"
       ],
       "description": "Python foundations for production-minded ML and deep-learning practitioners.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -34,6 +41,7 @@
         "Data"
       ],
       "description": "Arrays, vectorisation, and numerical computing for machine learning.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -51,6 +59,7 @@
         "Data"
       ],
       "description": "DataFrames, wrangling, and preprocessing for model-ready data.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -68,6 +77,7 @@
         "ML"
       ],
       "description": "Plotting fundamentals and clear visual communication for ML work.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -85,6 +95,7 @@
         "Visualisation"
       ],
       "description": "Statistical plots and exploratory data analysis with Seaborn.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -103,6 +114,7 @@
         "Career"
       ],
       "description": "The opening chapter of a senior engineer's journey toward AI architecture.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -120,6 +132,7 @@
         "ML"
       ],
       "description": "The learning system, environment, and commitments behind the journey.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -138,6 +151,7 @@
         "Data"
       ],
       "description": "Datasets, feature types, and the data lifecycle in ML projects.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -156,6 +170,7 @@
         "Data"
       ],
       "description": "Hands-on data cleaning and missing-value strategies.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -174,6 +189,7 @@
         "Features"
       ],
       "description": "Feature engineering techniques and their effect on model performance.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -192,6 +208,7 @@
         "Fundamentals"
       ],
       "description": "A practical definition of AI, its scope, and why it matters.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -210,6 +227,7 @@
         "ML"
       ],
       "description": "AI history from early theory to the modern foundation-model era.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -228,6 +246,7 @@
         "Fundamentals"
       ],
       "description": "Narrow AI, general intelligence, and the taxonomy surrounding them.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -245,6 +264,7 @@
         "Fundamentals"
       ],
       "description": "Machine learning defined through the end-to-end modelling workflow.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -262,6 +282,7 @@
         "Fundamentals"
       ],
       "description": "Bias, variance, overfitting, underfitting, and generalisation.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -280,6 +301,7 @@
         "Glossary"
       ],
       "description": "The essential vocabulary used across modern ML systems.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -297,6 +319,7 @@
         "Roadmap"
       ],
       "description": "A structured path from fundamentals to production ML engineering.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -315,6 +338,7 @@
         "Data"
       ],
       "description": "A systematic EDA workflow for distributions, relationships, and quality.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -332,6 +356,7 @@
         "Containers"
       ],
       "description": "Pods, nodes, clusters, and Kubernetes architecture from first principles.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -349,6 +374,7 @@
         "Configuration"
       ],
       "description": "Deployments, configuration, secrets, and production workloads.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -366,6 +392,7 @@
         "LLM"
       ],
       "description": "Retrieval-augmented generation architecture, value, and implementation.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -383,6 +410,7 @@
         "LLM"
       ],
       "description": "Vector, lexical, and hybrid retrieval strategies compared.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -400,6 +428,7 @@
         "Backend"
       ],
       "description": "Concurrent applications with async/await, threads, tasks, and synchronisation.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -417,6 +446,7 @@
         "Cloud"
       ],
       "description": "Queue and publish-subscribe patterns for enterprise messaging.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -434,6 +464,7 @@
         "Production"
       ],
       "description": "Subscriptions, filters, reliability, and dead-letter handling.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -451,6 +482,7 @@
         "Roadmap"
       ],
       "description": "A complete roadmap from fundamentals to distributed architecture.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -468,6 +500,7 @@
         "Fundamentals"
       ],
       "description": "Requirements, constraints, trade-offs, and the system-design process.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -485,6 +518,7 @@
         "Production"
       ],
       "description": "The bridge from notebook experiments to production-grade ML systems.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -502,6 +536,7 @@
         "Algorithms"
       ],
       "description": "Sigmoid, loss, optimisation, evaluation, and production use cases.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -519,6 +554,7 @@
         "Algorithms"
       ],
       "description": "Distance metrics, scaling, model selection, and choosing K.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -536,6 +572,7 @@
         "Trees"
       ],
       "description": "Impurity, information gain, pruning, and explainable classification.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -553,6 +590,7 @@
         "DevOps"
       ],
       "description": "MLOps principles, maturity models, and enterprise AI operations.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -570,6 +608,7 @@
         "Project"
       ],
       "description": "Data foundations and feature engineering for fraud detection.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -587,6 +626,7 @@
         "DVC"
       ],
       "description": "Versioned data, code, environments, and reproducible experiments.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -604,6 +644,7 @@
         "Tracking"
       ],
       "description": "Experiment tracking, run comparison, and model registry workflows.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -621,6 +662,7 @@
         "Production"
       ],
       "description": "Serving models through APIs, containers, and monitoring.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -638,6 +680,7 @@
         "Ensemble"
       ],
       "description": "Bagging, feature randomness, tuning, and interpretable ensembles.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -655,6 +698,7 @@
         "XGBoost"
       ],
       "description": "Gradient boosting from theory to a real bank-marketing solution.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -672,6 +716,7 @@
         "AI"
       ],
       "description": "A practical roadmap from neurons and backpropagation to production.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -689,6 +734,7 @@
         "Fundamentals"
       ],
       "description": "Core neural-network concepts, training mechanics, and intuition.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -706,6 +752,7 @@
         "Architecture"
       ],
       "description": "Designing AI platforms across Azure, AWS, and Google Cloud.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -723,6 +770,7 @@
         "Delivery"
       ],
       "description": "The field-first mindset for solving real customer problems with technology.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -740,6 +788,7 @@
         ".NET"
       ],
       "description": "A structured curriculum across creational, structural, and behavioural patterns.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -757,6 +806,7 @@
         "Roadmap"
       ],
       "description": "A complete path through data platforms, pipelines, streaming, and governance.",
+      "platform": "Substack",
       "status": "Published",
       "views": 0,
       "shares": 0

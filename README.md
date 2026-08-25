@@ -1,32 +1,43 @@
-# Abhishek Studio
+# StackCraft Studio
 
-A living publishing dashboard for the technical writing at
-[pandaabhishek.substack.com](https://pandaabhishek.substack.com/).
+A living multi-platform publishing dashboard for Abhishek Panda's writing on
+[Substack](https://pandaabhishek.substack.com/),
+[Medium](https://medium.com/@official.abhishekpanda),
+[Hashnode](https://hashnode.com/@abhishekpanda), and
+[LinkedIn](https://www.linkedin.com/in/iamabhishekpanda/).
 
 ## What the site does
 
-- Tracks the complete Substack catalogue in a searchable post library.
+- Tracks public Substack, Medium, and Hashnode posts in one searchable library.
+- Opens the official editor for Substack, Medium, Hashnode, or LinkedIn.
+- Uses provider-managed sign-in and never asks for or stores platform passwords.
+- Labels every article with its official publishing-platform icon.
 - Organises articles into content pillars, modules, tags, and structured series.
 - Shows portfolio counts, coverage, recent additions, and learning-path views.
-- Checks Substack automatically every six hours through GitHub Actions.
+- Checks supported public feeds automatically every six hours through GitHub Actions.
 - Classifies newly discovered posts with deterministic topic rules.
-- Supports private Substack analytics CSV imports for article views and shares.
+- Supports private platform analytics CSV imports for article views and shares.
 - Stores imported analytics only in the current browser.
 
-## Automatic Substack sync
+## Automatic multi-platform sync
 
 The sync workflow runs every six hours and can also be run manually from the
 GitHub Actions tab. It calls the sync script, which:
 
-1. Reads the Substack archive API.
-2. Falls back to the publication RSS feed if necessary.
-3. Merges discovered posts with `data/posts.seed.json`.
-4. Preserves curated taxonomy for known posts.
-5. Writes the deployable catalogue to `public/posts.json`.
-6. Commits catalogue changes, which triggers the Pages deployment.
+1. Reads the Substack archive API with RSS fallback.
+2. Reads Medium's official profile RSS feed.
+3. Reads the Hashnode publication through its public GraphQL API.
+4. Merges discovered posts with `data/posts.seed.json`.
+5. Preserves curated taxonomy and platform labels for known posts.
+6. Writes and deploys the refreshed `public/posts.json` catalogue.
 
 The refresh button reloads the most recently deployed snapshot. The scheduled
-workflow discovers brand-new Substack posts.
+workflow discovers brand-new public posts on supported platforms.
+
+LinkedIn does not expose a general public author feed suitable for this static
+dashboard. StackCraft Studio therefore links to the official LinkedIn profile
+and publishing editor; the signed-in LinkedIn experience remains the source of
+truth for LinkedIn posts and analytics.
 
 ## Local development
 
@@ -40,7 +51,7 @@ workflow from the `master` branch.
 
 ## Private analytics import
 
-Substack view and share counts are not public feed data. Export a CSV from
-Substack and import it from **Analytics**. Recommended columns are `title`,
+View and share counts are not public feed data. Export a CSV from the relevant
+platform and import it from **Analytics**. Recommended columns are `title`,
 `views`, `shares`, and `url`. Imported values stay in browser storage and are
 never committed.
