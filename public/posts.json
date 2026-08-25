@@ -6,9 +6,9 @@
     "Hashnode": "https://hashnode.com/@abhishekpanda",
     "LinkedIn": "https://www.linkedin.com/in/iamabhishekpanda/"
   },
-  "source": "Substack RSS mirror + Medium RSS",
-  "lastSyncedAt": "2026-08-25T14:16:52.023Z",
-  "discoveredThisRun": 10,
+  "source": "Substack RSS mirror + Medium RSS + Hashnode RSS",
+  "lastSyncedAt": "2026-08-25T14:18:46.715Z",
+  "discoveredThisRun": 11,
   "posts": [
     {
       "id": 1,
@@ -830,6 +830,24 @@
       "status": "Published",
       "views": 0,
       "shares": 0
+    },
+    {
+      "pillar": "Architecture & Career",
+      "series": "Independent Essays",
+      "tags": [
+        "AI",
+        "Engineering"
+      ],
+      "title": "Software Engineer Journey",
+      "url": "https://abhishekpanda.hashnode.dev/software-engineer-journey",
+      "description": "On Progress !!! Just wait and Check",
+      "publishedAt": "Fri, 08 Sep 2023 16:07:53 GMT",
+      "coverImage": null,
+      "platform": "Hashnode",
+      "status": "Published",
+      "views": 0,
+      "shares": 0,
+      "id": 45
     }
   ]
 }
