@@ -6,9 +6,9 @@
     "Hashnode": "https://hashnode.com/@abhishekpanda",
     "LinkedIn": "https://www.linkedin.com/in/iamabhishekpanda/"
   },
-  "source": "cached multi-platform catalogue",
-  "lastSyncedAt": "2026-08-25T14:14:42.796Z",
-  "discoveredThisRun": 0,
+  "source": "Substack RSS mirror + Medium RSS",
+  "lastSyncedAt": "2026-08-25T14:16:52.023Z",
+  "discoveredThisRun": 10,
   "posts": [
     {
       "id": 1,
@@ -633,7 +633,7 @@
     },
     {
       "id": 35,
-      "title": "MLOps Phase 3: MLflow Experiment Tracking",
+      "title": "MLflow Experiment Tracking, Model Registry &amp; Model Lifecycle - Phase 3",
       "url": "https://pandaabhishek.substack.com/p/mlflow-experiment-tracking-model",
       "pillar": "MLOps",
       "series": "Enterprise MLOps",
@@ -643,15 +643,17 @@
         "MLflow",
         "Tracking"
       ],
-      "description": "Experiment tracking, run comparison, and model registry workflows.",
+      "description": "Enterprise Credit Card Fraud Detection MLOps",
       "platform": "Substack",
+      "publishedAt": "2026-08-19 08:14:51",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 36,
-      "title": "MLOps Phase 4: Production Model Serving",
+      "title": "Production Model Serving : Phase 4",
       "url": "https://pandaabhishek.substack.com/p/production-model-serving-phase-4",
       "pillar": "MLOps",
       "series": "Enterprise MLOps",
@@ -661,15 +663,17 @@
         "Serving",
         "Production"
       ],
-      "description": "Serving models through APIs, containers, and monitoring.",
+      "description": "FastAPI + Pydantic + MLflow Champion + Service Layer + Batch Inference + Swagger + Streamlit",
       "platform": "Substack",
+      "publishedAt": "2026-08-19 10:09:09",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 37,
-      "title": "Random Forest Classifier",
+      "title": "🌲 Random Forest Classifier",
       "url": "https://pandaabhishek.substack.com/p/random-forest-classifier",
       "pillar": "ML Engineering",
       "series": "ML Algorithms",
@@ -679,15 +683,17 @@
         "Classification",
         "Ensemble"
       ],
-      "description": "Bagging, feature randomness, tuning, and interpretable ensembles.",
+      "description": "From Ensemble Learning → Fraud Probability → API → Dashboard → Docker → CI/CD → Cloud → Monitoring → Retraining",
       "platform": "Substack",
+      "publishedAt": "2026-08-19 14:16:39",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 38,
-      "title": "XGBoost Classification — Bank Marketing",
+      "title": "XGBoost Classification — Bank Marketing Prediction",
       "url": "https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing",
       "pillar": "ML Engineering",
       "series": "ML Algorithms",
@@ -697,15 +703,17 @@
         "Classification",
         "XGBoost"
       ],
-      "description": "Gradient boosting from theory to a real bank-marketing solution.",
+      "description": "XGBoost exposes a scikit-learn-compatible estimator interface, including classification through XGBClassifier.",
       "platform": "Substack",
+      "publishedAt": "2026-08-19 16:13:24",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 39,
-      "title": "Deep Learning Mastery — From Neural Networks to Production",
+      "title": "Deep Learning Mastery: From Neural Networks to Production-Grade AI Systems - Part 1",
       "url": "https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural",
       "pillar": "Deep Learning",
       "series": "Deep Learning Mastery",
@@ -715,15 +723,17 @@
         "Neural Networks",
         "AI"
       ],
-      "description": "A practical roadmap from neurons and backpropagation to production.",
+      "description": "🔥 Becoming a Deep Learning Expert: PyTorch, Computer Vision, Transformers & Enterprise AI Systems",
       "platform": "Substack",
+      "publishedAt": "2026-08-20 07:27:02",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 40,
-      "title": "Deep Learning Fundamentals — Part 1",
+      "title": "Deep Learning Fundamentals - Part 2",
       "url": "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1",
       "pillar": "Deep Learning",
       "series": "Deep Learning Mastery",
@@ -733,15 +743,17 @@
         "Neural Networks",
         "Fundamentals"
       ],
-      "description": "Core neural-network concepts, training mechanics, and intuition.",
+      "description": "From Artificial Neurons to Your First Neural Network",
       "platform": "Substack",
+      "publishedAt": "2026-08-21 09:12:30",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 41,
-      "title": "The Multi-Cloud AI Architect",
+      "title": "☁️ The Multi-Cloud AI Architect",
       "url": "https://pandaabhishek.substack.com/p/the-multi-cloud-ai-architect",
       "pillar": "Architecture & Career",
       "series": "Multi-Cloud AI Architect",
@@ -751,15 +763,17 @@
         "Cloud",
         "Architecture"
       ],
-      "description": "Designing AI platforms across Azure, AWS, and Google Cloud.",
+      "description": "Azure × AWS × Google Cloud — AI, ML, GenAI, RAG, Agents, MLOps & Enterprise Architecture",
       "platform": "Substack",
+      "publishedAt": "2026-08-22 13:20:12",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 42,
-      "title": "Forward Deployed Engineer (FDE) Mindset",
+      "title": "Forward Deployed Engineer (FDE)",
       "url": "https://pandaabhishek.substack.com/p/forward-deployed-engineer-fde",
       "pillar": "Architecture & Career",
       "series": "FDE",
@@ -769,15 +783,17 @@
         "Engineering",
         "Delivery"
       ],
-      "description": "The field-first mindset for solving real customer problems with technology.",
+      "description": "The Role That Connects Software Engineering, AI, Cloud, and Real Business Outcomes",
       "platform": "Substack",
+      "publishedAt": "2026-08-24 09:58:51",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 43,
-      "title": "Design Patterns: From Zero to Architecture",
+      "title": "Design Patterns from Zero to Architecture",
       "url": "https://pandaabhishek.substack.com/p/design-patterns-from-zero-to-architecture",
       "pillar": "Software & Data Architecture",
       "series": "Design Patterns",
@@ -787,15 +803,17 @@
         "Architecture",
         ".NET"
       ],
-      "description": "A structured curriculum across creational, structural, and behavioural patterns.",
+      "description": ": Python + C# with Real-World Examples",
       "platform": "Substack",
+      "publishedAt": "2026-08-24 19:37:43",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
     },
     {
       "id": 44,
-      "title": "Data Engineering & Data Architect Mastery",
+      "title": "Data Engineering → Data Architect Mastery Roadmap",
       "url": "https://pandaabhishek.substack.com/p/data-engineering-data-architect-mastery",
       "pillar": "Software & Data Architecture",
       "series": "Data Engineering Mastery",
@@ -805,8 +823,10 @@
         "Architecture",
         "Roadmap"
       ],
-      "description": "A complete path through data platforms, pipelines, streaming, and governance.",
+      "description": "SQL → Advanced SQL Problem Solving → Data Modeling → PostgreSQL → Warehouses → BigQuery/Snowflake → Python for Data → Spark → dbt → Airflow → Kafka → Lakehouse → Cloud Data Engineering → Power BI",
       "platform": "Substack",
+      "publishedAt": "2026-08-24 21:24:48",
+      "coverImage": null,
       "status": "Published",
       "views": 0,
       "shares": 0
