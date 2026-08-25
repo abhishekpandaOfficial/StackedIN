@@ -51,6 +51,14 @@ describe("professional graph migration contract", () => {
     expect(migration).toContain("add column if not exists current_job_title text");
     expect(migration).not.toMatch(/add column if not exists current_role\b/);
   });
+
+  it("maintains search vectors with triggers instead of fragile generated columns", () => {
+    expect(migration).toContain("create or replace function public.set_profile_search_document()");
+    expect(migration).toContain("create trigger profiles_set_search_document");
+    expect(migration).toContain("create or replace function public.set_article_search_document()");
+    expect(migration).toContain("create trigger articles_set_search_document");
+    expect(migration).not.toMatch(/search_document\s+tsvector\s+generated always/i);
+  });
 });
 
 describe("people recommendations V1 migration contract", () => {

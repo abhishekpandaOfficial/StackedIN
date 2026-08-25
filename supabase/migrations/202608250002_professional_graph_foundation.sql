@@ -5,6 +5,24 @@ create extension if not exists pg_trgm;
 
 -- Profiles are global professional identities. Tenant membership remains in
 -- tenant_memberships; private actions below always carry tenant_id.
+-- If an earlier manually executed draft left this derived column behind as a
+-- generated column, replace only that rebuildable column with the trigger-
+-- maintained version used below.
+do $$
+begin
+  if exists (
+    select 1
+    from pg_attribute
+    where attrelid = 'public.profiles'::regclass
+      and attname = 'search_document'
+      and attgenerated <> ''
+      and not attisdropped
+  ) then
+    alter table public.profiles drop column search_document;
+  end if;
+end
+$$;
+
 alter table public.profiles
   add column if not exists slug text,
   add column if not exists headline text,
@@ -30,15 +48,43 @@ alter table public.profiles
   add column if not exists embedding_model text,
   add column if not exists embedding_version integer,
   add column if not exists embedding_updated_at timestamptz,
-  add column if not exists search_document tsvector generated always as (
-    setweight(to_tsvector('simple', coalesce(display_name, '')), 'A') ||
-    setweight(to_tsvector('simple', coalesce(headline, '')), 'A') ||
-    setweight(to_tsvector('simple', coalesce(current_job_title, '')), 'A') ||
-    setweight(to_tsvector('simple', coalesce(current_company, '')), 'B') ||
-    setweight(to_tsvector('simple', coalesce(industry, '')), 'B') ||
-    setweight(to_tsvector('simple', coalesce(about, bio, '')), 'C') ||
-    setweight(to_tsvector('simple', coalesce(location, '') || ' ' || coalesce(country, '')), 'B')
-  ) stored;
+  add column if not exists search_document tsvector;
+
+create or replace function public.set_profile_search_document()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.search_document :=
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.display_name, '')), 'A') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.headline, '')), 'A') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.current_job_title, '')), 'A') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.current_company, '')), 'B') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.industry, '')), 'B') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.about, new.bio, '')), 'C') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.location, '') || ' ' || coalesce(new.country, '')), 'B');
+  return new;
+end
+$$;
+
+drop trigger if exists profiles_set_search_document on public.profiles;
+create trigger profiles_set_search_document
+before insert or update of display_name, headline, current_job_title, current_company, industry, about, bio, location, country
+on public.profiles
+for each row execute function public.set_profile_search_document();
+
+-- Backfill users created before this migration. Future writes are maintained by
+-- the trigger without relying on generated-column immutability rules.
+update public.profiles
+set search_document =
+  setweight(to_tsvector('simple'::regconfig, coalesce(display_name, '')), 'A') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(headline, '')), 'A') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(current_job_title, '')), 'A') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(current_company, '')), 'B') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(industry, '')), 'B') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(about, bio, '')), 'C') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(location, '') || ' ' || coalesce(country, '')), 'B');
 
 update public.profiles
 set slug = coalesce(
@@ -305,6 +351,21 @@ create table if not exists public.feature_flags (
 
 create unique index if not exists feature_flags_scope_idx on public.feature_flags(key, coalesce(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid));
 
+do $$
+begin
+  if exists (
+    select 1
+    from pg_attribute
+    where attrelid = 'public.articles'::regclass
+      and attname = 'search_document'
+      and attgenerated <> ''
+      and not attisdropped
+  ) then
+    alter table public.articles drop column search_document;
+  end if;
+end
+$$;
+
 alter table public.articles
   add column if not exists canonical_url text,
   add column if not exists content_fingerprint text,
@@ -318,12 +379,35 @@ alter table public.articles
   add column if not exists embedding_model text,
   add column if not exists embedding_version integer,
   add column if not exists embedding_updated_at timestamptz,
-  add column if not exists search_document tsvector generated always as (
-    setweight(to_tsvector('simple', coalesce(title, '')), 'A') ||
-    setweight(to_tsvector('simple', coalesce(description, '')), 'B') ||
-    setweight(to_tsvector('simple', coalesce(body, '')), 'C') ||
-    setweight(to_tsvector('simple', array_to_string(tags, ' ')), 'A')
-  ) stored;
+  add column if not exists search_document tsvector;
+
+create or replace function public.set_article_search_document()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.search_document :=
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.title, '')), 'A') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.description, '')), 'B') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(new.body, '')), 'C') ||
+    setweight(to_tsvector('simple'::regconfig, coalesce(array_to_string(new.tags, ' '), '')), 'A');
+  return new;
+end
+$$;
+
+drop trigger if exists articles_set_search_document on public.articles;
+create trigger articles_set_search_document
+before insert or update of title, description, body, tags
+on public.articles
+for each row execute function public.set_article_search_document();
+
+update public.articles
+set search_document =
+  setweight(to_tsvector('simple'::regconfig, coalesce(title, '')), 'A') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(description, '')), 'B') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(body, '')), 'C') ||
+  setweight(to_tsvector('simple'::regconfig, coalesce(array_to_string(tags, ' '), '')), 'A');
 
 alter table public.articles
   drop constraint if exists articles_import_permission_check,
