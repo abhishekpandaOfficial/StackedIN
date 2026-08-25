@@ -19,6 +19,7 @@ export interface InboxConversation {
   lastMessage: Record<string, unknown> | null;
   updatedAt: string;
   unread: boolean;
+  otherLastReadAt: string | null;
 }
 
 export class ProfileHubService {
@@ -117,7 +118,7 @@ export class ProfileHubService {
     const ids = (memberships.data ?? []).map(item => item.conversation_id); if (!ids.length) return [];
     const [conversations, members, messages] = await Promise.all([
       this.client.from("conversations").select("id,title,conversation_type,updated_at").in("id", ids).order("updated_at", { ascending: false }),
-      this.client.from("conversation_members").select("conversation_id,profile_id,profile:profiles!conversation_members_profile_id_fkey(id,display_name,headline,avatar_url)").in("conversation_id", ids).neq("profile_id", profileId),
+      this.client.from("conversation_members").select("conversation_id,profile_id,last_read_at,profile:profiles!conversation_members_profile_id_fkey(id,display_name,headline,avatar_url)").in("conversation_id", ids).neq("profile_id", profileId),
       this.client.from("messages").select("id,conversation_id,sender_profile_id,body,created_at,deleted_at").in("conversation_id", ids).order("created_at", { ascending: false }),
     ]);
     const otherByConversation = new Map<string, Record<string, unknown> | null>((members.data ?? []).map(item => {
@@ -129,8 +130,19 @@ export class ProfileHubService {
     const readByConversation = new Map((memberships.data ?? []).map(item => [item.conversation_id, item.last_read_at]));
     return (conversations.data ?? []).map(conversation => {
       const lastMessage = lastByConversation.get(conversation.id) ?? null; const lastRead = readByConversation.get(conversation.id);
-      return { id: conversation.id, title: conversation.title, otherProfile: otherByConversation.get(conversation.id) ?? null, lastMessage, updatedAt: conversation.updated_at, unread: Boolean(lastMessage && lastMessage.sender_profile_id !== profileId && (!lastRead || String(lastMessage.created_at) > String(lastRead))) };
+      const otherMember = (members.data ?? []).find(item => item.conversation_id === conversation.id);
+      return { id: conversation.id, title: conversation.title, otherProfile: otherByConversation.get(conversation.id) ?? null, lastMessage, updatedAt: conversation.updated_at, unread: Boolean(lastMessage && lastMessage.sender_profile_id !== profileId && (!lastRead || String(lastMessage.created_at) > String(lastRead))), otherLastReadAt: otherMember?.last_read_at ?? null };
     });
+  }
+
+  async listMessageableProfiles(tenantId: string, profileId: string): Promise<Array<Record<string, unknown>>> {
+    const { data, error } = await this.client.from("connections").select("requester_profile_id,addressee_profile_id").eq("tenant_id", tenantId).eq("status", "ACCEPTED").or(`requester_profile_id.eq.${profileId},addressee_profile_id.eq.${profileId}`);
+    if (error) throw new Error(error.message);
+    const ids = [...new Set((data ?? []).map(connection => connection.requester_profile_id === profileId ? connection.addressee_profile_id : connection.requester_profile_id))];
+    if (!ids.length) return [];
+    const profiles = await this.client.from("profiles").select("id,display_name,headline,avatar_url,current_company").in("id", ids).order("display_name");
+    if (profiles.error) throw new Error(profiles.error.message);
+    return profiles.data ?? [];
   }
 
   async listMessages(conversationId: string): Promise<Array<Record<string, unknown>>> {
@@ -140,6 +152,16 @@ export class ProfileHubService {
 
   async sendMessage(conversationId: string, senderProfileId: string, body: string): Promise<void> {
     const { error } = await this.client.from("messages").insert({ conversation_id: conversationId, sender_profile_id: senderProfileId, body: body.trim() });
+    if (error) throw new Error(error.message);
+  }
+
+  async editMessage(messageId: string, body: string): Promise<void> {
+    const { error } = await this.client.rpc("edit_own_message", { requested_message_id: messageId, requested_body: body.trim() });
+    if (error) throw new Error(error.message);
+  }
+
+  async deleteMessage(messageId: string): Promise<void> {
+    const { error } = await this.client.rpc("delete_own_message", { requested_message_id: messageId });
     if (error) throw new Error(error.message);
   }
 

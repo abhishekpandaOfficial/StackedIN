@@ -41,6 +41,8 @@ export interface NativeArticle {
   source_type: string;
   source_provider: string | null;
   external_url: string | null;
+  pillar?: string | null;
+  series?: string | null;
   author: NativeAuthor | null;
   viewerReaction?: NativeReaction | null;
   reactionSummary?: Partial<Record<NativeReaction, number>>;

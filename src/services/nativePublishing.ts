@@ -25,6 +25,8 @@ export interface PublicationSource {
   capabilities: { import?: boolean; direct_publish?: boolean; share?: boolean };
   last_synced_at: string | null;
   last_error: string | null;
+  last_post_count?: number;
+  last_sync_source?: string | null;
 }
 
 export class NativePublishingService {
@@ -192,26 +194,61 @@ export class NativePublishingService {
 
   async listSources(): Promise<PublicationSource[]> {
     const { data, error } = await this.client.from("publication_sources")
-      .select("id,provider,profile_url,feed_url,handle,status,capabilities,last_synced_at,last_error")
+      .select("id,provider,profile_url,feed_url,handle,status,capabilities,last_synced_at,last_error,last_post_count,last_sync_source")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as PublicationSource[];
   }
 
-  async connectPublicSource(tenantId: string, ownerProfileId: string, provider: PublicationSource["provider"], profileUrl: string): Promise<void> {
+  async connectPublicSource(tenantId: string, ownerProfileId: string, provider: PublicationSource["provider"], profileUrl: string): Promise<PublicationSource> {
     let url: URL;
     try { url = new URL(profileUrl); } catch { throw new Error("Enter a complete HTTPS profile or publication URL."); }
     if (url.protocol !== "https:") throw new Error("Publication sources must use HTTPS.");
-    const { error } = await this.client.from("publication_sources").upsert({
+    const linkedin = provider === "LINKEDIN";
+    const { data, error } = await this.client.from("publication_sources").upsert({
       tenant_id: tenantId,
       owner_profile_id: ownerProfileId,
       provider,
       profile_url: url.toString(),
-      status: "PENDING",
+      status: linkedin ? "REAUTH_REQUIRED" : "PENDING",
       import_mode: "REFERENCE",
-      capabilities: { import: provider !== "LINKEDIN", direct_publish: false, share: true },
-    }, { onConflict: "tenant_id,owner_profile_id,provider,profile_url" });
+      capabilities: { import: !linkedin, direct_publish: false, share: true },
+      last_error: linkedin ? "Approved LinkedIn OAuth API access is required for automatic import." : null,
+    }, { onConflict: "tenant_id,owner_profile_id,provider,profile_url" }).select("id,provider,profile_url,feed_url,handle,status,capabilities,last_synced_at,last_error,last_post_count,last_sync_source").single();
     if (error) throw new Error(error.message);
+    return data as PublicationSource;
+  }
+
+  async synchronizeSource(source: PublicationSource): Promise<number> {
+    if (source.provider === "LINKEDIN") throw new Error("LinkedIn synchronization requires approved OAuth API access.");
+    const { data: sessionData } = await this.client.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Your session expired. Sign in again before synchronizing.");
+    const response = await fetch("/api/xstudio-sync", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ provider: source.provider, profileUrl: source.profile_url }) });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      await this.client.from("publication_sources").update({ status: "ERROR", last_error: payload.error || "Public source synchronization failed" }).eq("id", source.id);
+      throw new Error(payload.error || "Public source synchronization failed");
+    }
+    const { data, error } = await this.client.rpc("import_publication_batch", { requested_source_id: source.id, requested_posts: payload.posts ?? [], requested_sync_source: payload.syncSource ?? "PUBLIC_FEED" });
+    if (error) throw new Error(error.message);
+    await this.client.from("publication_sources").update({ feed_url: payload.feedUrl || null }).eq("id", source.id);
+    return Number(data || 0);
+  }
+
+  async disconnectSource(sourceId: string): Promise<void> {
+    const { error } = await this.client.from("publication_sources").delete().eq("id", sourceId);
+    if (error) throw new Error(error.message);
+  }
+
+  async listOwnedImports(): Promise<NativeArticle[]> {
+    const { data: authData } = await this.client.auth.getUser(); const profileId = authData.user?.id;
+    if (!profileId) return [];
+    const { data, error } = await this.client.from("articles")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url")
+      .eq("author_id", profileId).neq("source_type", "USER").eq("status", "published").order("published_at", { ascending: false }).limit(250);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as NativeArticle[];
   }
 
   subscribe(onChange: () => void): RealtimeChannel {

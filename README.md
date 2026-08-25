@@ -1,4 +1,4 @@
-# StackCraft Studio
+# StackedIN + XStudio
 
 A living multi-platform publishing dashboard for Abhishek Panda's writing on
 [Substack](https://pandaabhishek.substack.com/),
@@ -18,6 +18,9 @@ A living multi-platform publishing dashboard for Abhishek Panda's writing on
 - Classifies newly discovered posts with deterministic topic rules.
 - Supports private platform analytics CSV imports for article views and shares.
 - Stores imported analytics only in the current browser.
+- Publishes native posts and rich-block articles directly to the StackedIN feed.
+- Provides realtime reactions, comments, restacks, notifications, connection requests, and direct messages.
+- Lets XStudio owners connect a public feed and import it into their native StackedIN library on demand.
 
 ## Automatic multi-platform sync
 
@@ -35,9 +38,15 @@ The refresh button reloads the most recently deployed snapshot. The scheduled
 workflow discovers brand-new public posts on supported platforms.
 
 LinkedIn does not expose a general public author feed suitable for this static
-dashboard. StackCraft Studio therefore links to the official LinkedIn profile
+dashboard. XStudio therefore links to the official LinkedIn profile
 and publishing editor; the signed-in LinkedIn experience remains the source of
 truth for LinkedIn posts and analytics.
+
+Signed-in XStudio source synchronization is separate from the public catalogue
+snapshot. It imports up to 100 recent public entries from Substack, Medium,
+Hashnode, or a generic RSS feed through the authenticated Vercel function at
+`/api/xstudio-sync`. LinkedIn import remains disabled until an approved OAuth
+API integration is configured.
 
 ## Local development
 
@@ -48,15 +57,18 @@ Use `npm run sync:substack` when the machine has unrestricted internet access.
 
 Run `npm run build`. GitHub Pages is deployed by the existing deployment
 workflow from the `master` branch. The included `vercel.json` also makes the
-same repository import-ready for Vercel, including SPA fallback routing and
-production security headers.
+same repository import-ready for Vercel, including the XStudio API function and
+production security headers. Client navigation uses hash routes, so no catch-all
+rewrite can intercept `/api` requests.
 
 ## Authentication and multitenancy
 
 StackedIN uses Supabase Auth for email/password, Google, and GitHub sign-in.
 The SQL migration in `supabase/migrations` adds profiles, workspaces, roles,
 tenant-scoped articles, automatic personal-workspace creation, and Row Level
-Security. Apply it before treating the product as multitenant in production.
+Security. Apply migrations in filename order. Profile journeys, inbox data,
+and realtime notifications are introduced by migration `007`; XStudio imports
+plus message edit/delete controls are introduced by migration `008`.
 
 See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
 environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth

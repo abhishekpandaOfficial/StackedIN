@@ -8,6 +8,7 @@ const searchMigration = readFileSync(resolve("supabase/migrations/202608250004_p
 const publishingMigration = readFileSync(resolve("supabase/migrations/202608250005_native_publishing_realtime.sql"), "utf8");
 const socialFeedMigration = readFileSync(resolve("supabase/migrations/202608250006_social_feed_interactions.sql"), "utf8");
 const profileHubMigration = readFileSync(resolve("supabase/migrations/202608250007_profile_journey_and_inbox.sql"), "utf8");
+const xstudioMigration = readFileSync(resolve("supabase/migrations/202608250008_xstudio_imports_and_messaging.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -254,5 +255,33 @@ describe("professional profile journey and inbox migration contract", () => {
     for (const trigger of ["follows_create_notifications", "profile_subscriptions_create_notifications", "article_reactions_create_notifications", "article_comments_create_notifications", "article_restacks_create_notifications"]) {
       expect(profileHubMigration).toContain(`create trigger ${trigger}`);
     }
+  });
+});
+
+describe("XStudio imports and messaging controls migration contract", () => {
+  it("authorizes every import against its source owner and tenant", () => {
+    expect(xstudioMigration).toContain("source_row.owner_profile_id <> auth.uid()");
+    expect(xstudioMigration).toContain("not public.is_tenant_member(source_row.tenant_id)");
+    expect(xstudioMigration).toContain("jsonb_array_length(requested_posts) > 100");
+  });
+
+  it("upserts external references without duplicating canonical URLs", () => {
+    expect(xstudioMigration).toContain("on conflict (tenant_id, canonical_url) where canonical_url is not null");
+    expect(xstudioMigration).toContain("source_metadata = public.articles.source_metadata || excluded.source_metadata");
+  });
+
+  it("keeps LinkedIn automatic imports behind approved API access", () => {
+    expect(xstudioMigration).toContain("if source_row.provider = 'LINKEDIN'");
+    expect(xstudioMigration).toContain("LinkedIn import requires approved OAuth API access");
+  });
+
+  it("limits message editing and deletion to the authenticated sender", () => {
+    expect(xstudioMigration).toContain("sender_profile_id = auth.uid() and deleted_at is null");
+    expect(xstudioMigration).toContain("create or replace function public.edit_own_message");
+    expect(xstudioMigration).toContain("create or replace function public.delete_own_message");
+  });
+
+  it("does not add provider secrets to the database", () => {
+    expect(xstudioMigration).not.toMatch(/access_token|refresh_token|client_secret|password/i);
   });
 });
