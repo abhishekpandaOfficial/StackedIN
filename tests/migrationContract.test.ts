@@ -46,6 +46,11 @@ describe("professional graph migration contract", () => {
     expect(migration.toLowerCase()).not.toContain("private_message");
     expect(migration.toLowerCase()).not.toContain("password");
   });
+
+  it("avoids the reserved CURRENT_ROLE identifier", () => {
+    expect(migration).toContain("add column if not exists current_job_title text");
+    expect(migration).not.toMatch(/add column if not exists current_role\b/);
+  });
 });
 
 describe("people recommendations V1 migration contract", () => {
@@ -63,5 +68,10 @@ describe("people recommendations V1 migration contract", () => {
   it("keeps recommendation functions unavailable to anonymous clients", () => {
     expect(peopleMigration).toContain("revoke all on function public.get_people_recommendations(uuid, integer) from public;");
     expect(peopleMigration).toContain("grant execute on function public.get_people_recommendations(uuid, integer) to authenticated;");
+  });
+
+  it("fails clearly when Phase 1 has not been installed", () => {
+    expect(peopleMigration).toContain("to_regclass('public.ranking_configs') is null");
+    expect(peopleMigration).toContain("Run 202608250002_professional_graph_foundation.sql successfully");
   });
 });

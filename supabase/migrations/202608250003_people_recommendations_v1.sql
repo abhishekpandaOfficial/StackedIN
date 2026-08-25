@@ -1,5 +1,19 @@
 begin;
 
+-- Phase 2 depends on every table created by the Phase 1 professional graph
+-- migration. Fail early with an actionable error if the migrations are run
+-- manually in the wrong order or Phase 1 was rolled back.
+do $$
+begin
+  if to_regclass('public.ranking_configs') is null then
+    raise exception using
+      errcode = '42P01',
+      message = 'Phase 1 is not installed: public.ranking_configs does not exist.',
+      hint = 'Run 202608250002_professional_graph_foundation.sql successfully before this migration.';
+  end if;
+end
+$$;
+
 create or replace function public.get_people_recommendations(
   requested_tenant_id uuid,
   result_limit integer default 8
@@ -109,7 +123,7 @@ features as (
   select
     candidate.*,
     greatest(
-      similarity(lower(coalesce(v.current_role, '')), lower(coalesce(candidate.current_role, ''))),
+      similarity(lower(coalesce(v.current_job_title, '')), lower(coalesce(candidate.current_job_title, ''))),
       similarity(lower(coalesce(v.headline, '')), lower(coalesce(candidate.headline, '')))
     )::numeric as professional_similarity,
     least(skill_stats.shared_count / 5.0, 1)::numeric as shared_skills,

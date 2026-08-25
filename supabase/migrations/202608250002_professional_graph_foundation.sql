@@ -13,7 +13,9 @@ alter table public.profiles
   add column if not exists country text,
   add column if not exists industry text,
   add column if not exists current_company text,
-  add column if not exists current_role text,
+  -- current_role is a PostgreSQL keyword (CURRENT_ROLE). Use an explicit,
+  -- domain-oriented name so this migration works without quoted identifiers.
+  add column if not exists current_job_title text,
   add column if not exists years_experience numeric(5,2),
   add column if not exists profile_visibility text not null default 'public',
   add column if not exists searchable boolean not null default true,
@@ -31,7 +33,7 @@ alter table public.profiles
   add column if not exists search_document tsvector generated always as (
     setweight(to_tsvector('simple', coalesce(display_name, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(headline, '')), 'A') ||
-    setweight(to_tsvector('simple', coalesce(current_role, '')), 'A') ||
+    setweight(to_tsvector('simple', coalesce(current_job_title, '')), 'A') ||
     setweight(to_tsvector('simple', coalesce(current_company, '')), 'B') ||
     setweight(to_tsvector('simple', coalesce(industry, '')), 'B') ||
     setweight(to_tsvector('simple', coalesce(about, bio, '')), 'C') ||
