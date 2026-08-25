@@ -80,7 +80,7 @@ const fetchSubstack = async () => {
   }
 };
 
-const fetchHashnode = async () => {
+const fetchHashnodeGraphql = async () => {
   const query = `query PublicationPosts($after: String) {
     publication(host: "abhishekpanda.hashnode.dev") {
       posts(first: 50, after: $after) {
@@ -102,6 +102,13 @@ const fetchHashnode = async () => {
     after = connection.pageInfo.hasNextPage ? connection.pageInfo.endCursor : null;
   } while (after);
   return { posts, source: "Hashnode public GraphQL API" };
+};
+const fetchHashnode = async () => {
+  try { return await fetchHashnodeGraphql(); }
+  catch (error) {
+    console.warn(error.message);
+    return fetchFeedWithFallback("https://abhishekpanda.hashnode.dev/rss.xml", "Hashnode");
+  }
 };
 
 const classify = (remote, seed = {}) => {
