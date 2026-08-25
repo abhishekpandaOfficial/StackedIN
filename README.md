@@ -62,6 +62,19 @@ See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
 environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth
 App, callback URL, and production verification steps.
 
+## Professional graph roadmap
+
+Phase 1 of the StackedIN Professional Knowledge Graph is defined in
+`supabase/migrations/202608250002_professional_graph_foundation.sql`. It adds
+professional profile intelligence, canonical skills/topics, tenant-scoped graph
+relationships, first-class negative signals, recommendation logging, versioned
+embeddings, ranking configuration, feature flags, search indexes, and hardened
+RLS. See `docs/architecture/phase-1-professional-graph.md` for the design and
+security boundaries.
+
+Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` before
+promoting a migration or application change.
+
 ## Private analytics import
 
 View and share counts are not public feed data. Export a CSV from the relevant

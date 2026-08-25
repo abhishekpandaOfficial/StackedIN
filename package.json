@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "node dev.mjs",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
     "sync:substack": "node scripts/sync-substack.mjs",
     "sync:offline": "node scripts/sync-substack.mjs --offline"
   },
@@ -17,5 +20,14 @@
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.35.0",
+    "globals": "^16.3.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^3.2.4"
   }
 }
