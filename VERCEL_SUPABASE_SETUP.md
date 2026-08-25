@@ -1,0 +1,107 @@
+# StackedIN: Vercel, Supabase and OAuth setup
+
+The application is ready for both Vercel and GitHub Pages. Vercel builds at `/`; GitHub Actions builds at `/StackedIN/`. Authentication redirects are calculated from the current deployment, so the same source works on both hosts.
+
+## 1. Create the Vercel deployment
+
+1. In Vercel, choose **Add New → Project** and import `abhishekpandaOfficial/StackedIN`.
+2. Keep **Framework Preset: Vite**, **Build Command: `npm run build`**, and **Output Directory: `dist`**.
+3. In **Settings → Environment Variables**, add these for Production, Preview, and Development:
+
+| Variable | Value |
+| --- | --- |
+| `VITE_SUPABASE_URL` | `https://salivpvqzbzuzbxzploo.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | The public anon/publishable key from Supabase **Project Settings → API Keys** |
+| `VITE_PUBLIC_SITE_URL` | Your final production URL, for example `https://stackedin.vercel.app` |
+
+4. Deploy. If you later add a custom domain, update `VITE_PUBLIC_SITE_URL`, redeploy, and add that exact domain to Supabase as described below.
+
+Never add a Supabase `service_role` or secret key to a `VITE_` variable. Vite variables are public browser configuration. Tenant security is enforced by database Row Level Security (RLS), not by hiding the anon key.
+
+## 2. Create the multitenant database
+
+In Supabase, open **SQL Editor → New query**, paste the complete contents of:
+
+`supabase/migrations/202608250001_stackedin_multitenant.sql`
+
+Then choose **Run** once. It creates:
+
+- professional profiles;
+- personal and team workspaces (tenants);
+- owner, admin, editor, and member roles;
+- tenant-scoped articles;
+- RLS policies that prevent cross-tenant draft access;
+- a signup trigger that creates a personal workspace for every new account;
+- a safe backfill for accounts that already exist.
+
+The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
+
+## 3. Configure Supabase URLs
+
+Open **Supabase → Authentication → URL Configuration**.
+
+- **Site URL:** your final Vercel production URL with a trailing slash, e.g. `https://stackedin.vercel.app/`
+- **Redirect URLs:** add each exact production destination:
+  - `https://YOUR-VERCEL-DOMAIN.vercel.app/`
+  - `https://abhishekpandaofficial.github.io/StackedIN/`
+  - your custom domain, if any, e.g. `https://stackedin.example.com/`
+- For Vercel preview deployments, optionally add:
+  - `https://*-YOUR-VERCEL-TEAM-OR-ACCOUNT.vercel.app/**`
+- For local development, optionally add the exact local URL printed by the dev server, followed by `/**`.
+
+Use exact production URLs. Reserve wildcards for preview and local environments.
+
+## 4. Configure Google sign-in
+
+1. Open the **Google Auth Platform** in Google Cloud and create or select a project.
+2. Configure **Branding** with app name `StackedIN`, your support email, homepage, privacy URL, terms URL, and authorized domain.
+3. Set **Audience** to **External** so anyone can register. While the app is in Testing, add test users; publish the app when ready for public sign-in.
+4. Under **Data Access**, include only:
+   - `openid`
+   - `.../auth/userinfo.email`
+   - `.../auth/userinfo.profile`
+5. Open **Clients → Create client → Web application**.
+6. Add **Authorized JavaScript origins** (origins have no trailing path):
+   - `https://YOUR-VERCEL-DOMAIN.vercel.app`
+   - `https://abhishekpandaofficial.github.io`
+   - your custom-domain origin, if any
+7. Add this one **Authorized redirect URI**:
+
+   `https://salivpvqzbzuzbxzploo.supabase.co/auth/v1/callback`
+
+8. Copy the Google Client ID and Client Secret.
+9. Open **Supabase → Authentication → Sign In / Providers → Google**, enable it, paste both values, and save.
+
+The Google callback is the Supabase callback, not the Vercel URL. Supabase completes provider authentication and then returns the user to an allowed StackedIN redirect URL.
+
+## 5. Configure GitHub sign-in
+
+1. Open **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**.
+2. Use:
+   - **Application name:** `StackedIN`
+   - **Homepage URL:** your final Vercel production URL
+   - **Authorization callback URL:** `https://salivpvqzbzuzbxzploo.supabase.co/auth/v1/callback`
+   - **Enable Device Flow:** off
+3. Register the app, copy the Client ID, and generate a Client Secret.
+4. Open **Supabase → Authentication → Sign In / Providers → GitHub**, enable it, paste both values, and save.
+
+GitHub OAuth Apps accept a single callback URL, which is sufficient because Supabase uses the same callback for every allowed StackedIN deployment.
+
+## 6. Production checks
+
+1. Open the Vercel deployment in a private/incognito window.
+2. Create an email/password account and confirm the email.
+3. Sign out, then test Google and GitHub separately.
+4. After sign-in, confirm the URL returns to the same Vercel deployment and opens `#feed`.
+5. In Supabase **Table Editor**, confirm one `profiles` row, one `tenants` row, and one owner `tenant_memberships` row were created.
+6. Create two test accounts. Confirm account A cannot select account B's draft articles. This verifies tenant isolation rather than only verifying the UI.
+
+## 7. Custom domain later
+
+When a custom domain is attached to Vercel:
+
+1. Set it as `VITE_PUBLIC_SITE_URL` in Vercel and redeploy.
+2. Make it the Supabase Site URL.
+3. Add its exact trailing-slash URL to Supabase Redirect URLs.
+4. Add its origin to Google Authorized JavaScript origins.
+5. Update the GitHub OAuth App homepage. The GitHub callback remains unchanged.

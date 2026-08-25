@@ -12,3 +12,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: "pkce",
   },
 });
+
+export function getAppRedirectUrl() {
+  const base = import.meta.env.BASE_URL || "/";
+  return new URL(base, window.location.origin).toString();
+}

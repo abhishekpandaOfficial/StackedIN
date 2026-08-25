@@ -6,7 +6,8 @@ import {
   UserRound, Users, Workflow, X, Zap,
 } from "lucide-react";
 import { SiGithub, SiGitlab, SiGoogle, SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
-import { supabase, supabasePublicConfig } from "./supabase.js";
+import { getAppRedirectUrl, supabase, supabasePublicConfig } from "./supabase.js";
+import { loadTenantContext } from "./tenant.js";
 import "./studio.css";
 
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
@@ -180,7 +181,7 @@ function AuthView({ onBack }) {
   const [providers, setProviders] = useState({ google: null, github: null });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+  const redirectTo = getAppRedirectUrl();
   useEffect(() => {
     fetch(`${supabasePublicConfig.url}/auth/v1/settings`, { headers: { apikey: supabasePublicConfig.anonKey } })
       .then(response => response.json()).then(settings => setProviders({ google: Boolean(settings.external?.google), github: Boolean(settings.external?.github) }))
@@ -239,11 +240,13 @@ function FeedCard({ post, liked, saved, onLike, onSave, onShare }) {
 
 function FeedExperience({ session, openStudio, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
+  const [tenantContext, setTenantContext] = useState(null);
   const [search, setSearch] = useState("");
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
   const [saved, setSaved] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-saved-${session.user.id}`) || "[]")));
   const [toast, setToast] = useState("");
   useEffect(() => { fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" }).then(response => response.json()).then(setCatalogue).catch(() => setCatalogue({ posts: [] })); }, []);
+  useEffect(() => { loadTenantContext(session.user.id).then(setTenantContext).catch(() => setTenantContext(null)); }, [session.user.id]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2200); return () => clearTimeout(timer); }, [toast]);
   const posts = useMemo(() => [...(catalogue.posts || [])].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
   const visible = useMemo(() => posts.filter(post => `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30), [posts, search]);
@@ -255,13 +258,14 @@ function FeedExperience({ session, openStudio, signOut }) {
     type === "liked" ? setLiked(next) : setSaved(next);
   };
   const share = async post => { try { await navigator.clipboard.writeText(post.url); setToast("Article link copied."); } catch { window.open(post.url, "_blank", "noopener"); } };
-  const name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
+  const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
+  const workspaceName = tenantContext?.tenant?.name || "Personal workspace";
   const initial = name.charAt(0).toUpperCase();
   const featureLinks = [{ label: "Home feed", icon: Home, active: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
   return <div className="feed-page">
     <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search articles, topics, people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="feed-layout">
-      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && openStudio()}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && openStudio()}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
       <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={() => openStudio()}>Share an article, lesson, or system design…</button></div><footer><button onClick={openStudio}><PenTool size={16} />Write article</button><button onClick={openStudio}><Layers3 size={16} />Add to series</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Showing your knowledge network</span><button>Newest first <ChevronRight size={13} /></button></div>{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or clear your search.</p></div>}</main>
       <aside className="feed-right"><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></a>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}

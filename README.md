@@ -47,7 +47,20 @@ Use `npm run sync:substack` when the machine has unrestricted internet access.
 ## Production build
 
 Run `npm run build`. GitHub Pages is deployed by the existing deployment
-workflow from the `master` branch.
+workflow from the `master` branch. The included `vercel.json` also makes the
+same repository import-ready for Vercel, including SPA fallback routing and
+production security headers.
+
+## Authentication and multitenancy
+
+StackedIN uses Supabase Auth for email/password, Google, and GitHub sign-in.
+The SQL migration in `supabase/migrations` adds profiles, workspaces, roles,
+tenant-scoped articles, automatic personal-workspace creation, and Row Level
+Security. Apply it before treating the product as multitenant in production.
+
+See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
+environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth
+App, callback URL, and production verification steps.
 
 ## Private analytics import
 
