@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { candidateRejectionReason, type CandidateEligibility } from "../src/domain/professionalGraph";
 import { NEGATIVE_SIGNAL_MULTIPLIERS, PEOPLE_RANKING_V1, normalizedWeightTotal } from "../src/config/ranking";
+import { connectionDegree } from "../src/services/professionalGraph";
 
 const eligible: CandidateEligibility = {
   candidateId: "candidate",
@@ -45,5 +46,19 @@ describe("ranking configuration", () => {
   it("makes explicit negative feedback stronger than weak inferred positives", () => {
     expect(NEGATIVE_SIGNAL_MULTIPLIERS.not_interested).toBeGreaterThan(NEGATIVE_SIGNAL_MULTIPLIERS.weak_inferred_positive);
     expect(NEGATIVE_SIGNAL_MULTIPLIERS.block).toBeGreaterThan(NEGATIVE_SIGNAL_MULTIPLIERS.not_interested);
+  });
+});
+
+describe("feed connection degrees", () => {
+  it("labels accepted connections as first degree", () => {
+    expect(connectionDegree("connection-1", 0)).toBe(1);
+  });
+
+  it("labels mutual-network recommendations as second degree", () => {
+    expect(connectionDegree(null, 3)).toBe(2);
+  });
+
+  it("labels interest-based discovery without mutuals as third degree", () => {
+    expect(connectionDegree(null, 0)).toBe(3);
   });
 });

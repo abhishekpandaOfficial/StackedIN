@@ -6,6 +6,7 @@ const migration = readFileSync(resolve("supabase/migrations/202608250002_profess
 const peopleMigration = readFileSync(resolve("supabase/migrations/202608250003_people_recommendations_v1.sql"), "utf8");
 const searchMigration = readFileSync(resolve("supabase/migrations/202608250004_profile_search_v1.sql"), "utf8");
 const publishingMigration = readFileSync(resolve("supabase/migrations/202608250005_native_publishing_realtime.sql"), "utf8");
+const socialFeedMigration = readFileSync(resolve("supabase/migrations/202608250006_social_feed_interactions.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -171,5 +172,30 @@ describe("native publishing and realtime migration contract", () => {
       publishingMigration.indexOf("create index if not exists article_reactions_tenant_article_idx"),
     );
     expect(sourceTable).not.toMatch(/password|access_token|refresh_token|client_secret/i);
+  });
+});
+
+describe("realtime social feed migration contract", () => {
+  it.each([
+    "create table if not exists public.article_saves",
+    "create table if not exists public.article_restacks",
+    "create table if not exists public.article_preferences",
+    "create table if not exists public.article_reports",
+    "create table if not exists public.profile_subscriptions",
+  ])("contains %s", statement => expect(socialFeedMigration.toLowerCase()).toContain(statement));
+
+  it("keeps every private interaction tenant-scoped and protected by RLS", () => {
+    for (const table of ["article_saves", "article_restacks", "article_preferences", "article_reports", "profile_subscriptions"]) {
+      expect(socialFeedMigration).toContain(`alter table public.${table} enable row level security`);
+    }
+    expect(socialFeedMigration).toContain("profile_id = auth.uid()");
+    expect(socialFeedMigration).toContain("reporter_profile_id = auth.uid()");
+    expect(socialFeedMigration).toContain("subscriber_profile_id = auth.uid()");
+  });
+
+  it("recomputes restack totals and publishes social changes to Realtime", () => {
+    expect(socialFeedMigration).toContain("restack_count = (select count(*) from public.article_restacks");
+    expect(socialFeedMigration).toContain("alter publication supabase_realtime add table public.article_restacks");
+    expect(socialFeedMigration).toContain("alter publication supabase_realtime add table public.profile_subscriptions");
   });
 });

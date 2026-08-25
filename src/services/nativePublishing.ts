@@ -33,7 +33,7 @@ export class NativePublishingService {
   async listFeed(limit = 30): Promise<NativeArticle[]> {
     const { data, error } = await this.client
       .from("articles")
-      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,published_at,source_type,source_provider,external_url,author:profiles!articles_author_profile_fk(id,slug,display_name,headline,avatar_url)")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,author:profiles!articles_author_profile_fk(id,slug,display_name,headline,avatar_url)")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .order("id", { ascending: false })
@@ -41,12 +41,19 @@ export class NativePublishingService {
     if (error) throw new Error(error.message);
     const articles = (data ?? []) as unknown as NativeArticle[];
     if (!articles.length) return [];
-    const { data: reactions } = await this.client
-      .from("article_reactions")
-      .select("article_id,reaction_type,profile_id")
-      .in("article_id", articles.map(article => article.id));
     const { data: authData } = await this.client.auth.getUser();
     const viewerId = authData.user?.id;
+    const articleIds = articles.map(article => article.id);
+    const authorIds = [...new Set(articles.map(article => article.author_id))];
+    const [reactionResult, saveResult, restackResult, preferenceResult, followResult, subscriptionResult] = await Promise.all([
+      this.client.from("article_reactions").select("article_id,reaction_type,profile_id").in("article_id", articleIds),
+      viewerId ? this.client.from("article_saves").select("article_id").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
+      viewerId ? this.client.from("article_restacks").select("article_id,thoughts").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
+      viewerId ? this.client.from("article_preferences").select("article_id,preference").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
+      viewerId ? this.client.from("follows").select("followed_profile_id").eq("follower_profile_id", viewerId).in("followed_profile_id", authorIds) : Promise.resolve({ data: [] }),
+      viewerId ? this.client.from("profile_subscriptions").select("creator_profile_id").eq("subscriber_profile_id", viewerId).in("creator_profile_id", authorIds) : Promise.resolve({ data: [] }),
+    ]);
+    const reactions = reactionResult.data ?? [];
     const ownReactions = new Map((reactions ?? []).filter(item => item.profile_id === viewerId).map(item => [item.article_id, item.reaction_type as NativeReaction]));
     const summaries = new Map<string, Partial<Record<NativeReaction, number>>>();
     (reactions ?? []).forEach(item => {
@@ -55,7 +62,23 @@ export class NativePublishingService {
       summary[reaction] = (summary[reaction] ?? 0) + 1;
       summaries.set(item.article_id, summary);
     });
-    return articles.map(article => ({ ...article, viewerReaction: ownReactions.get(article.id) ?? null, reactionSummary: summaries.get(article.id) ?? {} }));
+    const saves = new Set((saveResult.data ?? []).map(item => item.article_id));
+    const restacks = new Map((restackResult.data ?? []).map(item => [item.article_id, item.thoughts]));
+    const hidden = new Set((preferenceResult.data ?? []).map(item => item.article_id));
+    const followed = new Set((followResult.data ?? []).map(item => item.followed_profile_id));
+    const subscribed = new Set((subscriptionResult.data ?? []).map(item => item.creator_profile_id));
+    return articles
+      .filter(article => !hidden.has(article.id))
+      .map(article => ({
+        ...article,
+        viewerReaction: ownReactions.get(article.id) ?? null,
+        reactionSummary: summaries.get(article.id) ?? {},
+        viewerSaved: saves.has(article.id),
+        viewerRestacked: restacks.has(article.id),
+        viewerRestackThoughts: restacks.get(article.id) ?? null,
+        viewerFollowingAuthor: followed.has(article.author_id),
+        viewerSubscribedAuthor: subscribed.has(article.author_id),
+      }));
   }
 
   async save(input: SaveNativeArticleInput): Promise<NativeArticle> {
@@ -117,6 +140,56 @@ export class NativePublishingService {
     if (error) throw new Error(error.message);
   }
 
+  async setSaved(tenantId: string, profileId: string, articleId: string, saved: boolean): Promise<void> {
+    const query = this.client.from("article_saves");
+    const { error } = saved
+      ? await query.upsert({ tenant_id: tenantId, profile_id: profileId, article_id: articleId })
+      : await query.delete().match({ profile_id: profileId, article_id: articleId });
+    if (error) throw new Error(error.message);
+  }
+
+  async restack(tenantId: string, profileId: string, articleId: string, thoughts: string | null): Promise<void> {
+    const normalizedThoughts = thoughts?.trim() || null;
+    if (normalizedThoughts && normalizedThoughts.length > 1200) throw new Error("Restack thoughts must be 1,200 characters or fewer.");
+    const { error } = await this.client.from("article_restacks").upsert({
+      tenant_id: tenantId,
+      profile_id: profileId,
+      article_id: articleId,
+      thoughts: normalizedThoughts,
+    }, { onConflict: "article_id,profile_id" });
+    if (error) throw new Error(error.message);
+  }
+
+  async removeRestack(profileId: string, articleId: string): Promise<void> {
+    const { error } = await this.client.from("article_restacks").delete().match({ profile_id: profileId, article_id: articleId });
+    if (error) throw new Error(error.message);
+  }
+
+  async setFeedPreference(tenantId: string, profileId: string, articleId: string, preference: "HIDDEN" | "NOT_INTERESTED"): Promise<void> {
+    const { error } = await this.client.from("article_preferences").upsert({ tenant_id: tenantId, profile_id: profileId, article_id: articleId, preference }, { onConflict: "article_id,profile_id" });
+    if (error) throw new Error(error.message);
+  }
+
+  async reportArticle(tenantId: string, profileId: string, articleId: string, reason: "SPAM" | "HARASSMENT" | "MISINFORMATION" | "COPYRIGHT" | "OTHER", details = ""): Promise<void> {
+    const { error } = await this.client.from("article_reports").upsert({
+      tenant_id: tenantId,
+      reporter_profile_id: profileId,
+      article_id: articleId,
+      reason,
+      details: details.slice(0, 2000),
+    }, { onConflict: "article_id,reporter_profile_id", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+  }
+
+  async setSubscribed(tenantId: string, subscriberProfileId: string, creatorProfileId: string, subscribed: boolean): Promise<void> {
+    if (subscriberProfileId === creatorProfileId) return;
+    const query = this.client.from("profile_subscriptions");
+    const { error } = subscribed
+      ? await query.upsert({ tenant_id: tenantId, subscriber_profile_id: subscriberProfileId, creator_profile_id: creatorProfileId, delivery_mode: "IN_APP" })
+      : await query.delete().match({ tenant_id: tenantId, subscriber_profile_id: subscriberProfileId, creator_profile_id: creatorProfileId });
+    if (error) throw new Error(error.message);
+  }
+
   async listSources(): Promise<PublicationSource[]> {
     const { data, error } = await this.client.from("publication_sources")
       .select("id,provider,profile_url,feed_url,handle,status,capabilities,last_synced_at,last_error")
@@ -146,6 +219,12 @@ export class NativePublishingService {
       .on("postgres_changes", { event: "*", schema: "public", table: "articles" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "article_reactions" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "article_comments" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_saves" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_restacks" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_preferences" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profile_subscriptions" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "connections" }, onChange)
       .subscribe();
   }
 }

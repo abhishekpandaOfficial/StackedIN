@@ -36,6 +36,7 @@ export interface NativeArticle {
   reaction_count: number;
   comment_count: number;
   share_count: number;
+  restack_count: number;
   published_at: string;
   source_type: string;
   source_provider: string | null;
@@ -43,6 +44,11 @@ export interface NativeArticle {
   author: NativeAuthor | null;
   viewerReaction?: NativeReaction | null;
   reactionSummary?: Partial<Record<NativeReaction, number>>;
+  viewerSaved?: boolean;
+  viewerRestacked?: boolean;
+  viewerRestackThoughts?: string | null;
+  viewerFollowingAuthor?: boolean;
+  viewerSubscribedAuthor?: boolean;
 }
 
 export interface ArticleComment {

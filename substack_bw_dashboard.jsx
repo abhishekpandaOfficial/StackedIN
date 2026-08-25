@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, Bookmark, BrainCircuit, CalendarDays, CheckCircle2,
-  ChevronRight, Clock3, ExternalLink, Eye, FileText, Filter, Grid2X2, Heart, Home, KeyRound, Layers3,
-  BriefcaseBusiness, Globe2, Library, ListFilter, LockKeyhole, LogOut, Mail, MapPin, MessageCircle, MoreHorizontal, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Upload,
-  Plus, UserRound, Users, Workflow, X, Zap,
+  ChevronRight, Clock3, ExternalLink, Eye, EyeOff, FileText, Filter, Flag, Grid2X2, Heart, Home, KeyRound, Layers3, Link2,
+  BriefcaseBusiness, Globe2, Library, ListFilter, LockKeyhole, LogOut, Mail, MapPin, MessageCircle, MoreHorizontal, PenTool, RefreshCw, Repeat2, Rss, Search, Send, Share2, ShieldCheck, SlidersHorizontal, Sparkles, ThumbsUp, Upload,
+  BellRing, Plus, UserMinus, UserRound, Users, Workflow, X, Zap,
 } from "lucide-react";
 import { SiGithub, SiGitlab, SiGoogle, SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import { getAppRedirectUrl, supabase, supabasePublicConfig } from "./supabase.js";
@@ -254,13 +254,22 @@ const REACTIONS = [
   { id: "CURIOUS", emoji: "🤔", label: "Curious" },
 ];
 
-function NativeFeedCard({ article, tenantContext, onRefresh }) {
+function NativeFeedCard({ article, tenantContext, onRefresh, onNetworkRefresh, onToast }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [restackOpen, setRestackOpen] = useState(false);
+  const [restackThoughtsOpen, setRestackThoughtsOpen] = useState(false);
+  const [restackThoughts, setRestackThoughts] = useState(article.viewerRestackThoughts || "");
   const authorName = article.author?.display_name || "StackedIN member";
+  const tenantId = tenantContext?.tenant?.id;
+  const profileId = tenantContext?.profile?.id;
+  const isOwnPost = profileId === article.author_id;
+  const articleUrl = () => { const url = new URL(import.meta.env.BASE_URL, window.location.origin); url.hash = `article-${article.id}`; return url; };
   const loadComments = async () => {
     setBusy("comments"); setError("");
     try { setComments(await nativePublishing.listComments(article.id)); setCommentsOpen(true); }
@@ -274,34 +283,84 @@ function NativeFeedCard({ article, tenantContext, onRefresh }) {
     catch (reactionError) { setError(reactionError.message || "Reaction could not be saved."); }
     finally { setBusy(""); }
   };
-  const addComment = async event => {
-    event.preventDefault(); if (!commentText.trim()) return;
+  const addComment = async () => {
+    if (!commentText.trim()) return;
     setBusy("comment"); setError("");
     try { await nativePublishing.comment(article.id, commentText); setCommentText(""); setComments(await nativePublishing.listComments(article.id)); await onRefresh(); }
     catch (commentError) { setError(commentError.message || "Comment could not be published."); }
     finally { setBusy(""); }
   };
   const share = async destination => {
-    const url = new URL(import.meta.env.BASE_URL, window.location.origin); url.hash = `article-${article.id}`;
+    const url = articleUrl();
     try {
       if (destination === "NATIVE_SHARE" && navigator.share) await navigator.share({ title: article.title, text: article.description, url: url.toString() });
+      else if (destination === "LINKEDIN") window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url.toString())}`, "_blank", "noopener,noreferrer");
+      else if (destination === "EMAIL") window.location.href = `mailto:?subject=${encodeURIComponent(article.title)}&body=${encodeURIComponent(`${article.description}\n\n${url}`)}`;
       else await navigator.clipboard.writeText(url.toString());
-      if (tenantContext?.tenant?.id) await nativePublishing.recordShare(tenantContext.tenant.id, tenantContext.profile.id, article.id, destination);
+      if (tenantId && profileId) await nativePublishing.recordShare(tenantId, profileId, article.id, destination);
+      onToast?.(destination === "COPY_LINK" ? "Article link copied." : "Share recorded.");
+      setShareOpen(false);
       await onRefresh();
     } catch (shareError) { if (shareError.name !== "AbortError") setError("Share could not be completed."); }
   };
+  const save = async () => {
+    if (!tenantId || !profileId) return;
+    setBusy("save"); setError("");
+    try { await nativePublishing.setSaved(tenantId, profileId, article.id, !article.viewerSaved); onToast?.(article.viewerSaved ? "Removed from saved posts." : "Post saved."); await onRefresh(); }
+    catch (saveError) { setError(saveError.message || "Save could not be updated."); }
+    finally { setBusy(""); }
+  };
+  const restack = async thoughts => {
+    if (!tenantId || !profileId) return;
+    setBusy("restack"); setError("");
+    try { await nativePublishing.restack(tenantId, profileId, article.id, thoughts); setRestackOpen(false); setRestackThoughtsOpen(false); onToast?.(thoughts?.trim() ? "Restacked with your thoughts." : "Restacked to your network."); await onRefresh(); }
+    catch (restackError) { setError(restackError.message || "Restack could not be completed."); }
+    finally { setBusy(""); }
+  };
+  const removeRestack = async () => {
+    if (!profileId) return;
+    setBusy("restack");
+    try { await nativePublishing.removeRestack(profileId, article.id); setRestackOpen(false); onToast?.("Restack removed."); await onRefresh(); }
+    catch (restackError) { setError(restackError.message || "Restack could not be removed."); }
+    finally { setBusy(""); }
+  };
+  const authorAction = async action => {
+    if (!tenantId || !profileId || isOwnPost) return;
+    setBusy(action); setError("");
+    try {
+      if (action === "follow") article.viewerFollowingAuthor ? await professionalGraph.unfollow(tenantId, article.author_id) : await professionalGraph.follow(tenantId, article.author_id);
+      if (action === "subscribe") await nativePublishing.setSubscribed(tenantId, profileId, article.author_id, !article.viewerSubscribedAuthor);
+      if (action === "disconnect") await professionalGraph.removeConnectionWithProfile(tenantId, article.author_id);
+      setMenuOpen(false); await Promise.all([onRefresh(), onNetworkRefresh?.()]);
+    } catch (actionError) { setError(actionError.message || "Author action could not be completed."); }
+    finally { setBusy(""); }
+  };
+  const preference = async value => {
+    if (!tenantId || !profileId) return;
+    setBusy("preference");
+    try { await nativePublishing.setFeedPreference(tenantId, profileId, article.id, value); setMenuOpen(false); onToast?.(value === "HIDDEN" ? "Post hidden from your feed." : "Your feed preference was recorded."); await onRefresh(); }
+    catch (preferenceError) { setError(preferenceError.message || "Feed preference could not be saved."); }
+    finally { setBusy(""); }
+  };
+  const report = async () => {
+    if (!tenantId || !profileId) return;
+    setBusy("report");
+    try { await nativePublishing.reportArticle(tenantId, profileId, article.id, "OTHER", "Reported from the feed controls for moderation review."); setMenuOpen(false); onToast?.("Report submitted for review."); }
+    catch (reportError) { setError(reportError.message || "Report could not be submitted."); }
+    finally { setBusy(""); }
+  };
 
   return <article className="native-feed-card">
-    <header><div className="native-author-avatar">{article.author?.avatar_url ? <img src={article.author.avatar_url} alt="" /> : authorName.charAt(0).toUpperCase()}</div><div><strong>{authorName}<CheckCircle2 size={13} /></strong><span>{article.author?.headline || "StackedIN professional"}</span><small>{formatDate(article.published_at)} · {article.reading_minutes} min read · <Globe2 size={10} /></small></div><em>{article.content_type === "POST" ? "POST" : "ARTICLE"}</em></header>
+    <header><div className="native-author-avatar">{article.author?.avatar_url ? <img src={article.author.avatar_url} alt="" /> : authorName.charAt(0).toUpperCase()}</div><div><strong>{authorName}<CheckCircle2 size={13} /></strong><span>{article.author?.headline || "StackedIN professional"}</span><small>{formatDate(article.published_at)} · {article.reading_minutes} min read · <Globe2 size={10} /></small></div><div className="post-menu-wrap"><button className="post-more" aria-label="Post options" aria-expanded={menuOpen} onClick={() => setMenuOpen(value => !value)}><MoreHorizontal size={19} /></button>{menuOpen && <div className="post-action-menu"><button onClick={save}><Bookmark size={17} />{article.viewerSaved ? "Unsave post" : "Save post"}</button>{!isOwnPost && <><button onClick={() => authorAction("follow")}><UserRound size={17} />{article.viewerFollowingAuthor ? "Unfollow author" : "Follow author"}</button><button onClick={() => authorAction("subscribe")}><BellRing size={17} />{article.viewerSubscribedAuthor ? "Unsubscribe from posts" : "Subscribe to posts"}</button><button onClick={() => authorAction("disconnect")}><UserMinus size={17} />Disconnect</button></>}<button onClick={() => preference("HIDDEN")}><EyeOff size={17} />Hide post</button><button onClick={() => preference("NOT_INTERESTED")}><ThumbsUp className="thumb-down" size={17} />Not interested</button><button onClick={report}><Flag size={17} />Report post</button></div>}</div></header>
     <section className="native-article-intro"><h2>{article.title}</h2>{article.description && <p>{article.description}</p>}<div>{(article.hashtags || []).map(tag => <span key={tag}>#{tag}</span>)}</div></section>
     {article.cover_image_url && <img className="native-cover" src={article.cover_image_url} alt="" />}
     <ContentBlocks blocks={article.content_blocks || []} />
     {article.source_type !== "USER" && <div className="native-source-note"><Rss size={13} />Imported from {article.source_provider || article.source_type} as an internal knowledge reference.</div>}
-    <section className="reaction-summary"><div>{REACTIONS.filter(reaction => article.reactionSummary?.[reaction.id]).map(reaction => <span key={reaction.id}>{reaction.emoji}<b>{article.reactionSummary[reaction.id]}</b></span>)}</div><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} discussions · {article.share_count || 0} shares</span></section>
-    <div className="reaction-picker">{REACTIONS.map(reaction => <button key={reaction.id} className={article.viewerReaction === reaction.id ? "active" : ""} disabled={busy === "reaction"} onClick={() => react(reaction.id)} title={reaction.label}><span>{reaction.emoji}</span><b>{reaction.label}</b></button>)}</div>
-    <footer><button onClick={toggleDiscussion}>{busy === "comments" ? <RefreshCw className="spin" size={16} /> : <MessageCircle size={16} />}Discuss</button><button onClick={() => share(navigator.share ? "NATIVE_SHARE" : "COPY_LINK")}><Share2 size={16} />Share</button><button onClick={() => share("LINKEDIN")}><span className="linkedin-glyph">in</span>Share link</button><button><Bookmark size={16} />Save</button></footer>
+    <section className="reaction-summary"><div>{REACTIONS.filter(reaction => article.reactionSummary?.[reaction.id]).map(reaction => <span key={reaction.id}>{reaction.emoji}<b>{article.reactionSummary[reaction.id]}</b></span>)}</div><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} comments · {article.restack_count || 0} restacks · {article.share_count || 0} shares</span></section>
+    <footer className="native-actions"><div className="reaction-control"><button className={article.viewerReaction ? "active" : ""} disabled={busy === "reaction"} onClick={() => react(article.viewerReaction || "LIKE")}><span>{REACTIONS.find(item => item.id === article.viewerReaction)?.emoji || <ThumbsUp size={16} />}</span>{REACTIONS.find(item => item.id === article.viewerReaction)?.label || "React"}</button><div className="reaction-hover-menu">{REACTIONS.map(reaction => <button key={reaction.id} className={article.viewerReaction === reaction.id ? "active" : ""} onClick={() => react(reaction.id)} title={reaction.label} aria-label={reaction.label}>{reaction.emoji}</button>)}</div></div><button onClick={toggleDiscussion}>{busy === "comments" ? <RefreshCw className="spin" size={16} /> : <MessageCircle size={16} />}Comment</button><div className="action-popover-wrap"><button className={article.viewerRestacked ? "active" : ""} onClick={() => setRestackOpen(value => !value)}><Repeat2 size={16} />Restack</button>{restackOpen && <div className="action-popover restack-popover">{article.viewerRestacked && <button onClick={removeRestack}><X size={15} />Undo restack</button>}<button onClick={() => restack(null)}><Repeat2 size={15} />Restack instantly</button><button onClick={() => { setRestackThoughtsOpen(true); setRestackOpen(false); }}><PenTool size={15} />Restack with thoughts</button></div>}</div><div className="action-popover-wrap"><button onClick={() => setShareOpen(value => !value)}><Share2 size={16} />Share</button>{shareOpen && <div className="action-popover share-popover"><button onClick={() => share("COPY_LINK")}><Link2 size={15} />Copy link</button><button onClick={() => share("NATIVE_SHARE")}><Send size={15} />Share from device</button><button onClick={() => share("LINKEDIN")}><span className="linkedin-glyph">in</span>LinkedIn</button><button onClick={() => share("EMAIL")}><Mail size={15} />Email</button></div>}</div><button className={article.viewerSaved ? "active" : ""} onClick={save}><Bookmark size={16} fill={article.viewerSaved ? "currentColor" : "none"} />Save</button></footer>
+    {restackThoughtsOpen && <section className="restack-thoughts"><header><Repeat2 size={15} /><strong>Restack with your perspective</strong><button onClick={() => setRestackThoughtsOpen(false)}><X size={14} /></button></header><textarea autoFocus value={restackThoughts} onChange={event => setRestackThoughts(event.target.value)} maxLength={1200} placeholder="Why should your network read this? Add context, evidence, or a useful angle…" /><footer><span>{restackThoughts.length}/1200</span><button disabled={!restackThoughts.trim() || busy === "restack"} onClick={() => restack(restackThoughts)}>{busy === "restack" ? <RefreshCw className="spin" size={14} /> : <Repeat2 size={14} />}Restack</button></footer></section>}
     {error && <div className="native-inline-error">{error}</div>}
-    {commentsOpen && <section className="native-discussion"><header><div><MessageCircle size={16} /><strong>Professional discussion</strong></div><span>{comments.length} contributions</span></header><form onSubmit={addComment}><div>{tenantContext?.profile?.display_name?.charAt(0).toUpperCase() || "S"}</div><textarea value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Add evidence, a question, or a useful perspective…" maxLength={4000} /><button disabled={busy === "comment" || !commentText.trim()}>{busy === "comment" ? <RefreshCw className="spin" size={14} /> : <ArrowRight size={14} />}</button></form><div className="discussion-list">{comments.map(comment => <article key={comment.id}><div>{comment.author?.avatar_url ? <img src={comment.author.avatar_url} alt="" /> : (comment.author?.display_name || "S").charAt(0).toUpperCase()}</div><section><header><strong>{comment.author?.display_name || "StackedIN member"}</strong><span>{comment.author?.headline || "Professional"} · {formatDate(comment.created_at)}</span></header><p>{comment.body}</p><button>Reply</button></section></article>)}{!comments.length && <p className="discussion-empty">Start the useful conversation. Empty comment sections are just uninitialized knowledge graphs.</p>}</div></section>}
+    {commentsOpen && <section className="native-discussion"><header><div><MessageCircle size={16} /><strong>Professional discussion</strong></div><span>{comments.length} contributions</span></header><form onSubmit={event => { event.preventDefault(); addComment(); }}><div>{tenantContext?.profile?.display_name?.charAt(0).toUpperCase() || "S"}</div><textarea value={commentText} onChange={event => setCommentText(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); addComment(); } }} placeholder="Add a useful perspective… Enter to post · Shift+Enter for a new line" maxLength={4000} /><button aria-label="Post comment" disabled={busy === "comment" || !commentText.trim()}>{busy === "comment" ? <RefreshCw className="spin" size={14} /> : <Send size={14} />}</button></form><div className="discussion-list">{comments.map(comment => <article key={comment.id}><div>{comment.author?.avatar_url ? <img src={comment.author.avatar_url} alt="" /> : (comment.author?.display_name || "S").charAt(0).toUpperCase()}</div><section><header><strong>{comment.author?.display_name || "StackedIN member"}</strong><span>{comment.author?.headline || "Professional"} · {formatDate(comment.created_at)}</span></header><p>{comment.body}</p><button>Reply</button></section></article>)}{!comments.length && <p className="discussion-empty">Start the useful conversation. Empty comment sections are just uninitialized knowledge graphs.</p>}</div></section>}
   </article>;
 }
 
@@ -362,10 +421,17 @@ function ProfileExperience({ session, openFeed, openWrite, signOut }) {
   return <div className="profile-page"><header className="feed-topbar"><button className="feed-logo" onClick={openFeed}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><UserRound size={17} /><input value="Your professional identity" readOnly /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button className="active feed-avatar"><b>{name.charAt(0).toUpperCase()}</b><span>Me</span></button></nav></header><main className="profile-shell"><section className="profile-hero"><div className="profile-banner" style={profile?.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined} /><div className="profile-identity"><div className="profile-large-avatar">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : name.charAt(0).toUpperCase()}</div><div><h1>{name}</h1><p>{profile?.headline || "Add a headline that explains the professional problems you solve."}</p><span>{[profile?.current_job_title, profile?.current_company, profile?.location].filter(Boolean).join(" · ")}</span></div><button onClick={() => setEditing(value => !value)}>{editing ? <X size={15} /> : <PenTool size={15} />}{editing ? "Cancel" : "Edit profile"}</button></div></section><div className="profile-grid"><section className="profile-main-card">{editing ? <div className="profile-edit-form">{fields.map(([field,label]) => <label key={field}>{label}<input type={field === "years_experience" ? "number" : "text"} value={profile?.[field] ?? ""} onChange={event => update(field, event.target.value)} /></label>)}<label className="wide">About<textarea value={profile?.about || ""} onChange={event => update("about", event.target.value)} maxLength={4000} /></label><label className="wide">Avatar URL<input value={profile?.avatar_url || ""} onChange={event => update("avatar_url", event.target.value)} /></label><label className="wide">Banner URL<input value={profile?.banner_url || ""} onChange={event => update("banner_url", event.target.value)} /></label><button onClick={save} disabled={busy}>{busy ? <RefreshCw className="spin" size={15} /> : <CheckCircle2 size={15} />}Save professional profile</button></div> : <><header><span>About</span><h2>Professional context</h2></header><p className="profile-about">{profile?.about || profile?.bio || "Your profile is ready for a sharper story. Add what you build, what you know deeply, and what kind of people should find you."}</p><div className="profile-facts"><article><BriefcaseBusiness size={17} /><span>Industry</span><strong>{profile?.industry || "Not specified"}</strong></article><article><MapPin size={17} /><span>Location</span><strong>{[profile?.location, profile?.country].filter(Boolean).join(", ") || "Not specified"}</strong></article><article><BrainCircuit size={17} /><span>Profile quality</span><strong>{Math.round((profile?.profile_completeness || 0) * 100)}%</strong></article></div></>}{message && <div className="profile-message">{message}</div>}</section><aside className="profile-side-card"><span>Professional signal</span><h3>{articles.filter(article => article.status === "published").length}</h3><p>Native publications</p><div><strong>{articles.reduce((sum, article) => sum + (article.reaction_count || 0), 0)}</strong><small>Reactions</small><strong>{articles.reduce((sum, article) => sum + (article.comment_count || 0), 0)}</strong><small>Discussions</small></div><button onClick={openWrite}><PenTool size={15} />Write on StackedIN</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside><section className="profile-publications"><header><div><span>Body of work</span><h2>Native posts & articles</h2></div><button onClick={openWrite}><Plus size={15} />New publication</button></header>{articles.map(article => <article key={article.id}><div><span>{article.content_type}</span><h3>{article.title}</h3><p>{article.description}</p><div>{(article.hashtags || []).map(tag => <b key={tag}>#{tag}</b>)}</div></div><aside><strong>{article.status}</strong><small>{formatDate(article.published_at)}</small><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} discussions</span></aside></article>)}{!articles.length && <div className="profile-empty"><BookOpen size={24} /><p>Your native body of work starts with one useful post.</p><button onClick={openWrite}>Write the first one</button></div>}</section></div></main></div>;
 }
 
+function FeedPeoplePanel({ people, busy, onAction, onOpenNetwork }) {
+  return <section className="feed-people-card"><header><div><span>Your professional graph</span><h3>People worth knowing</h3></div><Users size={17} /></header><div className="feed-people-list">{people.map(person => <article key={person.profile_id}><div className="feed-person-avatar">{person.avatar_url ? <img src={person.avatar_url} alt="" /> : person.display_name.charAt(0).toUpperCase()}</div><section><div><strong>{person.display_name}</strong><em>{person.degree}{person.degree === 1 ? "st" : person.degree === 2 ? "nd" : "rd"}</em></div><span>{person.headline || person.current_company || "StackedIN professional"}</span><small>{person.reason}</small><footer><button className={person.is_following ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "follow")}><UserRound size={12} />{person.is_following ? "Following" : "Follow"}</button><button className={person.is_subscribed ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "subscribe")}><BellRing size={12} />{person.is_subscribed ? "Subscribed" : "Subscribe"}</button></footer></section></article>)}{!people.length && <p>Complete your profile and add interests to unlock stronger people recommendations.</p>}</div><button className="feed-people-more" onClick={onOpenNetwork}>Explore your network <ArrowRight size={13} /></button></section>;
+}
+
 function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrite, openProfile, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
   const [nativeArticles, setNativeArticles] = useState([]);
   const [tenantContext, setTenantContext] = useState(null);
+  const [feedPeople, setFeedPeople] = useState([]);
+  const [networkSummary, setNetworkSummary] = useState({ connections: 0, followers: 0, following: 0, subscriptions: 0 });
+  const [peopleBusy, setPeopleBusy] = useState("");
   const [search, setSearch] = useState("");
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
   const [saved, setSaved] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-saved-${session.user.id}`) || "[]")));
@@ -376,11 +442,20 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
     try { setNativeArticles(await nativePublishing.listFeed(30)); }
     catch (nativeError) { if (!nativeError.message?.includes("content_blocks")) console.error(nativeError); }
   }, []);
+  const loadFeedNetwork = useCallback(async context => {
+    const tenantId = context?.tenant?.id;
+    if (!tenantId) return;
+    try {
+      const [people, summary] = await Promise.all([professionalGraph.getFeedPeople(tenantId, 6), professionalGraph.getNetworkSummary(tenantId)]);
+      setFeedPeople(people); setNetworkSummary(summary);
+    } catch (networkError) { console.error(networkError); }
+  }, []);
   useEffect(() => {
     loadNativeFeed();
     const channel = nativePublishing.subscribe(loadNativeFeed);
     return () => { void supabase.removeChannel(channel); };
   }, [loadNativeFeed]);
+  useEffect(() => { if (tenantContext) loadFeedNetwork(tenantContext); }, [tenantContext, loadFeedNetwork]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2200); return () => clearTimeout(timer); }, [toast]);
   const posts = useMemo(() => [...(catalogue.posts || [])].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
   const visible = useMemo(() => posts.filter(post => `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30), [posts, search]);
@@ -393,6 +468,18 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
     type === "liked" ? setLiked(next) : setSaved(next);
   };
   const share = async post => { try { await navigator.clipboard.writeText(post.url); setToast("Article link copied."); } catch { window.open(post.url, "_blank", "noopener"); } };
+  const peopleAction = async (person, action) => {
+    const tenantId = tenantContext?.tenant?.id; const profileId = tenantContext?.profile?.id;
+    if (!tenantId || !profileId) return;
+    setPeopleBusy(`${person.profile_id}:${action}`);
+    try {
+      if (action === "follow") person.is_following ? await professionalGraph.unfollow(tenantId, person.profile_id) : await professionalGraph.follow(tenantId, person.profile_id);
+      if (action === "subscribe") await nativePublishing.setSubscribed(tenantId, profileId, person.profile_id, !person.is_subscribed);
+      setToast(action === "follow" ? (person.is_following ? "Unfollowed." : "Now following.") : (person.is_subscribed ? "Subscription removed." : "Subscribed to new posts."));
+      await Promise.all([loadFeedNetwork(tenantContext), loadNativeFeed()]);
+    } catch (actionError) { setToast(actionError.message || "Network action could not be completed."); }
+    finally { setPeopleBusy(""); }
+  };
   const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
   const workspaceName = tenantContext?.tenant?.name || "Personal workspace";
   const initial = name.charAt(0).toUpperCase();
@@ -400,9 +487,9 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
   return <div className="feed-page">
     <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && search.trim()) openSearch(search); }} placeholder="Search articles—press Enter for people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar" onClick={openProfile}><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="feed-layout">
-      <aside className="feed-left"><section className="feed-profile" onClick={openProfile} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>{nativeArticles.length}</b><small>Native</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active, network, searchRoute, profileRoute }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && (profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio())}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
-      <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={openWrite}>Share an article, lesson, or system design…</button></div><footer><button onClick={openWrite}><PenTool size={16} />Write article</button><button onClick={openWrite}><Layers3 size={16} />Create post</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Live from your professional knowledge network</span><button>Relevance + freshness <ChevronRight size={13} /></button></div>{visibleNative.map(article => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications remain references until their source is connected in StackCraft Studio.</p></div>}{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or publish the first native StackedIN post.</p></div>}</main>
-      <aside className="feed-right"><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></a>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
+      <aside className="feed-left"><section className="feed-profile" onClick={openProfile} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.headline || session.user.email}</p><span>{tenantContext?.profile?.current_job_title || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active, network, searchRoute, profileRoute }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && (profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio())}><Icon size={17} />{label}{network && networkSummary.connections > 0 ? <b>{networkSummary.connections}</b> : !active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={openWrite}>Share an article, lesson, or system design…</button></div><footer><button onClick={openWrite}><PenTool size={16} />Write article</button><button onClick={openWrite}><Layers3 size={16} />Create post</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Live from your professional knowledge network</span><button>Relevance + freshness <ChevronRight size={13} /></button></div>{visibleNative.map(article => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications remain references until their source is connected in StackCraft Studio.</p></div>}{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or publish the first native StackedIN post.</p></div>}</main>
+      <aside className="feed-right"><FeedPeoplePanel people={feedPeople} busy={peopleBusy} onAction={peopleAction} onOpenNetwork={openNetwork} /><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <button type="button" onClick={openStudio} key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></button>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
 }
