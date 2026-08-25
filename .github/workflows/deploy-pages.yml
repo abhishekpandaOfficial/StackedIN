@@ -3,6 +3,8 @@ name: Deploy dashboard to GitHub Pages
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - "public/posts.json"
   workflow_dispatch:
 
 permissions:
