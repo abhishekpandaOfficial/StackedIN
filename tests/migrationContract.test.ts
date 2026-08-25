@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(resolve("supabase/migrations/202608250002_professional_graph_foundation.sql"), "utf8");
+const peopleMigration = readFileSync(resolve("supabase/migrations/202608250003_people_recommendations_v1.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -44,5 +45,23 @@ describe("professional graph migration contract", () => {
   it("does not collect or embed private messages", () => {
     expect(migration.toLowerCase()).not.toContain("private_message");
     expect(migration.toLowerCase()).not.toContain("password");
+  });
+});
+
+describe("people recommendations V1 migration contract", () => {
+  it("provides guarded retrieval and feedback functions", () => {
+    expect(peopleMigration).toContain("create or replace function public.get_people_recommendations");
+    expect(peopleMigration).toContain("create or replace function public.record_people_recommendation_impressions");
+    expect(peopleMigration).toContain("create or replace function public.record_people_recommendation_outcome");
+  });
+
+  it.each(["candidate.id <> a.viewer_id", "public.blocks", "public.mutes", "c.status in ('PENDING','ACCEPTED')", "c.cooldown_until > now()", "candidate.account_status = 'active'"])(
+    "enforces eligibility rule %s",
+    rule => expect(peopleMigration).toContain(rule),
+  );
+
+  it("keeps recommendation functions unavailable to anonymous clients", () => {
+    expect(peopleMigration).toContain("revoke all on function public.get_people_recommendations(uuid, integer) from public;");
+    expect(peopleMigration).toContain("grant execute on function public.get_people_recommendations(uuid, integer) to authenticated;");
   });
 });

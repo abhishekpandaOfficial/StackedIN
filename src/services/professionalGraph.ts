@@ -12,6 +12,22 @@ interface ConnectionRecord {
   cooldown_until: string | null;
 }
 
+export interface PeopleRecommendation {
+  candidate_profile_id: string;
+  slug: string;
+  display_name: string;
+  headline: string | null;
+  avatar_url: string | null;
+  location: string | null;
+  current_company: string | null;
+  relevance_label: "Strong match" | "Relevant" | "Suggested";
+  rank_score: number;
+  reasons: string[];
+  shared_skill_count: number;
+  shared_topic_count: number;
+  mutual_connection_count: number;
+}
+
 function unwrap<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
   if (data === null) throw new Error("The server returned no data.");
@@ -51,6 +67,36 @@ export class ProfessionalGraphService {
   async removeConnection(connectionId: string): Promise<ConnectionRecord> {
     const { data, error } = await this.client.rpc("remove_connection", { connection_id: connectionId }).single<ConnectionRecord>();
     return unwrap(data, error);
+  }
+
+  async getPeopleRecommendations(tenantId: string, limit = 8): Promise<PeopleRecommendation[]> {
+    const { data, error } = await this.client.rpc("get_people_recommendations", {
+      requested_tenant_id: tenantId,
+      result_limit: Math.max(1, Math.min(limit, 20)),
+    });
+    if (error) throw new Error(error.message);
+    const recommendations = (data ?? []) as PeopleRecommendation[];
+    if (recommendations.length) {
+      const { error: impressionError } = await this.client.rpc("record_people_recommendation_impressions", {
+        requested_tenant_id: tenantId,
+        candidate_profile_ids: recommendations.map(item => item.candidate_profile_id),
+      });
+      if (impressionError) throw new Error(impressionError.message);
+    }
+    return recommendations;
+  }
+
+  async recordPeopleOutcome(
+    tenantId: string,
+    candidateProfileId: string,
+    outcome: "CLICK" | "PROFILE_VIEW" | "FOLLOW" | "CONNECTION_REQUEST" | "DISMISS" | "NOT_RELEVANT" | "BLOCK",
+  ): Promise<void> {
+    const { error } = await this.client.rpc("record_people_recommendation_outcome", {
+      requested_tenant_id: tenantId,
+      candidate_profile_id: candidateProfileId,
+      outcome,
+    });
+    if (error) throw new Error(error.message);
   }
 
   async follow(tenantId: string, followedProfileId: string): Promise<void> {

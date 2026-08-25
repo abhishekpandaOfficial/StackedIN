@@ -72,6 +72,12 @@ embeddings, ranking configuration, feature flags, search indexes, and hardened
 RLS. See `docs/architecture/phase-1-professional-graph.md` for the design and
 security boundaries.
 
+Phase 2 adds explainable, negative-feedback-aware people recommendations and the
+protected `#network` experience. Its migration is
+`supabase/migrations/202608250003_people_recommendations_v1.sql`; implementation
+details and the ranking formula are documented in
+`docs/architecture/phase-2-people-recommendations.md`.
+
 Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` before
 promoting a migration or application change.
 

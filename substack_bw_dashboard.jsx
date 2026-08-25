@@ -8,6 +8,7 @@ import {
 import { SiGithub, SiGitlab, SiGoogle, SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import { getAppRedirectUrl, supabase, supabasePublicConfig } from "./supabase.js";
 import { loadTenantContext } from "./tenant.js";
+import { ProfessionalGraphService } from "./src/services/professionalGraph.ts";
 import "./studio.css";
 
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
@@ -28,6 +29,7 @@ const PLATFORMS = [
 ];
 const PILLAR_TONES = ["violet", "cyan", "lime", "amber", "rose", "blue", "mint", "orange", "indigo", "teal", "slate"];
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+const professionalGraph = new ProfessionalGraphService(supabase);
 
 const safeDate = value => {
   if (!value) return null;
@@ -238,7 +240,7 @@ function FeedCard({ post, liked, saved, onLike, onSave, onShare }) {
   </article>;
 }
 
-function FeedExperience({ session, openStudio, signOut }) {
+function FeedExperience({ session, openStudio, openNetwork, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
   const [tenantContext, setTenantContext] = useState(null);
   const [search, setSearch] = useState("");
@@ -261,13 +263,82 @@ function FeedExperience({ session, openStudio, signOut }) {
   const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
   const workspaceName = tenantContext?.tenant?.name || "Personal workspace";
   const initial = name.charAt(0).toUpperCase();
-  const featureLinks = [{ label: "Home feed", icon: Home, active: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
+  const featureLinks = [{ label: "Home feed", icon: Home, active: true }, { label: "People worth knowing", icon: Users, network: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
   return <div className="feed-page">
-    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search articles, topics, people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
+    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search articles, topics, people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="feed-layout">
-      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && openStudio()}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active, network }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && (network ? openNetwork() : openStudio())}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
       <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={() => openStudio()}>Share an article, lesson, or system design…</button></div><footer><button onClick={openStudio}><PenTool size={16} />Write article</button><button onClick={openStudio}><Layers3 size={16} />Add to series</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Showing your knowledge network</span><button>Newest first <ChevronRight size={13} /></button></div>{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or clear your search.</p></div>}</main>
       <aside className="feed-right"><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></a>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
+    </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
+  </div>;
+}
+
+function NetworkExperience({ session, openFeed, openStudio, signOut }) {
+  const [tenantContext, setTenantContext] = useState(null);
+  const [recommendations, setRecommendations] = useState([]);
+  const [following, setFollowing] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+  const [toast, setToast] = useState("");
+  const tenantId = tenantContext?.tenant?.id;
+  const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "StackedIN member";
+  const initial = name.charAt(0).toUpperCase();
+
+  const loadRecommendations = useCallback(async currentTenantId => {
+    setLoading(true); setError("");
+    try { setRecommendations(await professionalGraph.getPeopleRecommendations(currentTenantId, 8)); }
+    catch (loadError) {
+      console.error(loadError);
+      setError(loadError.message?.includes("get_people_recommendations") ? "People recommendations are ready in the application, but the Phase 2 database migration has not been applied yet." : "Recommendations could not be loaded. Please try again.");
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    loadTenantContext(session.user.id).then(context => {
+      setTenantContext(context);
+      if (context?.tenant?.id) loadRecommendations(context.tenant.id);
+      else { setLoading(false); setError("Your personal workspace is still being prepared."); }
+    }).catch(() => { setLoading(false); setError("Your workspace could not be loaded."); });
+  }, [loadRecommendations, session.user.id]);
+  useEffect(() => { if (!toast) return undefined; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
+
+  const removeCandidate = candidateId => setRecommendations(current => current.filter(item => item.candidate_profile_id !== candidateId));
+  const act = async (candidate, action) => {
+    if (!tenantId) return;
+    setBusy(`${candidate.candidate_profile_id}:${action}`);
+    try {
+      if (action === "connect") {
+        await professionalGraph.sendConnectionRequest(tenantId, candidate.candidate_profile_id);
+        await professionalGraph.recordPeopleOutcome(tenantId, candidate.candidate_profile_id, "CONNECTION_REQUEST");
+        removeCandidate(candidate.candidate_profile_id); setToast(`Connection request sent to ${candidate.display_name}.`);
+      } else if (action === "follow") {
+        await professionalGraph.follow(tenantId, candidate.candidate_profile_id);
+        await professionalGraph.recordPeopleOutcome(tenantId, candidate.candidate_profile_id, "FOLLOW");
+        setFollowing(current => new Set(current).add(candidate.candidate_profile_id)); setToast(`Following ${candidate.display_name}.`);
+      } else {
+        await professionalGraph.recordPeopleOutcome(tenantId, candidate.candidate_profile_id, action === "dismiss" ? "DISMISS" : "NOT_RELEVANT");
+        removeCandidate(candidate.candidate_profile_id); setToast(action === "dismiss" ? "Suggestion dismissed." : "Your recommendations will adapt.");
+      }
+    } catch (actionError) { setToast(actionError.message || "The action could not be completed."); }
+    finally { setBusy(""); }
+  };
+
+  return <div className="feed-page network-page">
+    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input placeholder="Search people, skills, topics…" onFocus={() => setToast("Professional search arrives in Phase 3.")} /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button className="active"><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
+    <div className="network-layout">
+      <aside className="network-sidebar"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Recommendations shaped by your professional graph.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{tenantContext?.tenant?.name || "Personal workspace"}</strong><small>{tenantContext?.role || "member"}</small></div></section><button onClick={openFeed}><Home size={16} />Back to home feed</button><button onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="network-main"><header><span>Professional knowledge graph</span><h1>People worth knowing</h1><p>Fewer suggestions. Better reasons. Every candidate passes privacy, relationship, and negative-feedback filters before appearing here.</p></header>
+        {loading && <div className="network-state"><RefreshCw className="spin" size={24} /><h3>Finding useful professional overlap…</h3></div>}
+        {!loading && error && <div className="network-state network-error"><ShieldCheck size={25} /><h3>Recommendations are not available yet</h3><p>{error}</p>{tenantId && <button onClick={() => loadRecommendations(tenantId)}>Try again</button>}</div>}
+        {!loading && !error && !recommendations.length && <div className="network-state"><Users size={28} /><h3>Your next useful connection is still taking shape.</h3><p>Add skills and interests, or return as more professionals join StackedIN.</p><button onClick={openStudio}>Build your professional signal</button></div>}
+        {!loading && !error && recommendations.length > 0 && <section className="people-grid">{recommendations.map(candidate => {
+          const candidateInitial = candidate.display_name?.charAt(0).toUpperCase() || "S";
+          return <article className="people-card" key={candidate.candidate_profile_id}><button className="people-dismiss" aria-label={`Dismiss ${candidate.display_name}`} onClick={() => act(candidate, "dismiss")} disabled={Boolean(busy)}><X size={15} /></button><div className="people-avatar">{candidate.avatar_url ? <img src={candidate.avatar_url} alt="" /> : candidateInitial}</div><div className="people-match"><Sparkles size={12} />{candidate.relevance_label}</div><h2>{candidate.display_name}</h2><p>{candidate.headline || "StackedIN professional"}</p><span>{[candidate.current_company, candidate.location].filter(Boolean).join(" · ") || "Building a professional knowledge graph"}</span><div className="people-reasons"><strong>Why this recommendation?</strong>{(candidate.reasons || []).slice(0, 4).map(reason => <div key={reason}><CheckCircle2 size={12} />{reason}</div>)}</div><footer><button className="connect" disabled={Boolean(busy)} onClick={() => act(candidate, "connect")}>{busy === `${candidate.candidate_profile_id}:connect` ? <RefreshCw className="spin" size={14} /> : <Users size={14} />}Connect</button><button disabled={Boolean(busy) || following.has(candidate.candidate_profile_id)} onClick={() => act(candidate, "follow")}>{following.has(candidate.candidate_profile_id) ? <CheckCircle2 size={14} /> : <UserRound size={14} />}{following.has(candidate.candidate_profile_id) ? "Following" : "Follow"}</button></footer><button className="not-relevant" onClick={() => act(candidate, "not-relevant")} disabled={Boolean(busy)}>Not relevant</button></article>;
+        })}</section>}
+      </main>
+      <aside className="network-insight"><section><BrainCircuit size={19} /><span>How ranking works</span><h3>Relevance before popularity.</h3><p>Shared expertise, professional interests, career fit, useful adjacency, and mutual connections matter more than follower count.</p></section><section><ShieldCheck size={19} /><span>Your controls</span><h3>Negative feedback is real data.</h3><p>Dismissals, “not relevant,” mutes, and blocks immediately change what can appear again.</p></section><section><Zap size={19} /><span>Exploration</span><h3>Small, controlled discovery.</h3><p>A narrow exploration slot prevents an echo chamber without turning your network into random roulette.</p></section></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
 }
@@ -508,8 +579,9 @@ export default function App() {
   const openStudio = () => navigate(session ? "studio" : "login");
   const signOut = async () => { await supabase.auth.signOut(); navigate("home"); };
   if (!authReady) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><RefreshCw className="spin" /></div>;
-  if (route === "login" || (["feed", "studio"].includes(route) && !session)) return <AuthView onBack={() => navigate("home")} />;
-  if (route === "feed" && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} signOut={signOut} />;
+  if (route === "login" || (["feed", "network", "studio"].includes(route) && !session)) return <AuthView onBack={() => navigate("home")} />;
+  if (route === "feed" && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} signOut={signOut} />;
+  if (route === "network" && session) return <NetworkExperience session={session} openFeed={() => navigate("feed")} openStudio={() => navigate("studio")} signOut={signOut} />;
   if (route === "studio" && session) return <Dashboard onExit={() => navigate("feed")} />;
   return <MarketingLanding openStudio={openStudio} />;
 }
