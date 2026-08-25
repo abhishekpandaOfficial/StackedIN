@@ -1,0 +1,39 @@
+name: Sync Substack posts
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: substack-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Discover Substack posts
+        run: node scripts/sync-substack.mjs
+      - name: Commit changed catalogue
+        run: |
+          if git diff --quiet -- public/posts.json; then
+            echo "Catalogue is already current."
+            exit 0
+          fi
+          git config user.name "abhishek-studio-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add public/posts.json
+          git commit -m "Sync latest Substack posts"
+          git push

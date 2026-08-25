@@ -1,645 +1,292 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import { BarChart3, Beaker, BookOpen, Bot, Boxes, Brain, ChartNoAxesCombined, Check, ChevronDown, ChevronUp, Cloud, Code2, Copy, Database, ExternalLink, Eye, FlaskConical, GitBranch, Network, Pencil, Route, Server, Tag, Trash2 } from "lucide-react";
-import { SiDocker, SiDotnet, SiGit, SiJupyter, SiKubernetes, SiMlflow, SiNumpy, SiPandas, SiPython, SiPytorch, SiTensorflow } from "@icons-pack/react-simple-icons";
-const stackcraftLogo = `${import.meta.env.BASE_URL}stackcraft-logo.svg`;
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Activity, ArrowUpRight, BarChart3, BookOpen, CalendarDays, CheckCircle2,
+  ChevronRight, Clock3, ExternalLink, FileText, Filter, Grid2X2, Layers3,
+  Library, ListFilter, RefreshCw, Rss, Search, Share2, Sparkles, Upload,
+  Workflow, X,
+} from "lucide-react";
+import "./studio.css";
 
-const POSTS = [
-  { id: 1, title: "Python for Machine Learning and Deep Learning", topic: "Python", tags: ["Python", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/python-for-machine-learning-and-deep", views: 0, shares: 0, description: "Complete Python foundations for ML/DL practitioners." },
-  { id: 2, title: "NumPy for Machine Learning and Deep Learning", topic: "NumPy", tags: ["NumPy", "ML", "Deep Learning"], status: "Published", url: "https://pandaabhishek.substack.com/p/numpy-for-machine-learning-and-deep", views: 0, shares: 0, description: "Vectorised operations and array manipulation for numerical computing." },
-  { id: 3, title: "Pandas for Machine Learning and Deep Learning", topic: "Pandas", tags: ["Pandas", "ML", "Data"], status: "Published", url: "https://pandaabhishek.substack.com/p/pandas-for-machine-learning-and-deep", views: 0, shares: 0, description: "DataFrames, data wrangling, and preprocessing pipelines." },
-  { id: 4, title: "Matplotlib for Machine Learning and Deep Learning", topic: "Matplotlib", tags: ["Matplotlib", "Visualisation", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/matplotlib-for-machine-learning-and", views: 0, shares: 0, description: "Plotting fundamentals and custom visualisations for ML results." },
-  { id: 5, title: "Seaborn for Statistical EDA", topic: "Seaborn", tags: ["Seaborn", "EDA", "Visualisation"], status: "Published", url: "https://pandaabhishek.substack.com/p/seaborn-for-statistical-eda", views: 0, shares: 0, description: "Statistical plots and exploratory data analysis with Seaborn." },
-  { id: 6, title: "Day 1 — From Senior .NET Developer to AI Architect", topic: "100 Days ML", tags: ["Journey", "ML", ".NET"], status: "Published", url: "https://pandaabhishek.substack.com/p/from-senior-net-developer-to-ai-architect", views: 0, shares: 0, description: "Starting the 100-day ML journey — roadmap and mindset shift." },
-  { id: 7, title: "Day 2 — 100 Days of Machine Learning", topic: "100 Days ML", tags: ["Journey", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and", views: 0, shares: 0, description: "Deep dive into core ML concepts and setting up the environment." },
-  { id: 8, title: "Day 3 — 100 Days of Machine Learning", topic: "100 Days ML", tags: ["Journey", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-51b", views: 0, shares: 0, description: "Datasets, feature types, and the data lifecycle in ML projects." },
-  { id: 9, title: "Day 4 — 100 Days of Machine Learning", topic: "100 Days ML", tags: ["Journey", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-65a", views: 0, shares: 0, description: "Hands-on data cleaning and dealing with missing values." },
-  { id: 10, title: "Day 5 — 100 Days of Machine Learning", topic: "100 Days ML", tags: ["Journey", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/100-days-of-machine-learning-and-484", views: 0, shares: 0, description: "Feature engineering techniques and model performance impact." },
-  { id: 11, title: "ML-001: What Is Artificial Intelligence?", topic: "ML Series", tags: ["AI", "ML", "Fundamentals"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-001-what-is-artificial-intelligence", views: 0, shares: 0, description: "Defining AI, its scope, and why it matters for software engineers." },
-  { id: 12, title: "ML-002: The Untold Story of Artificial Intelligence", topic: "ML Series", tags: ["AI", "History", "ML"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-002-the-untold-story-of-artificial", views: 0, shares: 0, description: "History of AI from Turing to transformers — breakthroughs and dead ends." },
-  { id: 13, title: "ML-003: Understanding the Types of AI", topic: "ML Series", tags: ["AI", "ML", "Fundamentals"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-003-understanding-the-types-of", views: 0, shares: 0, description: "Narrow AI, General AI, and AGI — taxonomy and implications." },
-  { id: 14, title: "ML-004: What Is Machine Learning?", topic: "ML Series", tags: ["ML", "Fundamentals"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-004-what-is-machine-learning", views: 0, shares: 0, description: "Formal definition of ML and the end-to-end ML workflow." },
-  { id: 15, title: "ML-005: Machine Learning Fundamentals", topic: "ML Series", tags: ["ML", "Fundamentals"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-005-machine-learning-fundamentals", views: 0, shares: 0, description: "Bias-variance trade-off, overfitting, and underfitting explained." },
-  { id: 16, title: "ML-006: Machine Learning Terminology", topic: "ML Series", tags: ["ML", "Fundamentals", "Glossary"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-006-machine-learning-terminology", views: 0, shares: 0, description: "Essential ML vocabulary every practitioner must know." },
-  { id: 17, title: "ML-007: The Complete Machine Learning Roadmap", topic: "ML Series", tags: ["ML", "Roadmap"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-007-the-complete-machine-learning", views: 0, shares: 0, description: "Step-by-step learning path from zero to production ML engineer." },
-  { id: 18, title: "ML-008: Exploratory Data Analysis", topic: "ML Series", tags: ["EDA", "ML", "Data"], status: "Published", url: "https://pandaabhishek.substack.com/p/day-12-ml-008-exploratory-data-analysis", views: 0, shares: 0, description: "Systematic EDA workflow — distributions, correlation, and hypothesis testing." },
-  { id: 19, title: "Kubernetes Mastery — Part 1: From Containers to Clusters", topic: "Kubernetes", tags: ["Kubernetes", "DevOps", "Containers"], status: "Published", url: "https://pandaabhishek.substack.com/p/kubernetes-mastery-from-containers", views: 0, shares: 0, description: "Pods, nodes, clusters — Kubernetes architecture from scratch." },
-  { id: 20, title: "Kubernetes Mastery — Part 2: Workloads and Configuration", topic: "Kubernetes", tags: ["Kubernetes", "DevOps"], status: "Published", url: "https://pandaabhishek.substack.com/p/kubernetes-mastery-workloads-configuration", views: 0, shares: 0, description: "Deployments, ConfigMaps, Secrets, and production workload management." },
-  { id: 21, title: "RAG Is the Future of AI Apps", topic: "RAG", tags: ["RAG", "AI", "LLM"], status: "Published", url: "https://pandaabhishek.substack.com/p/rag-is-the-future-of-ai-apps-heres", views: 0, shares: 0, description: "Retrieval-Augmented Generation — architecture, benefits, and implementation." },
-  { id: 22, title: "Vector RAG vs Vectorless RAG", topic: "RAG", tags: ["RAG", "AI", "LLM", "Vectors"], status: "Published", url: "https://pandaabhishek.substack.com/p/vector-rag-vs-vectorless-rag", views: 0, shares: 0, description: "Vector stores vs keyword retrieval — when to use which for RAG." },
-  { id: 23, title: "Multithreading in .NET Core", topic: ".NET", tags: [".NET", "Concurrency", "Backend"], status: "Published", url: "https://pandaabhishek.substack.com/p/multithreading-in-net-core-building", views: 0, shares: 0, description: "High-performance concurrent apps with async/await, Threads, and Tasks." },
-  { id: 24, title: "Queues vs Topics in Azure Service Bus", topic: "Azure", tags: ["Azure", "Messaging", "Cloud"], status: "Published", url: "https://pandaabhishek.substack.com/p/queues-vs-topics-in-messaging-frameworks", views: 0, shares: 0, description: "Messaging patterns and routing strategies in Azure Service Bus." },
-  { id: 25, title: "Building a Production-Ready Azure Service Bus Topic", topic: "Azure", tags: ["Azure", "Messaging", "Cloud"], status: "Published", url: "https://pandaabhishek.substack.com/p/building-a-production-ready-azure", views: 0, shares: 0, description: "Topic subscriptions, filters, and dead-letter queue implementation." },
-  { id: 26, title: "System Design Mastery — Complete Syllabus", topic: "System Design", tags: ["System Design", "Architecture"], status: "Published", url: "https://pandaabhishek.substack.com/p/the-complete-system-design-mastery", views: 0, shares: 0, description: "The definitive SD roadmap from CAP theorem to distributed caching." },
-  { id: 27, title: "SD-001: What Is System Design?", topic: "System Design", tags: ["System Design", "Architecture", "Fundamentals"], status: "Published", url: "https://pandaabhishek.substack.com/p/sd-001-what-is-system-design", views: 0, shares: 0, description: "First principles of system design — requirements, constraints, process." },
-  { id: 28, title: "From Foundations to Production ML", topic: "ML Series", tags: ["ML", "MLOps", "Production"], status: "Published", url: "https://pandaabhishek.substack.com/p/from-foundations-to-production-ml", views: 0, shares: 0, description: "Bridging notebook experiments and production-grade ML systems." },
-  { id: 29, title: "ML-009: Logistic Regression", topic: "ML Algorithms", tags: ["ML", "Classification", "Algorithms"], status: "Published", url: "https://pandaabhishek.substack.com/p/ml-009-logistic-regression", views: 0, shares: 0, description: "Sigmoid, cost function, gradient descent, and model evaluation." },
-  { id: 30, title: "ML-010: K-Nearest Neighbors (KNN)", topic: "ML Algorithms", tags: ["ML", "Classification", "Algorithms"], status: "Published", url: "https://pandaabhishek.substack.com/p/k-nearest-neighbors-knn-ml-010", views: 0, shares: 0, description: "KNN intuition, distance metrics, and choosing the right K." },
-  { id: 31, title: "Decision Tree Classification", topic: "ML Algorithms", tags: ["ML", "Classification", "Algorithms", "Trees"], status: "Published", url: "https://pandaabhishek.substack.com/p/decision-tree-classification", views: 0, shares: 0, description: "Gini impurity, information gain, pruning, and practical implementation." },
-  { id: 32, title: "MLOps — Part 1: Enterprise ML Operations", topic: "MLOps", tags: ["MLOps", "Production", "DevOps"], status: "Published", url: "https://pandaabhishek.substack.com/p/enterprise-mlops-and-ai-operations", views: 0, shares: 0, description: "MLOps principles, maturity model, and enterprise AI architecture." },
-  { id: 33, title: "MLOps Phase 1: Credit Card Fraud Detection", topic: "MLOps", tags: ["MLOps", "Production", "Project"], status: "Published", url: "https://pandaabhishek.substack.com/p/phase-01-enterprise-credit-card-fraud", views: 0, shares: 0, description: "Data pipeline and feature engineering for fraud detection." },
-  { id: 34, title: "MLOps Phase 2: Reproducible ML Engineering", topic: "MLOps", tags: ["MLOps", "Production", "Project"], status: "Published", url: "https://pandaabhishek.substack.com/p/phase-2-reproducible-ml-engineering", views: 0, shares: 0, description: "Reproducible experiments with versioning, environments, and DVC." },
-  { id: 35, title: "MLOps Phase 3: MLflow Experiment Tracking", topic: "MLOps", tags: ["MLOps", "MLflow", "Tracking"], status: "Published", url: "https://pandaabhishek.substack.com/p/mlflow-experiment-tracking-model", views: 0, shares: 0, description: "Tracking experiments, comparing runs, and model registry with MLflow." },
-  { id: 36, title: "MLOps Phase 4: Production Model Serving", topic: "MLOps", tags: ["MLOps", "Production", "Serving"], status: "Published", url: "https://pandaabhishek.substack.com/p/production-model-serving-phase-4", views: 0, shares: 0, description: "Deploying models as REST APIs, Docker containers, and monitoring." },
-  { id: 37, title: "Random Forest Classifier", topic: "ML Algorithms", tags: ["ML", "Classification", "Ensemble", "Trees"], status: "Published", url: "https://pandaabhishek.substack.com/p/random-forest-classifier", views: 0, shares: 0, description: "Ensemble learning with bagging, feature randomness, and forest tuning." },
-  { id: 38, title: "XGBoost Classification — Bank Marketing", topic: "ML Algorithms", tags: ["ML", "Classification", "XGBoost", "Ensemble"], status: "Published", url: "https://pandaabhishek.substack.com/p/xgboost-classification-bank-marketing", views: 0, shares: 0, description: "XGBoost from theory to practice on a real bank marketing dataset." },
-  { id: 39, title: "Deep Learning Mastery — From Neural Networks to Production", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-mastery-from-neural", views: 0, shares: 0, description: "Part 1 — perceptrons, activation functions, backpropagation." },
-  { id: 40, title: "Deep Learning Fundamentals — Part 1", topic: "Deep Learning", tags: ["Deep Learning", "Neural Networks", "AI"], status: "Published", url: "https://pandaabhishek.substack.com/p/deep-learning-fundamentals-part-1", views: 0, shares: 0, description: "Part 2 — core deep learning fundamentals and neural network concepts." },
-  { id: 41, title: "The Multi-Cloud AI Architect", topic: "AI Multicloud", tags: ["AI", "Cloud", "Architecture"], status: "Published", url: "https://pandaabhishek.substack.com/p/the-multi-cloud-ai-architect", views: 0, shares: 0, description: "Designing scalable AI systems across multiple cloud platforms." },
+const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
+const METRICS_KEY = "abhishek-studio-article-metrics-v1";
+const NAV_ITEMS = [
+  { id: "overview", label: "Overview", icon: Activity },
+  { id: "library", label: "Post library", icon: Library },
+  { id: "modules", label: "Topic modules", icon: Grid2X2 },
+  { id: "series", label: "Series map", icon: Workflow },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
+const PILLAR_TONES = ["violet", "cyan", "lime", "amber", "rose", "blue", "mint", "orange", "indigo", "teal", "slate"];
+const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
-const STATUSES = ["Published", "Draft", "Archived"];
-
-const s = {
-  page: { fontFamily: "'Inter', system-ui, sans-serif", background: "#fff", minHeight: "100vh", color: "#111" },
-  header: { borderBottom: "1.5px solid #111", padding: "20px 32px 0" },
-  headerTop: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" },
-  brand: { display: "flex", alignItems: "center", gap: 12 },
-  brandMark: { width: 32, height: 32, border: "2px solid #111", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 900, letterSpacing: -1 },
-  brandName: { fontSize: 18, fontWeight: 800, letterSpacing: -0.5 },
-  brandSub: { fontSize: 11, color: "#666", marginTop: 1 },
-  statStrip: { display: "flex", gap: 0, marginBottom: 0 },
-  statBox: { padding: "10px 24px", borderRight: "1px solid #e0e0e0", minWidth: 100 },
-  statNum: { fontSize: 22, fontWeight: 800, color: "#111", lineHeight: 1 },
-  statLabel: { fontSize: 10, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8, marginTop: 2 },
-  tabs: { display: "flex", gap: 0, marginTop: 0 },
-  tab: (active) => ({ padding: "10px 20px", fontSize: 12, fontWeight: 600, cursor: "pointer", background: "none", border: "none", borderBottom: active ? "2px solid #111" : "2px solid transparent", color: active ? "#111" : "#888", letterSpacing: 0.3 }),
-  body: { padding: "24px 32px" },
-  toolbar: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16, alignItems: "center" },
-  input: { border: "1px solid #ddd", borderRadius: 4, padding: "6px 10px", fontSize: 12, color: "#111", background: "#fff", outline: "none", minWidth: 130 },
-  btnPrimary: { background: "#111", color: "#fff", border: "none", borderRadius: 4, padding: "7px 16px", fontSize: 12, fontWeight: 700, cursor: "pointer", letterSpacing: 0.3 },
-  btnGhost: { background: "#fff", color: "#111", border: "1px solid #ddd", borderRadius: 4, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" },
-  btnDanger: { background: "#fff", color: "#c00", border: "1px solid #f0c0c0", borderRadius: 4, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
-  btnEdit: { background: "#f5f5f5", color: "#333", border: "1px solid #e0e0e0", borderRadius: 4, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
-  count: { fontSize: 11, color: "#999", alignSelf: "center" },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
-  th: { padding: "8px 12px", textAlign: "left", fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, borderBottom: "1.5px solid #111", cursor: "pointer", whiteSpace: "nowrap" },
-  td: { padding: "9px 12px", borderBottom: "1px solid #f0f0f0", verticalAlign: "top" },
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 },
-  modal: { background: "#fff", border: "1.5px solid #111", borderRadius: 6, padding: 28, width: "100%", maxWidth: 520, maxHeight: "90vh", overflowY: "auto" },
-  modalTitle: { fontSize: 15, fontWeight: 800, color: "#111", marginBottom: 20, letterSpacing: -0.3 },
-  formField: { marginBottom: 14 },
-  label: { display: "block", fontSize: 10, fontWeight: 700, color: "#666", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 4 },
-  fullInput: { border: "1px solid #ccc", borderRadius: 4, padding: "7px 10px", fontSize: 12, color: "#111", background: "#fff", width: "100%", outline: "none" },
-  toast: { position: "fixed", bottom: 24, right: 24, zIndex: 200, background: "#111", color: "#fff", borderRadius: 4, padding: "10px 18px", fontSize: 12, fontWeight: 600, letterSpacing: 0.2 },
-  logPanel: { background: "#111", color: "#d8d8d8", borderRadius: 4, padding: "12px 14px", fontFamily: "ui-monospace, SFMono-Regular, monospace", fontSize: 11, lineHeight: 1.7, maxHeight: 180, overflowY: "auto" },
-  launchPanel: { border: "1px solid #dfe3f5", borderRadius: 6, padding: "12px 14px", background: "linear-gradient(135deg, #fafbff, #f1f3ff)", maxWidth: 330 },
+const safeDate = value => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+const formatDate = value => {
+  const date = safeDate(value);
+  return date ? new Intl.DateTimeFormat("en", { day: "2-digit", month: "short", year: "numeric" }).format(date) : "Catalogue entry";
+};
+const formatSyncTime = value => {
+  const date = safeDate(value);
+  return date ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date) : "Not synced yet";
+};
+const slugOf = url => {
+  try { return new URL(url).pathname.split("/p/")[1]?.replace(/\/$/, "") || url; }
+  catch { return url; }
+};
+const loadMetrics = () => {
+  try { return JSON.parse(localStorage.getItem(METRICS_KEY) || "{}"); }
+  catch { return {}; }
+};
+const groupBy = (items, key) => items.reduce((groups, item) => {
+  const value = item[key] || "Unclassified";
+  (groups[value] ||= []).push(item);
+  return groups;
+}, {});
+const parseCSV = text => {
+  const rows = [];
+  let row = [], cell = "", quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (char === '"' && quoted && text[i + 1] === '"') { cell += '"'; i += 1; }
+    else if (char === '"') quoted = !quoted;
+    else if (char === "," && !quoted) { row.push(cell.trim()); cell = ""; }
+    else if (/\r|\n/.test(char) && !quoted) {
+      if (char === "\r" && text[i + 1] === "\n") i += 1;
+      row.push(cell.trim());
+      if (row.some(Boolean)) rows.push(row);
+      row = []; cell = "";
+    } else cell += char;
+  }
+  row.push(cell.trim());
+  if (row.some(Boolean)) rows.push(row);
+  if (rows.length < 2) return [];
+  const headers = rows[0].map(header => header.toLowerCase().trim().replace(/\s+/g, "_"));
+  return rows.slice(1).map(values => Object.fromEntries(headers.map((header, index) => [header, values[index] || ""])));
 };
 
-const StatusBadge = ({ status }) => {
-  const map = { Published: { bg: "#111", color: "#fff" }, Draft: { bg: "#f5f5f5", color: "#555" }, Archived: { bg: "#f5f5f5", color: "#aaa" } };
-  const st = map[status] || map.Archived;
-  return <span style={{ background: st.bg, color: st.color, borderRadius: 3, padding: "2px 8px", fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>{status}</span>;
-};
-
-const TAG_ICONS = {
-  AI: Bot, Algorithms: Brain, Architecture: Network, Azure: Cloud, Backend: Server, Classification: BarChart3, Cloud,
-  Containers: SiDocker, Data: Database, "Deep Learning": Brain, DevOps: SiGit, EDA: ChartNoAxesCombined, Ensemble: Boxes, Fundamentals: BookOpen,
-  Glossary: BookOpen, Journey: Route, Kubernetes: SiKubernetes, LLM: Bot, ML: Brain, MLflow: SiMlflow, MLOps: Server,
-  Messaging: Network, NumPy: SiNumpy, Pandas: SiPandas, Production: Server, Project: FlaskConical, Python: SiPython, RAG: Network,
-  Roadmap: Route, Seaborn: ChartNoAxesCombined, Tracking: Eye, Trees: GitBranch, Vectors: Network, Visualisation: BarChart3,
-  ".NET": SiDotnet, Jupyter: SiJupyter, Git: SiGit, Docker: SiDocker, PyTorch: SiPytorch, TensorFlow: SiTensorflow,
-};
-
-const ICON_OPTIONS = ["Tag", "Code2", "Brain", "Cloud", "Database", "Server", "Network", "BookOpen", "BarChart3", "SiPython", "SiNumpy", "SiPandas", "SiKubernetes", "SiDocker", "SiDotnet", "SiGit", "SiMlflow", "SiPytorch", "SiTensorflow"];
-const ICON_COMPONENTS = { ...TAG_ICONS, Tag, Code2, Brain, Cloud, Database, Server, Network, BookOpen, BarChart3 };
-
-const TopicIcon = ({ topic, iconKey }) => {
-  const Icon = ICON_COMPONENTS[iconKey || topic] || Tag;
-  return <span title={topic} aria-label={topic} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#555" }}><Icon size={15} strokeWidth={2} aria-hidden="true" /></span>;
-};
-
-const TagPill = ({ tag }) => {
-  const Icon = TAG_ICONS[tag] || Tag;
-  return <span title={tag} aria-label={tag} style={{ border: "1px solid #ddd", borderRadius: 3, width: 26, height: 24, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#555", background: "#fafafa" }}><Icon size={13} strokeWidth={2} aria-hidden="true" /></span>;
-};
+function MetricCard({ label, value, note, icon: Icon, accent }) {
+  return <article className={`metric-card tone-${accent}`}>
+    <div className="metric-card__icon"><Icon size={18} /></div>
+    <div className="metric-card__value">{value}</div>
+    <div className="metric-card__label">{label}</div>
+    <div className="metric-card__note">{note}</div>
+  </article>;
+}
+function SectionHeading({ eyebrow, title, action }) {
+  return <div className="section-heading"><div><span>{eyebrow}</span><h2>{title}</h2></div>{action}</div>;
+}
+function PostRow({ post, tone }) {
+  return <article className="post-row">
+    <div className={`post-index tone-${tone}`}>{String(post.id).padStart(2, "0")}</div>
+    <div className="post-main">
+      <div className="post-meta"><span>{post.code || "ARTICLE"}</span><i /><span>{post.series}</span><i /><span>{formatDate(post.publishedAt)}</span></div>
+      <h3>{post.title}</h3>
+      <p>{post.description}</p>
+      <div className="tag-line">{(post.tags || []).slice(0, 4).map(tag => <span key={tag}>{tag}</span>)}</div>
+    </div>
+    <div className="post-actions">
+      <div className="mini-metrics"><span>{compactNumber.format(post.views || 0)} views</span><span>{compactNumber.format(post.shares || 0)} shares</span></div>
+      <a href={post.url} target="_blank" rel="noreferrer" aria-label={`Read ${post.title}`}>Read <ArrowUpRight size={15} /></a>
+    </div>
+  </article>;
+}
 
 export default function Dashboard() {
-  const [posts, setPosts] = useState(POSTS);
-  const [modules, setModules] = useState(() => [...new Set(POSTS.map(post => post.topic))].sort());
-  const [moduleIcons, setModuleIcons] = useState(() => Object.fromEntries([...new Set(POSTS.map(post => post.topic))].map(module => [module, module])));
-  const [tab, setTab] = useState("posts");
+  const [catalogue, setCatalogue] = useState({ posts: [], source: "", lastSyncedAt: null });
+  const [metrics, setMetrics] = useState(loadMetrics);
+  const [view, setView] = useState("overview");
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [fTopic, setFTopic] = useState("");
-  const [fTag, setFTag] = useState("");
-  const [fStatus, setFStatus] = useState("");
-  const [sortCol, setSortCol] = useState("id");
-  const [sortDir, setSortDir] = useState("asc");
-  const [expandedTopics, setExpandedTopics] = useState(() => new Set(POSTS.map(post => post.topic)));
-  const [modal, setModal] = useState(false);
-  const [moduleModal, setModuleModal] = useState(false);
-  const [moduleName, setModuleName] = useState("");
-  const [moduleIcon, setModuleIcon] = useState("Tag");
-  const [editingModule, setEditingModule] = useState(null);
-  const [editId, setEditId] = useState(null);
-  const [form, setForm] = useState({});
-  const [toast, setToast] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
-  const [importState, setImportState] = useState(null);
-  const [visitCount, setVisitCount] = useState(0);
-  const [clickCount, setClickCount] = useState(0);
-  const csvRef = useRef();
+  const [pillar, setPillar] = useState("");
+  const [series, setSeries] = useState("");
+  const [sort, setSort] = useState("index");
+  const [toast, setToast] = useState("");
+  const [importReport, setImportReport] = useState(null);
+  const fileRef = useRef(null);
 
-  useEffect(() => {
+  const fetchCatalogue = useCallback(async (manual = false) => {
+    manual ? setSyncing(true) : setLoading(true);
+    setError("");
     try {
-      const visits = Number(localStorage.getItem("stackcraft-visits") || 0) + 1;
-      const clicks = Number(localStorage.getItem("stackcraft-clicks") || 0);
-      localStorage.setItem("stackcraft-visits", String(visits));
-      setVisitCount(visits);
-      setClickCount(clicks);
-    } catch (error) {}
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("stackcraft-posts", JSON.stringify(posts));
-      localStorage.setItem("stackcraft-modules", JSON.stringify(modules));
-      localStorage.setItem("stackcraft-module-icons", JSON.stringify(moduleIcons));
-    } catch (error) {}
-  }, [posts, modules, moduleIcons]);
-
-  const trackClick = () => {
-    try {
-      const clicks = Number(localStorage.getItem("stackcraft-clicks") || 0) + 1;
-      localStorage.setItem("stackcraft-clicks", String(clicks));
-      setClickCount(clicks);
-    } catch (error) {}
-  };
-
-  const notify = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2200); };
-  const nextId = useMemo(() => Math.max(0, ...posts.map(p => p.id)) + 1, [posts]);
-  const allTopics = useMemo(() => [...new Set([...modules, ...posts.map(post => post.topic).filter(Boolean)])].sort(), [modules, posts]);
-  const allTags = useMemo(() => [...new Set(posts.flatMap(p => p.tags))].sort(), [posts]);
-
-  const filtered = useMemo(() => {
-    let out = posts.filter(p => {
-      if (search && !p.title.toLowerCase().includes(search.toLowerCase()) && !p.description.toLowerCase().includes(search.toLowerCase())) return false;
-      if (fTopic && p.topic !== fTopic) return false;
-      if (fTag && !p.tags.includes(fTag)) return false;
-      if (fStatus && p.status !== fStatus) return false;
-      return true;
-    });
-    return [...out].sort((a, b) => {
-      let av = a[sortCol], bv = b[sortCol];
-      if (typeof av === "string") { av = av.toLowerCase(); bv = bv.toLowerCase(); }
-      return sortDir === "asc" ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
-    });
-  }, [posts, search, fTopic, fTag, fStatus, sortCol, sortDir]);
-
-  const groupedPosts = useMemo(() => {
-    const groups = new Map();
-    filtered.forEach(post => groups.set(post.topic, [...(groups.get(post.topic) || []), post]));
-    return [...groups.entries()];
-  }, [filtered]);
-
-  const toggleTopic = (topic) => {
-    setExpandedTopics(current => {
-      const next = new Set(current);
-      if (next.has(topic)) next.delete(topic);
-      else next.add(topic);
-      return next;
-    });
-  };
-
-  const stats = useMemo(() => {
-    const totalViews = posts.reduce((s, p) => s + p.views, 0);
-    const totalShares = posts.reduce((s, p) => s + p.shares, 0);
-    const published = posts.filter(p => p.status === "Published").length;
-    const byTopic = {};
-    posts.forEach(p => { byTopic[p.topic] = (byTopic[p.topic] || 0) + p.views; });
-    const topTopics = Object.entries(byTopic).sort((a, b) => b[1] - a[1]);
-    const topPosts = [...posts].sort((a, b) => b.views - a.views).slice(0, 8);
-    const byTag = {};
-    posts.forEach(p => p.tags.forEach(t => { byTag[t] = (byTag[t] || 0) + p.views; }));
-    const topTags = Object.entries(byTag).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    return { totalViews, totalShares, published, topTopics, topPosts, topTags };
-  }, [posts]);
-
-  const handleSort = (col) => {
-    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  };
-  const Arr = ({ col }) => <span style={{ opacity: sortCol === col ? 1 : 0.25, fontSize: 9, marginLeft: 3 }}>{sortCol === col && sortDir === "desc" ? "▼" : "▲"}</span>;
-
-  const openAdd = () => { setForm({ title: "", topic: modules[0] || "", tags: "", status: "Draft", url: "", views: 0, shares: 0, linkedinPublished: false, description: "" }); setEditId(null); setModal(true); };
-  const openEdit = (p) => { setForm({ ...p, tags: p.tags.join(", ") }); setEditId(p.id); setModal(true); };
-  const save = () => {
-    if (!form.title?.trim() || !form.url?.trim() || !form.topic?.trim()) { notify("Title, module, and URL required."); return; }
-    const tags = (form.tags || "").split(",").map(t => t.trim()).filter(Boolean);
-    const post = { ...form, id: editId || nextId, tags, views: Number(form.views) || 0, shares: Number(form.shares) || 0 };
-    if (!modules.includes(post.topic)) setModules(current => [...current, post.topic].sort());
-    setExpandedTopics(current => new Set([...current, post.topic]));
-    if (editId) { setPosts(ps => ps.map(p => p.id === editId ? post : p)); notify("Post updated."); }
-    else { setPosts(ps => [...ps, post]); notify("Post added."); }
-    setModal(false);
-  };
-  const openModuleManager = () => { setModuleName(""); setModuleIcon("Tag"); setEditingModule(null); setModuleModal(true); };
-  const saveModule = () => {
-    const name = moduleName.trim();
-    if (!name) { notify("Module name required."); return; }
-    if (editingModule) {
-      if (name !== editingModule && modules.includes(name)) { notify("That module already exists."); return; }
-      setModules(current => current.map(module => module === editingModule ? name : module).sort());
-      setModuleIcons(current => { const next = { ...current, [name]: moduleIcon }; delete next[editingModule]; return next; });
-      setPosts(current => current.map(post => post.topic === editingModule ? { ...post, topic: name } : post));
-      setExpandedTopics(current => { const next = new Set(current); if (next.delete(editingModule)) next.add(name); return next; });
-      notify("Module updated.");
-    } else if (modules.includes(name)) notify("That module already exists.");
-    else { setModules(current => [...current, name].sort()); setModuleIcons(current => ({ ...current, [name]: moduleIcon })); setExpandedTopics(current => new Set([...current, name])); notify("Module added."); }
-    setModuleModal(false);
-  };
-  const updateModuleIcon = (module, iconKey) => setModuleIcons(current => ({ ...current, [module]: iconKey }));
-  const editModule = (module) => { setEditingModule(module); setModuleName(module); setModuleIcon(moduleIcons[module] || module); };
-  const deleteModule = (module) => {
-    if (posts.some(post => post.topic === module)) { notify("Move its posts before deleting this module."); return; }
-    setModules(current => current.filter(item => item !== module));
-    setExpandedTopics(current => { const next = new Set(current); next.delete(module); return next; });
-    notify("Module deleted.");
-  };
-  const del = (id) => { if (!confirm("Delete this post?")) return; setPosts(ps => ps.filter(p => p.id !== id)); notify("Deleted."); };
-
-  const copyLink = (p) => { navigator.clipboard.writeText(p.url); setCopiedId(p.id); setTimeout(() => setCopiedId(null), 1800); notify("Link copied."); };
-
-  const parseCSV = (text) => {
-    const source = text.replace(/^\uFEFF/, "");
-    if (!source.trim()) return [];
-    const firstLine = source.split(/\r?\n/, 1)[0];
-    const delimiters = [",", ";", "\t"];
-    const delimiter = delimiters.reduce((best, candidate) => {
-      const count = firstLine.split(candidate).length - 1;
-      return count > best.count ? { value: candidate, count } : best;
-    }, { value: ",", count: -1 }).value;
-    const rows = []; let row = []; let value = ""; let quoted = false;
-    for (let i = 0; i < source.length; i++) {
-      const character = source[i];
-      if (character === '"' && source[i + 1] === '"' && quoted) { value += '"'; i++; }
-      else if (character === '"') quoted = !quoted;
-      else if (character === delimiter && !quoted) { row.push(value.trim()); value = ""; }
-      else if ((character === "\n" || character === "\r") && !quoted) {
-        if (character === "\r" && source[i + 1] === "\n") i++;
-        row.push(value.trim());
-        if (row.some(cell => cell)) rows.push(row);
-        row = []; value = "";
-      } else value += character;
+      const response = await fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Catalogue returned ${response.status}`);
+      const data = await response.json();
+      if (!Array.isArray(data.posts)) throw new Error("Catalogue format is invalid");
+      setCatalogue(data);
+      if (manual) setToast("Catalogue refreshed from the latest published snapshot.");
+    } catch (fetchError) {
+      setError("The catalogue could not be loaded. Please refresh the page in a moment.");
+      console.error(fetchError);
+    } finally {
+      setLoading(false); setSyncing(false);
     }
-    row.push(value.trim());
-    if (row.some(cell => cell)) rows.push(row);
-    return rows;
-  };
+  }, []);
+  useEffect(() => { fetchCatalogue(); }, [fetchCatalogue]);
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(""), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
-  const importCSV = (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    setImportState({ progress: 8, logs: [`Opening ${file.name}...`], fileName: file.name });
+  const posts = useMemo(() => catalogue.posts.map(post => ({
+    ...post,
+    views: Number(metrics[slugOf(post.url)]?.views ?? post.views ?? 0),
+    shares: Number(metrics[slugOf(post.url)]?.shares ?? post.shares ?? 0),
+  })), [catalogue.posts, metrics]);
+  const pillars = useMemo(() => groupBy(posts, "pillar"), [posts]);
+  const seriesGroups = useMemo(() => groupBy(posts, "series"), [posts]);
+  const pillarNames = useMemo(() => Object.keys(pillars).sort(), [pillars]);
+  const seriesNames = useMemo(() => Object.keys(seriesGroups).sort(), [seriesGroups]);
+  const toneFor = name => PILLAR_TONES[Math.max(0, pillarNames.indexOf(name)) % PILLAR_TONES.length];
+  const totals = useMemo(() => ({
+    published: posts.filter(post => post.status !== "Draft").length,
+    views: posts.reduce((sum, post) => sum + (post.views || 0), 0),
+    shares: posts.reduce((sum, post) => sum + (post.shares || 0), 0),
+  }), [posts]);
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase().trim();
+    return posts.filter(post => {
+      const searchable = `${post.title} ${post.description} ${post.pillar} ${post.series} ${(post.tags || []).join(" ")}`.toLowerCase();
+      return (!query || searchable.includes(query)) && (!pillar || post.pillar === pillar) && (!series || post.series === series);
+    }).sort((a, b) => {
+      if (sort === "title") return a.title.localeCompare(b.title);
+      if (sort === "newest") return (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id);
+      if (sort === "views") return (b.views || 0) - (a.views || 0);
+      return a.id - b.id;
+    });
+  }, [posts, search, pillar, series, sort]);
+  const latestPosts = useMemo(() => [...posts].sort((a, b) => {
+    const dateDelta = (safeDate(b.publishedAt)?.getTime() || 0) - (safeDate(a.publishedAt)?.getTime() || 0);
+    return dateDelta || b.id - a.id;
+  }).slice(0, 6), [posts]);
+  const openModule = name => { setPillar(name); setSeries(""); setSearch(""); setView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const openSeries = name => { setSeries(name); setPillar(""); setSearch(""); setView("library"); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const clearFilters = () => { setSearch(""); setPillar(""); setSeries(""); setSort("index"); };
+  const navTitle = NAV_ITEMS.find(item => item.id === view)?.label || "Overview";
+
+  const importMetrics = event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const rows = parseCSV(event.target.result || "");
-      if (!rows.length || !rows[0].length) {
-        setImportState({ progress: 100, logs: [`Read ${file.name}`, "The file is empty. Add a header row and at least one data row, then try again."], fileName: file.name, matched: 0, skipped: 0, error: true });
-        return;
-      }
-      const headerAliases = { article_title: "title", post_title: "title", headline: "title", total_views: "views", view_count: "views", total_shares: "shares", share_count: "shares" };
-      const headers = rows[0].map(header => {
-        const normalized = header.toLowerCase().replace(/\s+/g, "_").trim();
-        return headerAliases[normalized] || normalized;
-      });
-      if (!headers.includes("title")) {
-        setImportState({ progress: 100, logs: [`Read ${file.name}`, `Detected columns: ${headers.join(", ")}`, "Import stopped: a title column is required to match articles."], fileName: file.name, matched: 0, skipped: rows.length - 1, error: true });
-        return;
-      }
-      const records = rows.slice(1).map(values => Object.fromEntries(headers.map((header, index) => [header, values[index] || ""])));
-      const logs = [`Reading ${file.name}`, `Detected ${headers.length} columns: ${headers.join(", ")}`, `Found ${records.length} data rows`];
+    reader.onload = () => {
+      const rows = parseCSV(String(reader.result || ""));
       let matched = 0;
-      const updated = posts.map(post => {
-        const row = records.find(record => record.title && post.title.toLowerCase().includes(record.title.toLowerCase()));
-        if (!row) return post;
-        matched++;
-        logs.push(`Updated "${post.title}": ${row.views || "no views"} views, ${row.shares || "no shares"} shares`);
-        return { ...post, views: row.views ? Number(row.views.replace(/,/g, "")) || post.views : post.views, shares: row.shares ? Number(row.shares.replace(/,/g, "")) || post.shares : post.shares };
+      const next = { ...metrics };
+      rows.forEach(row => {
+        const title = (row.title || row.post_title || row.article_title || "").toLowerCase();
+        const url = row.url || row.post_url || "";
+        const match = posts.find(post => (url && slugOf(url) === slugOf(post.url)) || (title && post.title.toLowerCase().includes(title)));
+        if (!match) return;
+        next[slugOf(match.url)] = {
+          views: Number(String(row.views || row.total_views || row.view_count || 0).replace(/,/g, "")) || 0,
+          shares: Number(String(row.shares || row.total_shares || row.share_count || 0).replace(/,/g, "")) || 0,
+          importedAt: new Date().toISOString(),
+        };
+        matched += 1;
       });
-      const skipped = records.length - matched;
-      if (skipped) logs.push(`${skipped} row${skipped === 1 ? "" : "s"} skipped because no matching title was found`);
-      logs.push(`Import complete: ${matched} matched, ${skipped} skipped`);
-      setPosts(updated); setImportState({ progress: 100, logs, fileName: file.name, matched, skipped });
-      notify("CSV imported.");
+      localStorage.setItem(METRICS_KEY, JSON.stringify(next));
+      setMetrics(next);
+      setImportReport({ file: file.name, rows: rows.length, matched });
+      setToast(`${matched} article metrics imported.`);
     };
-    reader.onerror = () => setImportState({ progress: 100, logs: [`Could not read ${file.name}.`, "The browser reported a file read error. Check the file permissions or export the CSV again."], fileName: file.name, matched: 0, skipped: 0, error: true });
-    reader.readAsText(file); e.target.value = "";
+    reader.readAsText(file);
+    event.target.value = "";
   };
 
-  const maxTopicViews = Math.max(1, ...stats.topTopics.map(([, v]) => v));
-  const maxPostViews = Math.max(1, ...stats.topPosts.map(p => p.views));
-
-  return (
-    <div style={s.page}>
-      {/* Header */}
-      <div style={s.header}>
-        <div style={s.headerTop}>
-          <div style={s.brand}>
-            <img src={stackcraftLogo} alt="StackCraft" style={{ width: 42, height: 42, borderRadius: 10, boxShadow: "0 2px 8px rgba(17,24,39,.14)" }} />
-            <div>
-              <div style={s.brandName}>StackCraft</div>
-              <div style={s.brandSub}>Connect · Write · Develop</div>
-            </div>
-            <a href="https://pandaabhishek.substack.com/" onClick={trackClick} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", textDecoration: "none", borderBottom: "1px solid #bbb" }}>
-              Current writing <ExternalLink size={12} />
-            </a>
-            <button onClick={openAdd} style={s.btnPrimary}><Pencil size={13} /> Add post</button>
-            <button onClick={openModuleManager} style={s.btnGhost}><Boxes size={13} /> Manage modules</button>
-          </div>
-          <div style={s.launchPanel}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-              <strong style={{ fontSize: 13, color: "#111" }}>StackCraft.io is coming soon</strong>
-              <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.7, color: "#5d43c8", textTransform: "uppercase" }}>In progress</span>
-            </div>
-            <div style={{ fontSize: 11, color: "#5b6278", lineHeight: 1.45, marginBottom: 7 }}>A future-native home to connect, write, and build beyond today’s LinkedIn and Substack workflows.</div>
-            <a href="https://www.stackcraft.io/" onClick={trackClick} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "#2448c8", textDecoration: "none" }}>Visit stackcraft.io <ExternalLink size={12} /></a>
-          </div>
+  return <div className="studio-shell">
+    <aside className="sidebar">
+      <div className="studio-brand"><div className="studio-brand__mark">AP</div><div><strong>Abhishek Studio</strong><span>Knowledge publishing OS</span></div></div>
+      <nav aria-label="Studio navigation">{NAV_ITEMS.map(item => {
+        const Icon = item.icon;
+        return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={17} /><span>{item.label}</span>{item.id === "library" && <em>{posts.length}</em>}</button>;
+      })}</nav>
+      <div className="sidebar-sync"><span className="live-dot" /><div><strong>Auto-discovery active</strong><span>Checks Substack every 6 hours</span></div></div>
+      <a className="sidebar-link" href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Open publication <ExternalLink size={14} /></a>
+    </aside>
+    <main className="studio-main">
+      <header className="topbar">
+        <div><span>Content intelligence</span><h1>{navTitle}</h1></div>
+        <div className="topbar-actions">
+          <button className="button secondary" onClick={() => fetchCatalogue(true)} disabled={syncing}><RefreshCw size={15} className={syncing ? "spin" : ""} />{syncing ? "Refreshing" : "Refresh snapshot"}</button>
+          <a className="button primary" href="https://pandaabhishek.substack.com/publish/post" target="_blank" rel="noreferrer"><Sparkles size={15} />Write on Substack</a>
         </div>
-
-        {/* Stat strip */}
-        <div style={s.statStrip}>
-          {[
-            { label: "Total posts", val: posts.length },
-            { label: "Published", val: stats.published },
-            { label: "Modules", val: modules.length },
-          ].map(({ label, val }) => (
-            <div key={label} style={s.statBox}>
-              <div style={s.statNum}>{val}</div>
-              <div style={s.statLabel}>{label}</div>
+      </header>
+      <div className="mobile-nav" aria-label="Mobile navigation">{NAV_ITEMS.map(item => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
+      {error && <div className="error-banner"><X size={17} />{error}<button onClick={() => fetchCatalogue()}>Retry</button></div>}
+      {loading ? <div className="loading-state"><RefreshCw className="spin" /><p>Building your publishing map…</p></div> : <div className="view-frame">
+        {view === "overview" && <>
+          <section className="intro-row">
+            <div><span className="eyebrow">The signal behind the writing</span><h2>Your ideas, mapped like a living system.</h2><p>Every published Substack post is organised into pillars and series, ready to search, audit, and extend.</p></div>
+            <div className="sync-card"><div><Rss size={19} /><span>Catalogue health</span></div><strong>All systems current</strong><p>Last snapshot: {formatSyncTime(catalogue.lastSyncedAt)}</p><small>Source: {catalogue.source || "Substack catalogue"}</small></div>
+          </section>
+          <section className="metric-grid">
+            <MetricCard label="Published posts" value={totals.published} note="Live content library" icon={FileText} accent="violet" />
+            <MetricCard label="Topic pillars" value={pillarNames.length} note="Modular knowledge domains" icon={Layers3} accent="cyan" />
+            <MetricCard label="Structured series" value={seriesNames.length} note="Curricula and deep dives" icon={Workflow} accent="lime" />
+            <MetricCard label="Imported views" value={compactNumber.format(totals.views)} note="Private analytics on this device" icon={BarChart3} accent="amber" />
+          </section>
+          <section className="overview-grid">
+            <div className="panel">
+              <SectionHeading eyebrow="Coverage" title="Content architecture" action={<button className="text-button" onClick={() => setView("modules")}>Explore modules <ChevronRight size={15} /></button>} />
+              <div className="pillar-bars">{Object.entries(pillars).sort((a, b) => b[1].length - a[1].length).map(([name, items]) => <button key={name} onClick={() => openModule(name)}><span className={`pillar-swatch tone-${toneFor(name)}`} /><div><strong>{name}</strong><span>{new Set(items.map(item => item.series)).size} series</span></div><div className="bar"><i className={`tone-${toneFor(name)}`} style={{ width: `${(items.length / posts.length) * 100}%` }} /></div><em>{items.length}</em></button>)}</div>
             </div>
-          ))}
-        </div>
-
-      </div>
-
-      <div style={s.body}>
-        {tab === "posts" && (
-          <>
-            <div style={s.toolbar}>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search posts…" style={{ ...s.input, minWidth: 200 }} />
-              <select value={fTopic} onChange={e => setFTopic(e.target.value)} style={s.input}>
-                <option value="">All topics</option>
-                {allTopics.map(t => <option key={t}>{t}</option>)}
-              </select>
-              <select value={fTag} onChange={e => setFTag(e.target.value)} style={s.input}>
-                <option value="">All tags</option>
-                {allTags.map(t => <option key={t}>{t}</option>)}
-              </select>
-              <select value={fStatus} onChange={e => setFStatus(e.target.value)} style={s.input}>
-                <option value="">All status</option>
-                {STATUSES.map(t => <option key={t}>{t}</option>)}
-              </select>
-              <span style={s.count}>{filtered.length} posts</span>
+            <div className="panel latest-panel">
+              <SectionHeading eyebrow="Momentum" title="Recently added" action={<button className="text-button" onClick={() => setView("library")}>View all <ChevronRight size={15} /></button>} />
+              <div className="latest-list">{latestPosts.map(post => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><span className={`tone-${toneFor(post.pillar)}`}>{post.code || "NEW"}</span><div><strong>{post.title}</strong><small>{post.pillar} · {formatDate(post.publishedAt)}</small></div><ArrowUpRight size={15} /></a>)}</div>
             </div>
-
-            {groupedPosts.map(([topic, topicPosts]) => (
-              <section key={topic} style={{ marginBottom: 14, border: "1px solid #e5e5e5", borderRadius: 5, overflow: "hidden" }}>
-                <button onClick={() => toggleTopic(topic)} aria-expanded={expandedTopics.has(topic)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", border: "none", borderBottom: expandedTopics.has(topic) ? "1px solid #e5e5e5" : "none", background: "#fafafa", cursor: "pointer", color: "#111" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}<span style={{ color: "#999", fontSize: 11, fontWeight: 600 }}>{topicPosts.length} articles</span></span>
-                  {expandedTopics.has(topic) ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-                {expandedTopics.has(topic) && <div style={{ overflowX: "auto" }}>
-                  <table style={s.table}>
-                    <thead>
-                      <tr>
-                        {[["#", "id", 36], ["Title", "title", "auto"], ["Tags", null, 150], ["Status", "status", 96], ["Link", null, 86]].map(([l, col, w]) => (
-                          <th key={l} style={{ ...s.th, width: w }} onClick={col ? () => handleSort(col) : undefined}>
-                            {l}{col && <Arr col={col} />}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                  {topicPosts.map((p, i) => (
-                    <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                      <td style={{ ...s.td, color: "#bbb", fontWeight: 700, fontSize: 11 }}>{p.id}</td>
-                      <td style={{ ...s.td, maxWidth: 300 }}>
-                        <div style={{ fontWeight: 600, color: "#111", fontSize: 12, marginBottom: 2 }}>{p.title}</div>
-                        <div style={{ fontSize: 11, color: "#999", lineHeight: 1.4 }}>{p.description}</div>
-                      </td>
-                      <td style={s.td}>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                          {p.tags.slice(0, 3).map(t => <TagPill key={t} tag={t} />)}
-                          {p.tags.length > 3 && <span style={{ fontSize: 10, color: "#aaa" }}>+{p.tags.length - 3}</span>}
-                        </div>
-                      </td>
-                      <td style={s.td}><StatusBadge status={p.status} /></td>
-                      <td style={s.td}>
-                        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                          <a href={p.url} onClick={trackClick} target="_blank" rel="noreferrer" style={{ color: "#111", textDecoration: "none", display: "inline-flex" }} title="Open article" aria-label={`Open ${p.title}`}><ExternalLink size={14} /></a>
-                          <button onClick={() => copyLink(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: copiedId === p.id ? "#090" : "#aaa", padding: 0 }} title="Copy link">
-                            {copiedId === p.id ? <Check size={14} /> : <Copy size={14} />}
-                          </button>
-                          <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: 0 }} title="Edit post" aria-label={`Edit ${p.title}`}><Pencil size={14} /></button>
-                          <button onClick={() => del(p.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#b00", padding: 0 }} title="Delete post" aria-label={`Delete ${p.title}`}><Trash2 size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                    </tbody>
-                  </table>
-                </div>}
-              </section>
-            ))}
-            {groupedPosts.length === 0 && <div style={{ ...s.td, textAlign: "center", padding: 40, color: "#ccc" }}>No posts match.</div>}
-          </>
-        )}
-
-        {tab === "analytics" && (
-          <div>
-            {stats.totalViews === 0 && (
-              <div style={{ border: "1px solid #f0f0f0", borderRadius: 4, padding: "16px 20px", marginBottom: 24, color: "#999", fontSize: 12 }}>
-                No view data yet. Import a CSV with columns <code>title,views,shares</code> or edit posts to add counts.
-              </div>
-            )}
-
-            {/* Top posts */}
-            <div style={{ marginBottom: 36 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>Top posts by views</div>
-              {stats.topPosts.map((p, i) => (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#ccc", width: 18, textAlign: "right" }}>{i + 1}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: "#111", fontWeight: 500, marginBottom: 4 }}>{p.title}</div>
-                    <div style={{ height: 3, background: "#f0f0f0", borderRadius: 2 }}>
-                      <div style={{ height: 3, background: "#111", borderRadius: 2, width: `${(p.views / maxPostViews) * 100}%` }} />
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#111", width: 60, textAlign: "right" }}>{p.views.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* By topic */}
-            <div style={{ marginBottom: 36 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>Views by topic</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
-                {stats.topTopics.map(([topic, v]) => (
-                  <div key={topic} style={{ border: "1px solid #e8e8e8", borderRadius: 4, padding: "12px 14px" }}>
-                    <div title={topic} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "#999", fontWeight: 600, marginBottom: 4 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color: "#111", marginBottom: 6 }}>{v.toLocaleString()}</div>
-                    <div style={{ height: 2, background: "#f0f0f0" }}>
-                      <div style={{ height: 2, background: "#111", width: `${(v / maxTopicViews) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* By tag */}
-            <div style={{ marginBottom: 36 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>Views by tag</div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {stats.topTags.map(([tag, v]) => (
-                  <div key={tag} style={{ border: "1px solid #e8e8e8", borderRadius: 3, padding: "6px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                    <TagPill tag={tag} />
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#111" }}>{v.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Full table */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 12, borderBottom: "1px solid #f0f0f0", paddingBottom: 8 }}>All posts performance</div>
-              <table style={{ ...s.table }}>
-                <thead>
-                  <tr>
-                    {["Title", "Topic", "Views", "Shares", "Status"].map(h => (
-                      <th key={h} style={s.th}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...posts].sort((a, b) => b.views - a.views).map((p, i) => (
-                    <tr key={p.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                      <td style={{ ...s.td, fontSize: 12, color: "#111" }}>{p.title}</td>
-                      <td style={{ ...s.td, fontSize: 11, color: "#666" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={p.topic} iconKey={moduleIcons[p.topic]} />{p.topic}</span></td>
-                      <td style={{ ...s.td, fontWeight: 700 }}>{p.views.toLocaleString()}</td>
-                      <td style={{ ...s.td, color: "#666" }}>{p.shares.toLocaleString()}</td>
-                      <td style={s.td}><StatusBadge status={p.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          </section>
+        </>}
+        {view === "library" && <section className="panel library-panel">
+          <SectionHeading eyebrow="Master catalogue" title={`${filtered.length} of ${posts.length} articles`} action={<button className="text-button" onClick={clearFilters}>Clear filters <X size={14} /></button>} />
+          <div className="filterbar">
+            <label className="searchbox"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search title, topic, tag…" /></label>
+            <label><Filter size={14} /><select value={pillar} onChange={event => setPillar(event.target.value)}><option value="">All pillars</option>{pillarNames.map(name => <option key={name}>{name}</option>)}</select></label>
+            <label><ListFilter size={14} /><select value={series} onChange={event => setSeries(event.target.value)}><option value="">All series</option>{seriesNames.map(name => <option key={name}>{name}</option>)}</select></label>
+            <select aria-label="Sort posts" value={sort} onChange={event => setSort(event.target.value)}><option value="index">Series order</option><option value="newest">Newest first</option><option value="title">Title A–Z</option><option value="views">Most viewed</option></select>
           </div>
-        )}
-      </div>
-
-      {/* Modal */}
-      {modal && (
-        <div style={s.overlay}>
-          <div style={s.modal}>
-            <div style={s.modalTitle}>{editId ? "Edit post" : "New post"}</div>
-            {[["Title", "title", "text"], ["Topic", "topic", "text"], ["Tags (comma-separated)", "tags", "text"], ["URL", "url", "text"], ["Description", "description", "textarea"], ["Views", "views", "number"], ["Shares", "shares", "number"]].map(([label, key, type]) => (
-              <div key={key} style={s.formField}>
-                <label style={s.label}>{label}</label>
-                {key === "topic"
-                  ? <select value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={s.fullInput}>
-                    <option value="">Select a module</option>
-                    {modules.map(module => <option key={module}>{module}</option>)}
-                  </select>
-                  : type === "textarea"
-                  ? <textarea value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} rows={3} style={{ ...s.fullInput, resize: "vertical" }} />
-                  : <input type={type} value={form[key] || ""} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} style={s.fullInput} />
-                }
-              </div>
-            ))}
-            <button onClick={openModuleManager} style={{ ...s.btnGhost, marginBottom: 10 }}><Boxes size={13} /> Add or update modules</button>
-            <div style={s.formField}>
-              <label style={s.label}>Status</label>
-              <select value={form.status || "Draft"} onChange={e => setForm(f => ({ ...f, status: e.target.value }))} style={s.fullInput}>
-                {STATUSES.map(st => <option key={st}>{st}</option>)}
-              </select>
+          <div className="post-list">{filtered.map(post => <PostRow key={post.url} post={post} tone={toneFor(post.pillar)} />)}{!filtered.length && <div className="empty-state"><BookOpen /><h3>No matching articles</h3><p>Try removing a filter or using a broader search.</p></div>}</div>
+        </section>}
+        {view === "modules" && <>
+          <SectionHeading eyebrow="Knowledge domains" title={`${pillarNames.length} modular content pillars`} />
+          <section className="module-grid">{Object.entries(pillars).sort((a, b) => b[1].length - a[1].length).map(([name, items]) => {
+            const moduleSeries = [...new Set(items.map(item => item.series))];
+            const tags = [...new Set(items.flatMap(item => item.tags || []))].slice(0, 5);
+            return <button className="module-card" key={name} onClick={() => openModule(name)}><div className={`module-card__mark tone-${toneFor(name)}`}><Layers3 /></div><div className="module-card__count">{items.length}<span>articles</span></div><h3>{name}</h3><p>{moduleSeries.length} connected series building one coherent knowledge domain.</p><div className="tag-line">{tags.map(tag => <span key={tag}>{tag}</span>)}</div><footer><span>{moduleSeries.join(" · ")}</span><ChevronRight size={17} /></footer></button>;
+          })}</section>
+        </>}
+        {view === "series" && <section className="panel series-panel">
+          <SectionHeading eyebrow="Learning paths" title={`${seriesNames.length} structured series`} />
+          <div className="series-list">{Object.entries(seriesGroups).sort((a, b) => b[1].length - a[1].length).map(([name, items], index) => <button key={name} onClick={() => openSeries(name)}><div className="series-rank">{String(index + 1).padStart(2, "0")}</div><div className="series-body"><span>{items[0]?.pillar}</span><h3>{name}</h3><p>{items.map(item => item.code).filter(Boolean).slice(0, 6).join(" · ")}{items.length > 6 ? ` · +${items.length - 6}` : ""}</p></div><div className="series-count"><strong>{items.length}</strong><span>posts</span></div><ChevronRight size={18} /></button>)}</div>
+        </section>}
+        {view === "analytics" && <>
+          <section className="metric-grid analytics-metrics">
+            <MetricCard label="Article views" value={compactNumber.format(totals.views)} note="From your imported Substack CSV" icon={BarChart3} accent="violet" />
+            <MetricCard label="Shares" value={compactNumber.format(totals.shares)} note="From your imported Substack CSV" icon={Share2} accent="cyan" />
+            <MetricCard label="Measured posts" value={posts.filter(post => post.views || post.shares).length} note={`Out of ${posts.length} published posts`} icon={CheckCircle2} accent="lime" />
+            <MetricCard label="Last content sync" value={formatDate(catalogue.lastSyncedAt)} note="Public catalogue freshness" icon={Clock3} accent="amber" />
+          </section>
+          <section className="analytics-grid">
+            <div className="panel import-panel">
+              <SectionHeading eyebrow="Private performance" title="Import Substack analytics" />
+              <p>Substack does not expose private view and share counts publicly. Export your analytics as CSV and import it here; the data stays only in this browser.</p>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={importMetrics} />
+              <button className="upload-zone" onClick={() => fileRef.current?.click()}><Upload size={22} /><strong>Choose analytics CSV</strong><span>Recommended columns: title, views, shares, url</span></button>
+              {importReport && <div className="import-result"><CheckCircle2 size={18} /><div><strong>{importReport.matched} posts updated</strong><span>{importReport.file} · {importReport.rows} rows processed</span></div></div>}
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-              <button onClick={() => setModal(false)} style={s.btnGhost}>Cancel</button>
-              <button onClick={save} style={s.btnPrimary}>Save</button>
+            <div className="panel performance-panel">
+              <SectionHeading eyebrow="Top performance" title="Most-viewed articles" />
+              {[...posts].sort((a, b) => b.views - a.views).slice(0, 8).map((post, index) => <div className="performance-row" key={post.url}><span>{index + 1}</span><div><strong>{post.title}</strong><i><b style={{ width: `${totals.views ? (post.views / Math.max(...posts.map(item => item.views), 1)) * 100 : 0}%` }} /></i></div><em>{compactNumber.format(post.views)}</em></div>)}
             </div>
-          </div>
-        </div>
-      )}
-
-      {moduleModal && (
-        <div style={s.overlay}>
-          <div style={{ ...s.modal, maxWidth: 460 }}>
-            <div style={s.modalTitle}>{editingModule ? "Update module" : "Manage modules"}</div>
-            <div style={s.formField}>
-              <label style={s.label}>{editingModule ? "Module name" : "New module name"}</label>
-              <input autoFocus value={moduleName} onChange={e => setModuleName(e.target.value)} onKeyDown={e => e.key === "Enter" && saveModule()} placeholder="e.g. Cloud Architecture" style={s.fullInput} />
-            </div>
-            <div style={{ marginBottom: 18 }}>
-              {modules.map(module => (
-                <div key={module} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 0", borderBottom: "1px solid #f0f0f0" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12 }}><TopicIcon topic={module} iconKey={moduleIcons[module]} />{module}</span>
-                  <span style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => editModule(module)} style={{ ...s.btnEdit, display: "inline-flex", alignItems: "center", gap: 4 }}><Pencil size={12} /> Edit</button>
-                    <button onClick={() => deleteModule(module)} style={{ ...s.btnDanger, display: "inline-flex", alignItems: "center", gap: 4 }}><Trash2 size={12} /> Delete</button>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div style={s.formField}>
-              <label style={s.label}>Module icon</label>
-              <select value={moduleIcon} onChange={e => setModuleIcon(e.target.value)} style={s.fullInput}>
-                {ICON_OPTIONS.map(iconKey => <option key={iconKey} value={iconKey}>{iconKey.replace(/^Si/, "")}</option>)}
-              </select>
-              <div style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 8, fontSize: 11, color: "#777" }}><TopicIcon topic={moduleName || "Module"} iconKey={moduleIcon} /> Preview</div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={() => setModuleModal(false)} style={s.btnGhost}>Close</button>
-              <button onClick={saveModule} style={s.btnPrimary}>{editingModule ? "Update module" : "Add module"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {importState && (
-        <div style={s.overlay} onClick={() => setImportState(null)}>
-          <div style={{ ...s.modal, maxWidth: 680 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-              <div>
-                <div style={s.modalTitle}>Import CSV report</div>
-                <div style={{ fontSize: 11, color: "#888", marginTop: -12 }}>{importState.fileName}</div>
-              </div>
-              <button onClick={() => setImportState(null)} style={s.btnGhost} aria-label="Close import report">Close</button>
-            </div>
-            <div style={{ height: 8, background: "#eee", borderRadius: 4, overflow: "hidden", marginBottom: 8 }}>
-              <div style={{ height: "100%", width: `${importState.progress}%`, background: "#111", transition: "width 180ms ease" }} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#777", marginBottom: 16 }}>
-              <span>{importState.progress === 100 ? "Parsing complete" : "Parsing CSV..."}</span>
-              <strong>{importState.progress}%</strong>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: 20 }}>
-              {[["Rows matched", importState.matched ?? "-"], ["Rows skipped", importState.skipped ?? "-"], ["Total views", stats.totalViews.toLocaleString()]].map(([label, value]) => (
-                <div key={label} style={{ border: "1px solid #e8e8e8", padding: "10px 12px" }}><div style={s.statNum}>{value}</div><div style={s.statLabel}>{label}</div></div>
-              ))}
-            </div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Import log</div>
-            <div style={s.logPanel}>{importState.logs.map((log, index) => <div key={`${log}-${index}`}><span style={{ color: "#777" }}>{String(index + 1).padStart(2, "0")} </span>{log}</div>)}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Views by topic</div>
-                {stats.topTopics.slice(0, 5).map(([topic, views]) => <div key={topic} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "5px 0", borderBottom: "1px solid #f0f0f0" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><TopicIcon topic={topic} iconKey={moduleIcons[topic]} />{topic}</span><strong>{views.toLocaleString()}</strong></div>)}
-              </div>
-              <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Recently published</div>
-                {[...posts].filter(post => post.status === "Published").sort((a, b) => b.id - a.id).slice(0, 5).map(post => <div key={post.id} style={{ padding: "5px 0", borderBottom: "1px solid #f0f0f0", fontSize: 11 }}><div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{post.title}</div><span style={{ color: "#888" }}>{post.views.toLocaleString()} views · {post.shares.toLocaleString()} shares</span></div>)}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toast && <div style={s.toast}>{toast}</div>}
-
-      <footer style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", margin: "28px 32px 0", padding: "16px 0 22px", borderTop: "1px solid #e8e8e8", color: "#888", fontSize: 10 }}>
-        <span>StackCraft · Connect · Write · Develop</span>
-        <span title="Counts are stored privately in this browser">This browser · {visitCount.toLocaleString()} opens · {clickCount.toLocaleString()} link clicks</span>
-      </footer>
-
-      <style>{`* { box-sizing: border-box; } input, select, textarea { font-family: inherit; } button { font-family: inherit; }`}</style>
-    </div>
-  );
+          </section>
+        </>}
+      </div>}
+      <footer className="site-footer"><span>Abhishek Studio · Built for deliberate technical publishing</span><span><CalendarDays size={13} /> Auto-sync every 6 hours</span></footer>
+    </main>
+    {toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
+  </div>;
 }
