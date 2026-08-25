@@ -5,6 +5,9 @@ on:
     branches: [master]
     paths-ignore:
       - "public/posts.json"
+      - "scripts/sync-substack.mjs"
+      - "data/posts.seed.json"
+      - ".github/workflows/sync-substack.yml"
   workflow_dispatch:
 
 permissions:
