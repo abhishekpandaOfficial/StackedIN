@@ -21,6 +21,8 @@ A living multi-platform publishing dashboard for Abhishek Panda's writing on
 - Publishes native posts and rich-block articles directly to the StackedIN feed.
 - Provides realtime reactions, comments, restacks, notifications, connection requests, and direct messages.
 - Lets XStudio owners connect a public feed and import it into their native StackedIN library on demand.
+- Provides an XStudio CMS with structured rich blocks, local recovery, autosave, revision history, SEO controls, live preview, a content calendar, and a distribution queue.
+- Publishes or schedules StackedIN-native content and prepares safe handoff packages for external provider editors.
 
 ## Automatic multi-platform sync
 
@@ -69,6 +71,13 @@ tenant-scoped articles, automatic personal-workspace creation, and Row Level
 Security. Apply migrations in filename order. Profile journeys, inbox data,
 and realtime notifications are introduced by migration `007`; XStudio imports
 plus message edit/delete controls are introduced by migration `008`.
+The production XStudio CMS, revisions, scheduling, and distribution queue are
+introduced by migration `009`.
+
+For scheduled publishing on Vercel, configure the server-only
+`SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables. Never prefix either
+secret with `VITE_`. The scheduled endpoint is `/api/publish-scheduled` and can
+only execute the service-role-only `publish_due_articles()` RPC.
 
 See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
 environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth

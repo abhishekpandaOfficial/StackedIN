@@ -15,6 +15,74 @@ export interface SaveNativeArticleInput {
   status: "draft" | "published";
 }
 
+export type CMSStatus = "draft" | "scheduled" | "published" | "archived";
+export type DistributionPlatform = "STACKEDIN" | "SUBSTACK" | "MEDIUM" | "HASHNODE" | "LINKEDIN";
+
+export interface CMSDistributionTarget {
+  platform: DistributionPlatform;
+  enabled: boolean;
+  title?: string;
+  excerpt?: string;
+  tags?: string[];
+}
+
+export interface SaveCMSArticleInput extends Omit<SaveNativeArticleInput, "status"> {
+  pillar?: string;
+  series?: string;
+  slug?: string;
+  status: Exclude<CMSStatus, "archived">;
+  scheduledFor?: string | null;
+  seo?: {
+    title?: string;
+    description?: string;
+    canonicalUrl?: string;
+    socialImageUrl?: string;
+  };
+  distribution?: CMSDistributionTarget[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface CMSArticle extends NativeArticle {
+  status: CMSStatus;
+  slug: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  canonical_url: string | null;
+  social_image_url: string | null;
+  scheduled_for: string | null;
+  first_published_at: string | null;
+  editor_metadata: Record<string, unknown>;
+  distribution_targets: DistributionPlatform[];
+  updated_at: string;
+}
+
+export interface ArticleRevision {
+  id: string;
+  article_id: string;
+  revision_no: number;
+  title: string;
+  description: string;
+  content_blocks: ContentBlock[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface DistributionJob {
+  id: string;
+  article_id: string;
+  platform: DistributionPlatform;
+  status: "PENDING" | "PROCESSING" | "PUBLISHED" | "HANDOFF_READY" | "REQUIRES_CONNECTION" | "FAILED" | "CANCELLED";
+  delivery_mode: "NATIVE" | "API" | "HANDOFF";
+  scheduled_for: string | null;
+  platform_title: string | null;
+  platform_excerpt: string | null;
+  platform_tags: string[];
+  external_post_url: string | null;
+  last_error: string | null;
+  published_at: string | null;
+  updated_at: string;
+}
+
 export interface PublicationSource {
   id: string;
   provider: "SUBSTACK" | "MEDIUM" | "HASHNODE" | "LINKEDIN" | "RSS";
@@ -100,6 +168,86 @@ export class NativePublishingService {
     });
     if (error) throw new Error(error.message);
     return data as NativeArticle;
+  }
+
+  async saveCMS(input: SaveCMSArticleInput): Promise<CMSArticle> {
+    const errors = input.status === "draft" ? [] : validateContentBlocks(input.blocks);
+    if (errors.length) throw new Error(errors[0]);
+    if (input.status === "scheduled" && (!input.scheduledFor || new Date(input.scheduledFor).getTime() <= Date.now())) {
+      throw new Error("Choose a schedule time in the future.");
+    }
+    const distribution = (input.distribution ?? [{ platform: "STACKEDIN" as const, enabled: true }])
+      .filter(target => target.enabled)
+      .map(target => ({
+        platform: target.platform,
+        title: target.title?.trim() || null,
+        excerpt: target.excerpt?.trim() || null,
+        tags: normalizeHashtags(target.tags ?? []),
+      }));
+    if (!distribution.some(target => target.platform === "STACKEDIN")) {
+      distribution.unshift({ platform: "STACKEDIN", title: null, excerpt: null, tags: [] });
+    }
+    const { data, error } = await this.client.rpc("save_cms_article", {
+      requested_tenant_id: input.tenantId,
+      requested_article_id: input.articleId ?? null,
+      requested_title: input.title.trim() || "Untitled draft",
+      requested_description: input.description,
+      requested_content_type: input.contentType,
+      requested_blocks: input.blocks,
+      requested_tags: normalizeHashtags(input.tags ?? []),
+      requested_hashtags: normalizeHashtags(input.hashtags ?? []),
+      requested_cover_image_url: input.coverImageUrl ?? null,
+      requested_pillar: input.pillar?.trim() || null,
+      requested_series: input.series?.trim() || null,
+      requested_slug: input.slug?.trim() || null,
+      requested_seo: input.seo ?? {},
+      requested_status: input.status,
+      requested_scheduled_for: input.scheduledFor ?? null,
+      requested_distribution: distribution,
+      requested_editor_metadata: input.metadata ?? {},
+    });
+    if (error) throw new Error(error.message);
+    return data as CMSArticle;
+  }
+
+  async listCMSArticles(tenantId: string): Promise<CMSArticle[]> {
+    const { data, error } = await this.client.from("articles")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at")
+      .eq("tenant_id", tenantId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as CMSArticle[];
+  }
+
+  async getCMSArticle(articleId: string): Promise<CMSArticle> {
+    const { data, error } = await this.client.from("articles")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at")
+      .eq("id", articleId).single();
+    if (error) throw new Error(error.message);
+    return data as unknown as CMSArticle;
+  }
+
+  async listRevisions(articleId: string): Promise<ArticleRevision[]> {
+    const { data, error } = await this.client.from("article_revisions")
+      .select("id,article_id,revision_no,title,description,content_blocks,metadata,created_at")
+      .eq("article_id", articleId).order("revision_no", { ascending: false }).limit(50);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as ArticleRevision[];
+  }
+
+  async restoreRevision(revisionId: string): Promise<CMSArticle> {
+    const { data, error } = await this.client.rpc("restore_article_revision", { requested_revision_id: revisionId });
+    if (error) throw new Error(error.message);
+    return data as CMSArticle;
+  }
+
+  async listDistributionJobs(tenantId: string, articleId?: string): Promise<DistributionJob[]> {
+    let query = this.client.from("distribution_jobs")
+      .select("id,article_id,platform,status,delivery_mode,scheduled_for,platform_title,platform_excerpt,platform_tags,external_post_url,last_error,published_at,updated_at")
+      .eq("tenant_id", tenantId).order("updated_at", { ascending: false }).limit(250);
+    if (articleId) query = query.eq("article_id", articleId);
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return (data ?? []) as DistributionJob[];
   }
 
   async uploadImage(userId: string, file: File): Promise<string> {
@@ -262,6 +410,8 @@ export class NativePublishingService {
       .on("postgres_changes", { event: "*", schema: "public", table: "profile_subscriptions" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "follows" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "connections" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_revisions" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "distribution_jobs" }, onChange)
       .subscribe();
   }
 }

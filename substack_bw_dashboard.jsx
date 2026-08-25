@@ -70,11 +70,15 @@ import { ProfileSearchService } from "./src/services/profileSearch.ts";
 import { NativePublishingService } from "./src/services/nativePublishing.ts";
 import { ProfileHubService } from "./src/services/profileHub.ts";
 import { ContentBlocks, RichBlockEditor } from "./src/components/RichBlockEditor.jsx";
+import XStudioEditor from "./src/components/XStudioEditor.jsx";
 import "./studio.css";
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
 const METRICS_KEY = "stackcraft-studio-article-metrics-v1";
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: Activity },
+  { id: "cms", label: "Content CMS", icon: PenTool },
+  { id: "calendar", label: "Content calendar", icon: CalendarDays },
+  { id: "distribution", label: "Distribution queue", icon: Send },
   { id: "library", label: "Post library", icon: Library },
   { id: "platforms", label: "Platforms", icon: Share2 },
   { id: "modules", label: "Topic modules", icon: Grid2X2 },
@@ -529,7 +533,7 @@ ${url}`)}`;
   }} placeholder="Add a useful perspective… Enter to post · Shift+Enter for a new line" maxLength={4e3} /><button aria-label="Post comment" disabled={busy === "comment" || !commentText.trim()}>{busy === "comment" ? <RefreshCw className="spin" size={14} /> : <Send size={14} />}</button></form><div className="discussion-list">{comments.map((comment) => <article key={comment.id}><div>{comment.author?.avatar_url ? <img src={comment.author.avatar_url} alt="" /> : (comment.author?.display_name || "S").charAt(0).toUpperCase()}</div><section><header><strong>{comment.author?.display_name || "StackedIN member"}</strong><span>{comment.author?.headline || "Professional"} · {formatDate(comment.created_at)}</span></header><p>{comment.body}</p><button>Reply</button></section></article>)}{!comments.length && <p className="discussion-empty">Start the useful conversation. Empty comment sections are just uninitialized knowledge graphs.</p>}</div></section>}
   </article>;
 }
-function WriteExperience({ session, openFeed, openProfile }) {
+function LegacyWriteExperience({ session, openFeed, openProfile }) {
   const [tenantContext, setTenantContext] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -559,6 +563,10 @@ function WriteExperience({ session, openFeed, openProfile }) {
   const uploadImage = (file) => nativePublishing.uploadImage(session.user.id, file);
   const name = tenantContext?.profile?.display_name || session.user.email?.split("@")[0] || "StackedIN member";
   return <div className="writer-page"><header className="writer-topbar"><button onClick={openFeed}><ArrowLeft size={16} />Feed</button><img src={`${import.meta.env.BASE_URL}stackedin-wordmark.webp`} alt="StackedIN" /><div><button className={preview ? "" : "active"} onClick={() => setPreview(false)}>Edit</button><button className={preview ? "active" : ""} onClick={() => setPreview(true)}>Preview</button><button disabled={Boolean(busy)} onClick={() => save("draft")}>{busy === "draft" ? "Saving\u2026" : "Save draft"}</button><button className="publish" disabled={Boolean(busy)} onClick={() => save("published")}>{busy === "published" ? <RefreshCw className="spin" size={14} /> : <Zap size={14} />}Publish</button></div></header><main className="writer-shell"><aside><span>Native publishing</span><h2>Build signal,<br />not sludge.</h2><p>Your article lives on StackedIN first. External platforms become optional distribution lanes.</p><button onClick={openProfile}><UserRound size={15} />View my profile</button></aside><section className="writer-canvas"><div className="writer-identity"><div>{name.charAt(0).toUpperCase()}</div><span><strong>{name}</strong><small>Publishing to {tenantContext?.tenant?.name || "your workspace"}</small></span><select value={contentType} onChange={(event) => setContentType(event.target.value)}><option value="ARTICLE">Long-form article</option><option value="POST">Professional post</option></select></div>{!preview ? <><input className="writer-title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="A title worth someone’s attention" maxLength={240} /><textarea className="writer-description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="A concise promise: what will the reader understand or be able to do?" maxLength={1e3} /><div className="writer-meta-fields"><label>Hashtags<input value={hashtags} onChange={(event) => setHashtags(event.target.value)} placeholder="#AgenticAI #Azure #SystemDesign" /></label><label>Cover image URL<input value={coverImageUrl} onChange={(event) => setCoverImageUrl(event.target.value)} placeholder="https://… or upload an image block" /></label></div><RichBlockEditor blocks={blocks} onChange={setBlocks} onUploadImage={uploadImage} /></> : <article className="writer-preview"><span>{contentType}</span><h1>{title || "Untitled draft"}</h1><p>{description}</p>{coverImageUrl && <img src={coverImageUrl} alt="" />}<div className="preview-tags">{hashtags.split(/[\s,]+/).filter(Boolean).map((tag) => <b key={tag}>{tag.startsWith("#") ? tag : `#${tag}`}</b>)}</div><ContentBlocks blocks={blocks} /></article>}{error && <div className="auth-alert error"><X size={15} />{error}</div>}</section></main></div>;
+}
+void LegacyWriteExperience;
+function WriteExperience({ session, openFeed, openProfile, openStudio }) {
+  return <XStudioEditor session={session} openFeed={openFeed} openProfile={openProfile} openStudio={openStudio} />;
 }
 const PROFILE_RECORD_CONFIG = {
   experience: { table: "profile_experiences", title: "Experience", fields: [["title", "Role"], ["company", "Company"], ["employment_type", "Employment type", "employment"], ["location", "Location"], ["start_date", "Start date", "date"], ["currently_working", "I currently work here", "checkbox"], ["end_date", "End date", "date"], ["description", "Description", "textarea"], ["skills", "Skills, comma separated"]] },
@@ -1175,7 +1183,33 @@ function SourceConnectionPanel({ onImported }) {
   };
   return <section className="source-connection-panel xstudio-source-panel"><div><span>XStudio source engine</span><h3>Connect, verify, and synchronize</h3><p>Public Substack, Medium, Hashnode, and RSS feeds import into StackedIN as internal reference articles. LinkedIn stays share-only until its approved OAuth publishing API is connected.</p></div><form onSubmit={connect}><select value={provider} onChange={(event) => setProvider(event.target.value)}><option>SUBSTACK</option><option>MEDIUM</option><option>HASHNODE</option><option>LINKEDIN</option><option>RSS</option></select><input required type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://your-publication-or-profile" /><button disabled={busy || !context}>{busy ? <RefreshCw className="spin" size={14} /> : <Plus size={14} />}Connect & sync</button></form>{message && <div className="source-message">{message}</div>}<div className="connected-source-list">{sources.map((source) => <article key={source.id}><div><PlatformIcon name={source.provider === "SUBSTACK" ? "Substack" : source.provider === "MEDIUM" ? "Medium" : source.provider === "HASHNODE" ? "Hashnode" : "LinkedIn"} size={18} /></div><section><strong>{source.provider}</strong><span>{source.profile_url}</span><small>{source.last_synced_at ? `${source.last_post_count || 0} posts \xB7 synced ${formatDate(source.last_synced_at)}` : source.last_error || "Waiting for first synchronization"}</small></section><em className={`source-status status-${source.status.toLowerCase()}`}>{source.status.replace("_", " ")}</em><footer>{source.capabilities?.import && <button disabled={busy} onClick={() => synchronize(source)}><RefreshCw size={12} />Sync now</button>}<button disabled={busy} onClick={() => disconnect(source)}><Trash2 size={12} />Disconnect</button></footer></article>)}{!sources.length && <p>No sources connected yet. Your first sync is one URL away.</p>}</div></section>;
 }
-function Dashboard({ onExit, onWrite }) {
+function CMSOperationsView({ view, articles, jobs, onWrite, error }) {
+  const openArticle = (articleId) => {
+    sessionStorage.setItem("xstudio-editor-article", articleId);
+    onWrite();
+  };
+  const startArticle = () => {
+    sessionStorage.removeItem("xstudio-editor-article");
+    onWrite();
+  };
+  const counts = {
+    draft: articles.filter((item) => item.status === "draft").length,
+    scheduled: articles.filter((item) => item.status === "scheduled").length,
+    published: articles.filter((item) => item.status === "published").length
+  };
+  if (view === "cms") return <>
+    <section className="cms-hero"><div><span>XStudio CMS</span><h2>One editorial system.<br />Every destination.</h2><p>Build structured content, preview it, preserve every revision, and distribute it without surrendering platform credentials.</p></div><button onClick={startArticle}><PenTool size={16} />Create content</button></section>
+    {error && <div className="error-banner"><X size={16} />{error}</div>}
+    <section className="metric-grid"><MetricCard label="Drafts" value={counts.draft} note="Autosaved workspace content" icon={FileText} accent="slate" /><MetricCard label="Scheduled" value={counts.scheduled} note="Waiting in the native queue" icon={CalendarDays} accent="amber" /><MetricCard label="Published" value={counts.published} note="Live StackedIN content" icon={Globe2} accent="lime" /><MetricCard label="Delivery jobs" value={jobs.length} note="Native and handoff destinations" icon={Send} accent="cyan" /></section>
+    <section className="panel cms-content-table"><SectionHeading eyebrow="Editorial library" title={`${articles.length} native CMS items`} action={<button className="text-button" onClick={startArticle}>New article <Plus size={14} /></button>} /><div>{articles.map(article => <button key={article.id} onClick={() => openArticle(article.id)}><span className={`cms-status-dot ${article.status}`} /><section><strong>{article.title || "Untitled draft"}</strong><small>{article.pillar || "Unassigned pillar"}{article.series ? ` · ${article.series}` : ""}</small></section><em className={article.status}>{article.status}</em><span>{formatSyncTime(article.updated_at)}</span><PenTool size={14} /></button>)}{!articles.length && <div className="empty-state"><PenTool /><h3>The canvas is open</h3><p>Create your first XStudio draft.</p><button className="button primary" onClick={startArticle}>Start writing</button></div>}</div></section>
+  </>;
+  if (view === "calendar") {
+    const scheduled = articles.filter(item => item.status === "scheduled").sort((a, b) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime());
+    return <><SectionHeading eyebrow="Editorial cadence" title="Content calendar" action={<button className="button primary" onClick={startArticle}><Plus size={14} />Schedule content</button>} /><section className="calendar-board"><header><div><CalendarDays size={22} /><span><strong>Upcoming schedule</strong><small>Times use the reader’s local timezone</small></span></div><b>{scheduled.length}</b></header><div>{scheduled.map(article => <button key={article.id} onClick={() => openArticle(article.id)}><time><strong>{new Date(article.scheduled_for).toLocaleDateString("en", { day: "2-digit" })}</strong><span>{new Date(article.scheduled_for).toLocaleDateString("en", { month: "short" })}</span></time><section><h3>{article.title}</h3><p>{article.description || "No description yet"}</p><span>{formatSyncTime(article.scheduled_for)} · {(article.distribution_targets || []).join(" · ")}</span></section><ChevronRight size={16} /></button>)}{!scheduled.length && <div className="empty-state"><CalendarDays /><h3>No scheduled content</h3><p>Choose a future time in the XStudio editor to build your publishing cadence.</p></div>}</div></section></>;
+  }
+  return <><SectionHeading eyebrow="Delivery operations" title="Distribution queue" action={<button className="button primary" onClick={startArticle}><PenTool size={14} />Prepare content</button>} /><div className="security-note"><ShieldCheck size={18} /><div><strong>Provider-safe distribution</strong><span>StackedIN is native. External jobs are marked as secure handoffs until an approved OAuth connector is active.</span></div></div><section className="panel distribution-table"><header><span>Article</span><span>Destination</span><span>Mode</span><span>Status</span><span>Schedule</span></header>{jobs.map(job => { const article = articles.find(item => item.id === job.article_id); return <button key={job.id} onClick={() => openArticle(job.article_id)}><strong>{article?.title || "CMS article"}</strong><span>{job.platform}</span><span>{job.delivery_mode}</span><em className={job.status.toLowerCase()}>{job.status.replaceAll("_", " ")}</em><span>{job.scheduled_for ? formatSyncTime(job.scheduled_for) : "On save"}</span></button>; })}{!jobs.length && <div className="empty-state"><Send /><h3>No delivery jobs yet</h3><p>Select destinations in an article’s Distribution panel.</p></div>}</section></>;
+}
+function Dashboard({ onExit, onWrite, session }) {
   const [catalogue, setCatalogue] = useState({ posts: [], source: "", lastSyncedAt: null });
   const [ownedImports, setOwnedImports] = useState([]);
   const [metrics, setMetrics] = useState(loadMetrics);
@@ -1190,6 +1224,9 @@ function Dashboard({ onExit, onWrite }) {
   const [sort, setSort] = useState("index");
   const [toast, setToast] = useState("");
   const [importReport, setImportReport] = useState(null);
+  const [cmsArticles, setCmsArticles] = useState([]);
+  const [distributionJobs, setDistributionJobs] = useState([]);
+  const [cmsError, setCmsError] = useState("");
   const fileRef = useRef(null);
   const fetchCatalogue = useCallback(async (manual = false) => {
     manual ? setSyncing(true) : setLoading(true);
@@ -1222,6 +1259,23 @@ function Dashboard({ onExit, onWrite }) {
   useEffect(() => {
     fetchOwnedImports();
   }, [fetchOwnedImports]);
+  const fetchCMS = useCallback(async () => {
+    if (!session?.user?.id) return;
+    try {
+      const context = await loadTenantContext(session.user.id);
+      const [nativeArticles, queue] = await Promise.all([nativePublishing.listCMSArticles(context.tenant.id), nativePublishing.listDistributionJobs(context.tenant.id)]);
+      setCmsArticles(nativeArticles);
+      setDistributionJobs(queue);
+      setCmsError("");
+    } catch (cmsLoadError) {
+      setCmsError(`${cmsLoadError.message || "CMS data is unavailable."} Apply migration 009 if needed.`);
+    }
+  }, [session?.user?.id]);
+  useEffect(() => {
+    fetchCMS();
+    const channel = nativePublishing.subscribe(fetchCMS);
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchCMS]);
   useEffect(() => {
     if (!toast) return void 0;
     const timer = setTimeout(() => setToast(""), 2600);
@@ -1327,12 +1381,13 @@ function Dashboard({ onExit, onWrite }) {
         <div><span>Content intelligence</span><h1>{navTitle}</h1></div>
         <div className="topbar-actions">
           <button className="button secondary" onClick={() => fetchCatalogue(true)} disabled={syncing}><RefreshCw size={15} className={syncing ? "spin" : ""} />{syncing ? "Refreshing" : "Refresh snapshot"}</button>
-          <button className="button primary" onClick={onWrite}><PenTool size={15} />Write on StackedIN</button>
+          <button className="button primary" onClick={() => { sessionStorage.removeItem("xstudio-editor-article"); onWrite(); }}><PenTool size={15} />Open CMS editor</button>
         </div>
       </header>
       <div className="mobile-nav" aria-label="Mobile navigation">{NAV_ITEMS.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
       {error && <div className="error-banner"><X size={17} />{error}<button onClick={() => fetchCatalogue()}>Retry</button></div>}
       {loading ? <div className="loading-state"><RefreshCw className="spin" /><p>Building your publishing map…</p></div> : <div className="view-frame">
+        {["cms", "calendar", "distribution"].includes(view) && <CMSOperationsView view={view} articles={cmsArticles} jobs={distributionJobs} onWrite={onWrite} error={cmsError} />}
         {view === "overview" && <>
           <section className="intro-row">
             <div><span className="eyebrow">The signal behind the writing</span><h2>Your ideas, mapped like a living system.</h2><p>Published work across Substack, Medium, Hashnode, and LinkedIn is organised into platforms, pillars, and series—ready to search, audit, and extend.</p></div>
@@ -1473,8 +1528,8 @@ function App() {
   if (route === "search" && session) return <SearchExperience session={session} openFeed={() => navigate("feed")} openNetwork={() => navigate("network")} openProfile={openProfile} openStudio={() => navigate("studio")} signOut={signOut} />;
   if ((route === "profile" || route.startsWith("profile-")) && session) return <ProfileExperience session={session} targetProfileId={route.startsWith("profile-") ? route.slice(8) : session.user.id} openFeed={() => navigate("feed")} openWrite={() => navigate("write")} openInbox={openInbox} openStudio={() => navigate("studio")} signOut={signOut} />;
   if (route === "inbox" && session) return <MessagingExperience session={session} initialConversationId={sessionStorage.getItem("stackedin-inbox-conversation") || ""} openFeed={() => navigate("feed")} openProfile={openProfile} openWrite={() => navigate("write")} openStudio={() => navigate("studio")} />;
-  if (route === "write" && session) return <WriteExperience session={session} openFeed={() => navigate("feed")} openProfile={openProfile} />;
-  if (route === "studio" && session) return <Dashboard onExit={() => navigate("feed")} onWrite={() => navigate("write")} />;
+  if (route === "write" && session) return <WriteExperience session={session} openFeed={() => navigate("feed")} openProfile={openProfile} openStudio={() => navigate("studio")} />;
+  if (route === "studio" && session) return <Dashboard session={session} onExit={() => navigate("feed")} onWrite={() => navigate("write")} />;
   return <MarketingLanding openStudio={openStudio} />;
 }
 export {

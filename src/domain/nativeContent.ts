@@ -1,6 +1,26 @@
 export type NativeContentType = "POST" | "ARTICLE";
 export type NativeReaction = "LIKE" | "LOVE" | "CELEBRATE" | "INSIGHTFUL" | "SUPPORT" | "CURIOUS";
-export type ContentBlockType = "paragraph" | "heading" | "subheading" | "quote" | "code" | "image" | "divider";
+export type ContentBlockType =
+  | "paragraph"
+  | "heading"
+  | "subheading"
+  | "bullet_list"
+  | "numbered_list"
+  | "checklist"
+  | "quote"
+  | "callout"
+  | "code"
+  | "image"
+  | "video"
+  | "table"
+  | "button"
+  | "divider";
+
+export interface ContentBlockItem {
+  id: string;
+  text: string;
+  checked?: boolean;
+}
 
 export interface ContentBlock {
   id: string;
@@ -11,6 +31,10 @@ export interface ContentBlock {
   url?: string;
   alt?: string;
   caption?: string;
+  items?: ContentBlockItem[];
+  rows?: string[][];
+  tone?: "info" | "success" | "warning" | "idea";
+  label?: string;
 }
 
 export interface NativeAuthor {
@@ -75,9 +99,13 @@ export function validateContentBlocks(blocks: ContentBlock[]): string[] {
   if (blocks.length > 250) errors.push("An article can contain at most 250 blocks.");
   blocks.forEach((block, index) => {
     if (!block.id || !block.type) errors.push(`Block ${index + 1} is malformed.`);
-    if (["paragraph", "heading", "subheading", "quote"].includes(block.type) && !block.text?.trim()) errors.push(`Block ${index + 1} needs text.`);
+    if (["paragraph", "heading", "subheading", "quote", "callout"].includes(block.type) && !block.text?.trim()) errors.push(`Block ${index + 1} needs text.`);
+    if (["bullet_list", "numbered_list", "checklist"].includes(block.type) && !block.items?.some(item => item.text.trim())) errors.push(`List block ${index + 1} needs an item.`);
     if (block.type === "code" && !block.code?.trim()) errors.push(`Code block ${index + 1} is empty.`);
     if (block.type === "image" && !/^https:\/\//i.test(block.url ?? "")) errors.push(`Image block ${index + 1} needs a secure URL.`);
+    if (block.type === "video" && !/^https:\/\//i.test(block.url ?? "")) errors.push(`Video block ${index + 1} needs a secure URL.`);
+    if (block.type === "button" && (!block.label?.trim() || !/^https:\/\//i.test(block.url ?? ""))) errors.push(`Button block ${index + 1} needs a label and secure URL.`);
+    if (block.type === "table" && (!block.rows?.length || !block.rows.some(row => row.some(cell => cell.trim())))) errors.push(`Table block ${index + 1} needs content.`);
   });
   return errors;
 }

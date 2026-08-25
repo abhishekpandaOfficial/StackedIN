@@ -25,6 +25,17 @@ describe("native content validation", () => {
     ]);
     expect(errors).toHaveLength(3);
   });
+
+  it("validates portable CMS blocks", () => {
+    expect(validateContentBlocks([
+      { id: "1", type: "bullet_list", items: [{ id: "i1", text: "One useful point" }] },
+      { id: "2", type: "checklist", items: [{ id: "i2", text: "Ship safely", checked: true }] },
+      { id: "3", type: "callout", text: "Remember the reader", tone: "idea" },
+      { id: "4", type: "table", rows: [["Stage", "Owner"], ["Review", "Editor"]] },
+      { id: "5", type: "button", label: "Read the source", url: "https://example.com/source" },
+      { id: "6", type: "video", url: "https://example.com/demo.mp4" },
+    ])).toEqual([]);
+  });
 });
 
 describe("native publishing service", () => {
@@ -53,5 +64,29 @@ describe("native publishing service", () => {
     await service.react("article-1", "INSIGHTFUL");
     expect(rpc).toHaveBeenCalledWith("react_to_article", { requested_article_id: "article-1", requested_reaction: "INSIGHTFUL" });
   });
-});
 
+  it("saves scheduling, SEO, and honest distribution through the CMS RPC", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { id: "article-1" }, error: null });
+    const service = new NativePublishingService({ rpc } as never);
+    const scheduledFor = new Date(Date.now() + 60_000).toISOString();
+    await service.saveCMS({
+      tenantId: "tenant-1",
+      title: "Portable knowledge",
+      description: "Write once and distribute deliberately.",
+      contentType: "ARTICLE",
+      blocks: [{ id: "b1", type: "paragraph", text: "Useful content" }],
+      status: "scheduled",
+      scheduledFor,
+      seo: { title: "Portable knowledge" },
+      distribution: [{ platform: "MEDIUM", enabled: true }],
+    });
+    expect(rpc).toHaveBeenCalledWith("save_cms_article", expect.objectContaining({
+      requested_status: "scheduled",
+      requested_scheduled_for: scheduledFor,
+      requested_distribution: expect.arrayContaining([
+        expect.objectContaining({ platform: "STACKEDIN" }),
+        expect.objectContaining({ platform: "MEDIUM" }),
+      ]),
+    }));
+  });
+});

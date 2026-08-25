@@ -18,11 +18,24 @@ The application is ready for both Vercel and GitHub Pages. Vercel builds at `/`;
 
 Never add a Supabase `service_role` or secret key to a `VITE_` variable. Vite variables are public browser configuration. Tenant security is enforced by database Row Level Security (RLS), not by hiding the anon key.
 
+For XStudio scheduled publishing, add these as **server-only Production variables**:
+
+| Variable | Value |
+| --- | --- |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role key; never expose it to the browser |
+| `CRON_SECRET` | A long random secret used by Vercel Cron as its bearer token |
+
+The repository schedules `/api/publish-scheduled` every 15 minutes. The endpoint
+rejects requests without `Authorization: Bearer $CRON_SECRET` and calls only the
+service-role-protected `publish_due_articles()` database function.
+
 ## 2. Create the multitenant database
 
 In Supabase, open **SQL Editor → New query**, paste the complete contents of:
 
-`supabase/migrations/202608250001_stackedin_multitenant.sql`
+every SQL file in `supabase/migrations` in filename order, from `001` through
+`009`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
+revision history, content schedule, and distribution queue.
 
 Then choose **Run** once. It creates:
 
@@ -33,6 +46,8 @@ Then choose **Run** once. It creates:
 - RLS policies that prevent cross-tenant draft access;
 - a signup trigger that creates a personal workspace for every new account;
 - a safe backfill for accounts that already exist.
+- tenant-scoped XStudio drafts, SEO metadata, revisions, and delivery jobs;
+- a backend-only scheduled-publishing function.
 
 The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
 
@@ -95,6 +110,9 @@ GitHub OAuth Apps accept a single callback URL, which is sufficient because Supa
 4. After sign-in, confirm the URL returns to the same Vercel deployment and opens `#feed`.
 5. In Supabase **Table Editor**, confirm one `profiles` row, one `tenants` row, and one owner `tenant_memberships` row were created.
 6. Create two test accounts. Confirm account A cannot select account B's draft articles. This verifies tenant isolation rather than only verifying the UI.
+7. In XStudio, save a draft, restore a revision, schedule it a few minutes ahead,
+   and confirm the Vercel Cron run changes it to `published` and creates a live
+   StackedIN feed entry.
 
 ## 7. Custom domain later
 

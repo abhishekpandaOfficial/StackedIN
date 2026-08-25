@@ -2,6 +2,18 @@
 
 StackedIN is the canonical home for native professional posts and articles. XStudio is the external-source and distribution control plane inside StackedIN.
 
+XStudio CMS stores portable `BLOCKS_V2` JSON rather than arbitrary HTML. It
+supports text, headings, lists, checklists, callouts, quotations, code, images,
+secure media links, tables, buttons, and dividers. Drafts remain tenant-private;
+only published content enters the public feed. Manual saves create immutable
+article revisions, while autosaves update the recovery state without flooding
+revision history.
+
+Scheduled StackedIN publication runs through a service-role-only RPC. External
+destinations remain `HANDOFF_READY` until a provider-approved OAuth/API
+connector is configured; XStudio never collects external platform passwords or
+pretends a handoff is an API publication.
+
 ## Content model
 
 Native content is stored as `BLOCKS_V1` JSON, never arbitrary executable HTML. Supported blocks are paragraph, heading, subheading, quote, code, image, and divider. Rendering occurs through trusted React components, while the database validates block types and limits.

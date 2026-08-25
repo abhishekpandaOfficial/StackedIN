@@ -9,6 +9,7 @@ const publishingMigration = readFileSync(resolve("supabase/migrations/2026082500
 const socialFeedMigration = readFileSync(resolve("supabase/migrations/202608250006_social_feed_interactions.sql"), "utf8");
 const profileHubMigration = readFileSync(resolve("supabase/migrations/202608250007_profile_journey_and_inbox.sql"), "utf8");
 const xstudioMigration = readFileSync(resolve("supabase/migrations/202608250008_xstudio_imports_and_messaging.sql"), "utf8");
+const cmsMigration = readFileSync(resolve("supabase/migrations/202608250009_xstudio_cms_and_scheduling.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -283,5 +284,46 @@ describe("XStudio imports and messaging controls migration contract", () => {
 
   it("does not add provider secrets to the database", () => {
     expect(xstudioMigration).not.toMatch(/access_token|refresh_token|client_secret|password/i);
+  });
+});
+
+describe("XStudio CMS and scheduling migration contract", () => {
+  it.each([
+    "create table if not exists public.article_revisions",
+    "create table if not exists public.distribution_jobs",
+    "create or replace function public.save_cms_article",
+    "create or replace function public.restore_article_revision",
+    "create or replace function public.publish_due_articles",
+  ])("contains %s", statement => expect(cmsMigration.toLowerCase()).toContain(statement));
+
+  it("supports rich safe blocks without storing arbitrary HTML", () => {
+    for (const block of ["bullet_list", "numbered_list", "checklist", "callout", "video", "table", "button"]) {
+      expect(cmsMigration).toContain(`'${block}'`);
+    }
+    expect(cmsMigration).not.toContain("body_html");
+    expect(cmsMigration).not.toMatch(/<script|dangerouslysetinnerhtml/i);
+  });
+
+  it("keeps tenant CMS data behind RLS and authenticated RPCs", () => {
+    expect(cmsMigration).toContain("alter table public.article_revisions enable row level security");
+    expect(cmsMigration).toContain("alter table public.distribution_jobs enable row level security");
+    expect(cmsMigration).toContain("public.has_tenant_role(requested_tenant_id, array['owner','admin','editor'])");
+    expect(cmsMigration).toContain("grant execute on function public.save_cms_article");
+  });
+
+  it("reserves scheduled publishing for the backend service role", () => {
+    expect(cmsMigration).toContain("revoke all on function public.publish_due_articles() from public, anon, authenticated");
+    expect(cmsMigration).toContain("grant execute on function public.publish_due_articles() to service_role");
+  });
+
+  it("uses honest handoff jobs for unconnected external platforms", () => {
+    expect(cmsMigration).toContain("else 'HANDOFF_READY'");
+    expect(cmsMigration).toContain("case when target_platform = 'STACKEDIN' then 'NATIVE' else 'HANDOFF' end");
+    expect(cmsMigration).not.toMatch(/client_secret|refresh_token|access_token|password/i);
+  });
+
+  it("parenthesizes arrays before slicing", () => {
+    expect(cmsMigration).toContain("(coalesce(requested_tags, '{}'::text[]))[1:20]");
+    expect(cmsMigration).toContain("(coalesce(array_agg(left(tags.tag, 80)), '{}'::text[]))[1:20]");
   });
 });
