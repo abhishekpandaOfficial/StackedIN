@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(resolve("supabase/migrations/202608250002_professional_graph_foundation.sql"), "utf8");
 const peopleMigration = readFileSync(resolve("supabase/migrations/202608250003_people_recommendations_v1.sql"), "utf8");
+const searchMigration = readFileSync(resolve("supabase/migrations/202608250004_profile_search_v1.sql"), "utf8");
+const publishingMigration = readFileSync(resolve("supabase/migrations/202608250005_native_publishing_realtime.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -81,5 +83,82 @@ describe("people recommendations V1 migration contract", () => {
   it("fails clearly when Phase 1 has not been installed", () => {
     expect(peopleMigration).toContain("to_regclass('public.ranking_configs') is null");
     expect(peopleMigration).toContain("Run 202608250002_professional_graph_foundation.sql successfully");
+  });
+});
+
+describe("profile search V1 migration contract", () => {
+  it("provides guarded search and privacy-preserving impression RPCs", () => {
+    expect(searchMigration).toContain("create or replace function public.search_profiles");
+    expect(searchMigration).toContain("create or replace function public.record_profile_search_impressions");
+    expect(searchMigration).toContain("public.is_tenant_member(requested_tenant_id)");
+    expect(searchMigration).toContain("encode(digest(lower(trim(coalesce(search_query, ''))), 'sha256'), 'hex')");
+    expect(searchMigration).not.toContain("'raw_query'");
+  });
+
+  it.each([
+    "candidate.account_status = 'active'",
+    "candidate.profile_visibility = 'public'",
+    "candidate.searchable",
+    "public.blocks",
+    "public.mutes",
+  ])("enforces search eligibility rule %s", rule => {
+    expect(searchMigration).toContain(rule);
+  });
+
+  it("uses score and profile ID keyset pagination", () => {
+    expect(searchMigration).toContain("s.computed_score < after_score");
+    expect(searchMigration).toContain("s.id > after_profile_id");
+    expect(searchMigration.toLowerCase()).not.toContain(" offset ");
+  });
+
+  it("keeps Phase 3 deterministic and leaves vectors to Phase 4", () => {
+    expect(searchMigration).toContain("websearch_to_tsquery");
+    expect(searchMigration).toContain("similarity(");
+    expect(searchMigration).not.toContain("<=>");
+  });
+
+  it("denies anonymous execution", () => {
+    expect(searchMigration).toContain("revoke all on function public.search_profiles");
+    expect(searchMigration).toContain("grant execute on function public.search_profiles");
+  });
+});
+
+describe("native publishing and realtime migration contract", () => {
+  it.each([
+    "create table if not exists public.article_reactions",
+    "create table if not exists public.article_comments",
+    "create table if not exists public.article_shares",
+    "create table if not exists public.publication_sources",
+    "create or replace function public.save_native_article",
+    "create or replace function public.react_to_article",
+    "create or replace function public.add_article_comment",
+  ])("contains %s", statement => expect(publishingMigration.toLowerCase()).toContain(statement));
+
+  it("stores safe blocks instead of arbitrary HTML", () => {
+    expect(publishingMigration).toContain("content_blocks jsonb");
+    expect(publishingMigration).toContain("block->>'type' not in ('paragraph','heading','subheading','quote','code','image','divider')");
+    expect(publishingMigration).not.toContain("body_html");
+  });
+
+  it("supports six explicit reaction types", () => {
+    for (const reaction of ["LIKE", "LOVE", "CELEBRATE", "INSIGHTFUL", "SUPPORT", "CURIOUS"]) {
+      expect(publishingMigration).toContain(`'${reaction}'`);
+    }
+  });
+
+  it("protects native writes with authenticated RPCs and RLS", () => {
+    expect(publishingMigration).toContain("public.has_tenant_role(requested_tenant_id");
+    expect(publishingMigration).toContain("alter table public.article_reactions enable row level security");
+    expect(publishingMigration).toContain("alter table public.article_comments enable row level security");
+    expect(publishingMigration).toContain("revoke all on function public.save_native_article");
+    expect(publishingMigration).toContain("grant execute on function public.save_native_article");
+  });
+
+  it("never stores connector secrets in publication sources", () => {
+    const sourceTable = publishingMigration.slice(
+      publishingMigration.indexOf("create table if not exists public.publication_sources"),
+      publishingMigration.indexOf("create index if not exists article_reactions_tenant_article_idx"),
+    );
+    expect(sourceTable).not.toMatch(/password|access_token|refresh_token|client_secret/i);
   });
 });

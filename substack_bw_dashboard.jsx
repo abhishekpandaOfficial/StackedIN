@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, Bookmark, BrainCircuit, CalendarDays, CheckCircle2,
   ChevronRight, Clock3, ExternalLink, Eye, FileText, Filter, Grid2X2, Heart, Home, KeyRound, Layers3,
-  Globe2, Library, ListFilter, LockKeyhole, LogOut, Mail, MessageCircle, MoreHorizontal, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, Sparkles, Upload,
-  UserRound, Users, Workflow, X, Zap,
+  BriefcaseBusiness, Globe2, Library, ListFilter, LockKeyhole, LogOut, Mail, MapPin, MessageCircle, MoreHorizontal, PenTool, RefreshCw, Rss, Search, Share2, ShieldCheck, SlidersHorizontal, Sparkles, Upload,
+  Plus, UserRound, Users, Workflow, X, Zap,
 } from "lucide-react";
 import { SiGithub, SiGitlab, SiGoogle, SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import { getAppRedirectUrl, supabase, supabasePublicConfig } from "./supabase.js";
 import { loadTenantContext } from "./tenant.js";
 import { ProfessionalGraphService } from "./src/services/professionalGraph.ts";
+import { ProfileSearchService } from "./src/services/profileSearch.ts";
+import { NativePublishingService } from "./src/services/nativePublishing.ts";
+import { ContentBlocks, RichBlockEditor } from "./src/components/RichBlockEditor.jsx";
 import "./studio.css";
 
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
@@ -30,6 +33,8 @@ const PLATFORMS = [
 const PILLAR_TONES = ["violet", "cyan", "lime", "amber", "rose", "blue", "mint", "orange", "indigo", "teal", "slate"];
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 const professionalGraph = new ProfessionalGraphService(supabase);
+const profileSearch = new ProfileSearchService(supabase);
+const nativePublishing = new NativePublishingService(supabase);
 
 const safeDate = value => {
   if (!value) return null;
@@ -234,14 +239,132 @@ function FeedCard({ post, liked, saved, onLike, onSave, onShare }) {
   return <article className="feed-card">
     <header><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><div><strong>Abhishek Panda <CheckCircle2 size={13} /></strong><span>AI Architect · .NET · Multi-Cloud · FDE Mindset</span><small>{formatDate(post.publishedAt)} · <Globe2 size={11} /></small></div><button aria-label="More options"><MoreHorizontal size={18} /></button></header>
     <div className="feed-copy"><p>{post.description}</p><div className="feed-tags">{(post.tags || []).slice(0, 4).map(tag => <span key={tag}>#{tag.replace(/\s+/g, "")}</span>)}</div></div>
-    <a className={`feed-article-cover feed-cover-${(post.pillar || "architecture").length % 5}`} href={post.url} target="_blank" rel="noreferrer"><span><PlatformIcon name={post.platform || "Substack"} size={14} />{post.platform || "Substack"}</span><small>{post.pillar}</small><h2>{post.title}</h2><p>{post.series}</p><div>Read full article <ArrowUpRight size={15} /></div></a>
+    <div className={`feed-article-cover feed-cover-${(post.pillar || "architecture").length % 5}`}><span><PlatformIcon name={post.platform || "Substack"} size={14} />{post.platform || "Substack"} reference</span><small>{post.pillar}</small><h2>{post.title}</h2><p>{post.series}</p><div>External knowledge reference · connect this source in Studio</div></div>
     <div className="feed-engagement"><span><Eye size={13} />{compactNumber.format(post.views || 0)} views</span><span>{compactNumber.format(post.shares || 0)} shares</span></div>
-    <footer><button className={liked ? "active" : ""} onClick={onLike}><Heart size={17} fill={liked ? "currentColor" : "none"} />Like</button><a href={post.url} target="_blank" rel="noreferrer"><MessageCircle size={17} />Discuss</a><button onClick={onShare}><Share2 size={17} />Share</button><button className={saved ? "active" : ""} onClick={onSave}><Bookmark size={17} fill={saved ? "currentColor" : "none"} />Save</button></footer>
+    <footer><button className={liked ? "active" : ""} onClick={onLike}><Heart size={17} fill={liked ? "currentColor" : "none"} />Like</button><button onClick={onShare}><MessageCircle size={17} />Discuss</button><button onClick={onShare}><Share2 size={17} />Share</button><button className={saved ? "active" : ""} onClick={onSave}><Bookmark size={17} fill={saved ? "currentColor" : "none"} />Save</button></footer>
   </article>;
 }
 
-function FeedExperience({ session, openStudio, openNetwork, signOut }) {
+const REACTIONS = [
+  { id: "LIKE", emoji: "👍", label: "Like" },
+  { id: "LOVE", emoji: "❤️", label: "Love" },
+  { id: "CELEBRATE", emoji: "🎉", label: "Celebrate" },
+  { id: "INSIGHTFUL", emoji: "💡", label: "Insightful" },
+  { id: "SUPPORT", emoji: "🙌", label: "Support" },
+  { id: "CURIOUS", emoji: "🤔", label: "Curious" },
+];
+
+function NativeFeedCard({ article, tenantContext, onRefresh }) {
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState("");
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const authorName = article.author?.display_name || "StackedIN member";
+  const loadComments = async () => {
+    setBusy("comments"); setError("");
+    try { setComments(await nativePublishing.listComments(article.id)); setCommentsOpen(true); }
+    catch (commentError) { setError(commentError.message || "Discussion could not be loaded."); }
+    finally { setBusy(""); }
+  };
+  const toggleDiscussion = () => commentsOpen ? setCommentsOpen(false) : loadComments();
+  const react = async reaction => {
+    setBusy("reaction"); setError("");
+    try { await nativePublishing.react(article.id, article.viewerReaction === reaction ? null : reaction); await onRefresh(); }
+    catch (reactionError) { setError(reactionError.message || "Reaction could not be saved."); }
+    finally { setBusy(""); }
+  };
+  const addComment = async event => {
+    event.preventDefault(); if (!commentText.trim()) return;
+    setBusy("comment"); setError("");
+    try { await nativePublishing.comment(article.id, commentText); setCommentText(""); setComments(await nativePublishing.listComments(article.id)); await onRefresh(); }
+    catch (commentError) { setError(commentError.message || "Comment could not be published."); }
+    finally { setBusy(""); }
+  };
+  const share = async destination => {
+    const url = new URL(import.meta.env.BASE_URL, window.location.origin); url.hash = `article-${article.id}`;
+    try {
+      if (destination === "NATIVE_SHARE" && navigator.share) await navigator.share({ title: article.title, text: article.description, url: url.toString() });
+      else await navigator.clipboard.writeText(url.toString());
+      if (tenantContext?.tenant?.id) await nativePublishing.recordShare(tenantContext.tenant.id, tenantContext.profile.id, article.id, destination);
+      await onRefresh();
+    } catch (shareError) { if (shareError.name !== "AbortError") setError("Share could not be completed."); }
+  };
+
+  return <article className="native-feed-card">
+    <header><div className="native-author-avatar">{article.author?.avatar_url ? <img src={article.author.avatar_url} alt="" /> : authorName.charAt(0).toUpperCase()}</div><div><strong>{authorName}<CheckCircle2 size={13} /></strong><span>{article.author?.headline || "StackedIN professional"}</span><small>{formatDate(article.published_at)} · {article.reading_minutes} min read · <Globe2 size={10} /></small></div><em>{article.content_type === "POST" ? "POST" : "ARTICLE"}</em></header>
+    <section className="native-article-intro"><h2>{article.title}</h2>{article.description && <p>{article.description}</p>}<div>{(article.hashtags || []).map(tag => <span key={tag}>#{tag}</span>)}</div></section>
+    {article.cover_image_url && <img className="native-cover" src={article.cover_image_url} alt="" />}
+    <ContentBlocks blocks={article.content_blocks || []} />
+    {article.source_type !== "USER" && <div className="native-source-note"><Rss size={13} />Imported from {article.source_provider || article.source_type} as an internal knowledge reference.</div>}
+    <section className="reaction-summary"><div>{REACTIONS.filter(reaction => article.reactionSummary?.[reaction.id]).map(reaction => <span key={reaction.id}>{reaction.emoji}<b>{article.reactionSummary[reaction.id]}</b></span>)}</div><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} discussions · {article.share_count || 0} shares</span></section>
+    <div className="reaction-picker">{REACTIONS.map(reaction => <button key={reaction.id} className={article.viewerReaction === reaction.id ? "active" : ""} disabled={busy === "reaction"} onClick={() => react(reaction.id)} title={reaction.label}><span>{reaction.emoji}</span><b>{reaction.label}</b></button>)}</div>
+    <footer><button onClick={toggleDiscussion}>{busy === "comments" ? <RefreshCw className="spin" size={16} /> : <MessageCircle size={16} />}Discuss</button><button onClick={() => share(navigator.share ? "NATIVE_SHARE" : "COPY_LINK")}><Share2 size={16} />Share</button><button onClick={() => share("LINKEDIN")}><span className="linkedin-glyph">in</span>Share link</button><button><Bookmark size={16} />Save</button></footer>
+    {error && <div className="native-inline-error">{error}</div>}
+    {commentsOpen && <section className="native-discussion"><header><div><MessageCircle size={16} /><strong>Professional discussion</strong></div><span>{comments.length} contributions</span></header><form onSubmit={addComment}><div>{tenantContext?.profile?.display_name?.charAt(0).toUpperCase() || "S"}</div><textarea value={commentText} onChange={event => setCommentText(event.target.value)} placeholder="Add evidence, a question, or a useful perspective…" maxLength={4000} /><button disabled={busy === "comment" || !commentText.trim()}>{busy === "comment" ? <RefreshCw className="spin" size={14} /> : <ArrowRight size={14} />}</button></form><div className="discussion-list">{comments.map(comment => <article key={comment.id}><div>{comment.author?.avatar_url ? <img src={comment.author.avatar_url} alt="" /> : (comment.author?.display_name || "S").charAt(0).toUpperCase()}</div><section><header><strong>{comment.author?.display_name || "StackedIN member"}</strong><span>{comment.author?.headline || "Professional"} · {formatDate(comment.created_at)}</span></header><p>{comment.body}</p><button>Reply</button></section></article>)}{!comments.length && <p className="discussion-empty">Start the useful conversation. Empty comment sections are just uninitialized knowledge graphs.</p>}</div></section>}
+  </article>;
+}
+
+function WriteExperience({ session, openFeed, openProfile }) {
+  const [tenantContext, setTenantContext] = useState(null);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [contentType, setContentType] = useState("ARTICLE");
+  const [hashtags, setHashtags] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [blocks, setBlocks] = useState([{ id: crypto.randomUUID(), type: "paragraph", text: "" }]);
+  const [preview, setPreview] = useState(false);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  useEffect(() => { loadTenantContext(session.user.id).then(setTenantContext).catch(() => setError("Your workspace could not be loaded.")); }, [session.user.id]);
+  const save = async status => {
+    if (!tenantContext?.tenant?.id) return;
+    setBusy(status); setError("");
+    try {
+      await nativePublishing.save({ tenantId: tenantContext.tenant.id, title, description, contentType, blocks, hashtags, tags: hashtags.split(/[\s,]+/), coverImageUrl, status });
+      openFeed();
+    } catch (saveError) { setError(saveError.message || "Your article could not be saved."); }
+    finally { setBusy(""); }
+  };
+  const uploadImage = file => nativePublishing.uploadImage(session.user.id, file);
+  const name = tenantContext?.profile?.display_name || session.user.email?.split("@")[0] || "StackedIN member";
+  return <div className="writer-page"><header className="writer-topbar"><button onClick={openFeed}><ArrowLeft size={16} />Feed</button><img src={`${import.meta.env.BASE_URL}stackedin-wordmark.webp`} alt="StackedIN" /><div><button className={preview ? "" : "active"} onClick={() => setPreview(false)}>Edit</button><button className={preview ? "active" : ""} onClick={() => setPreview(true)}>Preview</button><button disabled={Boolean(busy)} onClick={() => save("draft")}>{busy === "draft" ? "Saving…" : "Save draft"}</button><button className="publish" disabled={Boolean(busy)} onClick={() => save("published")}>{busy === "published" ? <RefreshCw className="spin" size={14} /> : <Zap size={14} />}Publish</button></div></header><main className="writer-shell"><aside><span>Native publishing</span><h2>Build signal,<br />not sludge.</h2><p>Your article lives on StackedIN first. External platforms become optional distribution lanes.</p><button onClick={openProfile}><UserRound size={15} />View my profile</button></aside><section className="writer-canvas"><div className="writer-identity"><div>{name.charAt(0).toUpperCase()}</div><span><strong>{name}</strong><small>Publishing to {tenantContext?.tenant?.name || "your workspace"}</small></span><select value={contentType} onChange={event => setContentType(event.target.value)}><option value="ARTICLE">Long-form article</option><option value="POST">Professional post</option></select></div>{!preview ? <><input className="writer-title" value={title} onChange={event => setTitle(event.target.value)} placeholder="A title worth someone’s attention" maxLength={240} /><textarea className="writer-description" value={description} onChange={event => setDescription(event.target.value)} placeholder="A concise promise: what will the reader understand or be able to do?" maxLength={1000} /><div className="writer-meta-fields"><label>Hashtags<input value={hashtags} onChange={event => setHashtags(event.target.value)} placeholder="#AgenticAI #Azure #SystemDesign" /></label><label>Cover image URL<input value={coverImageUrl} onChange={event => setCoverImageUrl(event.target.value)} placeholder="https://… or upload an image block" /></label></div><RichBlockEditor blocks={blocks} onChange={setBlocks} onUploadImage={uploadImage} /></> : <article className="writer-preview"><span>{contentType}</span><h1>{title || "Untitled draft"}</h1><p>{description}</p>{coverImageUrl && <img src={coverImageUrl} alt="" />}<div className="preview-tags">{hashtags.split(/[\s,]+/).filter(Boolean).map(tag => <b key={tag}>{tag.startsWith("#") ? tag : `#${tag}`}</b>)}</div><ContentBlocks blocks={blocks} /></article>}{error && <div className="auth-alert error"><X size={15} />{error}</div>}</section></main></div>;
+}
+
+function ProfileExperience({ session, openFeed, openWrite, signOut }) {
+  const [profile, setProfile] = useState(null);
+  const [articles, setArticles] = useState([]);
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [message, setMessage] = useState("");
+  const load = useCallback(async () => {
+    setBusy(true);
+    const [profileResult, articleResult] = await Promise.all([
+      supabase.from("profiles").select("id,slug,username,display_name,headline,about,bio,location,country,industry,current_company,current_job_title,years_experience,avatar_url,banner_url,profile_completeness,quality_score").eq("id", session.user.id).single(),
+      supabase.from("articles").select("id,title,description,status,content_type,published_at,reaction_count,comment_count,hashtags").eq("author_id", session.user.id).order("created_at", { ascending: false }),
+    ]);
+    if (!profileResult.error) setProfile(profileResult.data);
+    if (!articleResult.error) setArticles(articleResult.data || []);
+    setBusy(false);
+  }, [session.user.id]);
+  useEffect(() => { load(); }, [load]);
+  const update = (field, value) => setProfile(current => ({ ...current, [field]: value }));
+  const save = async () => {
+    setBusy(true); setMessage("");
+    const { id, slug, username, profile_completeness, quality_score, ...changes } = profile;
+    changes.years_experience = changes.years_experience === "" || changes.years_experience == null ? null : Number(changes.years_experience);
+    const { error } = await supabase.from("profiles").update(changes).eq("id", session.user.id);
+    setMessage(error ? error.message : "Professional profile updated."); setEditing(Boolean(error)); setBusy(false);
+  };
+  if (busy && !profile) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><RefreshCw className="spin" /></div>;
+  const name = profile?.display_name || "StackedIN member";
+  const fields = [["display_name","Display name"],["headline","Headline"],["current_job_title","Current role"],["current_company","Company"],["industry","Industry"],["location","Location"],["country","Country"],["years_experience","Years of experience"]];
+  return <div className="profile-page"><header className="feed-topbar"><button className="feed-logo" onClick={openFeed}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><UserRound size={17} /><input value="Your professional identity" readOnly /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button className="active feed-avatar"><b>{name.charAt(0).toUpperCase()}</b><span>Me</span></button></nav></header><main className="profile-shell"><section className="profile-hero"><div className="profile-banner" style={profile?.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined} /><div className="profile-identity"><div className="profile-large-avatar">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : name.charAt(0).toUpperCase()}</div><div><h1>{name}</h1><p>{profile?.headline || "Add a headline that explains the professional problems you solve."}</p><span>{[profile?.current_job_title, profile?.current_company, profile?.location].filter(Boolean).join(" · ")}</span></div><button onClick={() => setEditing(value => !value)}>{editing ? <X size={15} /> : <PenTool size={15} />}{editing ? "Cancel" : "Edit profile"}</button></div></section><div className="profile-grid"><section className="profile-main-card">{editing ? <div className="profile-edit-form">{fields.map(([field,label]) => <label key={field}>{label}<input type={field === "years_experience" ? "number" : "text"} value={profile?.[field] ?? ""} onChange={event => update(field, event.target.value)} /></label>)}<label className="wide">About<textarea value={profile?.about || ""} onChange={event => update("about", event.target.value)} maxLength={4000} /></label><label className="wide">Avatar URL<input value={profile?.avatar_url || ""} onChange={event => update("avatar_url", event.target.value)} /></label><label className="wide">Banner URL<input value={profile?.banner_url || ""} onChange={event => update("banner_url", event.target.value)} /></label><button onClick={save} disabled={busy}>{busy ? <RefreshCw className="spin" size={15} /> : <CheckCircle2 size={15} />}Save professional profile</button></div> : <><header><span>About</span><h2>Professional context</h2></header><p className="profile-about">{profile?.about || profile?.bio || "Your profile is ready for a sharper story. Add what you build, what you know deeply, and what kind of people should find you."}</p><div className="profile-facts"><article><BriefcaseBusiness size={17} /><span>Industry</span><strong>{profile?.industry || "Not specified"}</strong></article><article><MapPin size={17} /><span>Location</span><strong>{[profile?.location, profile?.country].filter(Boolean).join(", ") || "Not specified"}</strong></article><article><BrainCircuit size={17} /><span>Profile quality</span><strong>{Math.round((profile?.profile_completeness || 0) * 100)}%</strong></article></div></>}{message && <div className="profile-message">{message}</div>}</section><aside className="profile-side-card"><span>Professional signal</span><h3>{articles.filter(article => article.status === "published").length}</h3><p>Native publications</p><div><strong>{articles.reduce((sum, article) => sum + (article.reaction_count || 0), 0)}</strong><small>Reactions</small><strong>{articles.reduce((sum, article) => sum + (article.comment_count || 0), 0)}</strong><small>Discussions</small></div><button onClick={openWrite}><PenTool size={15} />Write on StackedIN</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside><section className="profile-publications"><header><div><span>Body of work</span><h2>Native posts & articles</h2></div><button onClick={openWrite}><Plus size={15} />New publication</button></header>{articles.map(article => <article key={article.id}><div><span>{article.content_type}</span><h3>{article.title}</h3><p>{article.description}</p><div>{(article.hashtags || []).map(tag => <b key={tag}>#{tag}</b>)}</div></div><aside><strong>{article.status}</strong><small>{formatDate(article.published_at)}</small><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} discussions</span></aside></article>)}{!articles.length && <div className="profile-empty"><BookOpen size={24} /><p>Your native body of work starts with one useful post.</p><button onClick={openWrite}>Write the first one</button></div>}</section></div></main></div>;
+}
+
+function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrite, openProfile, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
+  const [nativeArticles, setNativeArticles] = useState([]);
   const [tenantContext, setTenantContext] = useState(null);
   const [search, setSearch] = useState("");
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
@@ -249,9 +372,19 @@ function FeedExperience({ session, openStudio, openNetwork, signOut }) {
   const [toast, setToast] = useState("");
   useEffect(() => { fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" }).then(response => response.json()).then(setCatalogue).catch(() => setCatalogue({ posts: [] })); }, []);
   useEffect(() => { loadTenantContext(session.user.id).then(setTenantContext).catch(() => setTenantContext(null)); }, [session.user.id]);
+  const loadNativeFeed = useCallback(async () => {
+    try { setNativeArticles(await nativePublishing.listFeed(30)); }
+    catch (nativeError) { if (!nativeError.message?.includes("content_blocks")) console.error(nativeError); }
+  }, []);
+  useEffect(() => {
+    loadNativeFeed();
+    const channel = nativePublishing.subscribe(loadNativeFeed);
+    return () => { void supabase.removeChannel(channel); };
+  }, [loadNativeFeed]);
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(""), 2200); return () => clearTimeout(timer); }, [toast]);
   const posts = useMemo(() => [...(catalogue.posts || [])].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
   const visible = useMemo(() => posts.filter(post => `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30), [posts, search]);
+  const visibleNative = useMemo(() => nativeArticles.filter(article => `${article.title} ${article.description} ${(article.hashtags || []).join(" ")} ${(article.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())), [nativeArticles, search]);
   const recent = posts.slice(0, 10);
   const toggle = (type, url) => {
     const current = type === "liked" ? liked : saved;
@@ -263,18 +396,128 @@ function FeedExperience({ session, openStudio, openNetwork, signOut }) {
   const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
   const workspaceName = tenantContext?.tenant?.name || "Personal workspace";
   const initial = name.charAt(0).toUpperCase();
-  const featureLinks = [{ label: "Home feed", icon: Home, active: true }, { label: "People worth knowing", icon: Users, network: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
+  const featureLinks = [{ label: "Home feed", icon: Home, active: true }, { label: "My profile", icon: UserRound, profileRoute: true }, { label: "Professional search", icon: Search, searchRoute: true }, { label: "People worth knowing", icon: Users, network: true }, ...NAV_ITEMS.map(item => ({ label: item.label, icon: item.icon }))];
   return <div className="feed-page">
-    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search articles, topics, people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
+    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && search.trim()) openSearch(search); }} placeholder="Search articles—press Enter for people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar" onClick={openProfile}><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="feed-layout">
-      <aside className="feed-left"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>45</b><small>Articles</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active, network }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && (network ? openNetwork() : openStudio())}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
-      <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={() => openStudio()}>Share an article, lesson, or system design…</button></div><footer><button onClick={openStudio}><PenTool size={16} />Write article</button><button onClick={openStudio}><Layers3 size={16} />Add to series</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Showing your knowledge network</span><button>Newest first <ChevronRight size={13} /></button></div>{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or clear your search.</p></div>}</main>
+      <aside className="feed-left"><section className="feed-profile" onClick={openProfile} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Building useful systems, one idea at a time.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div><b>{nativeArticles.length}</b><small>Native</small><b>11</b><small>Topics</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, active, network, searchRoute, profileRoute }) => <button key={label} className={active ? "active" : ""} onClick={() => !active && (profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio())}><Icon size={17} />{label}{!active && <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="feed-stream"><section className="feed-composer"><div className="feed-composer-row"><div>{initial}</div><button onClick={openWrite}>Share an article, lesson, or system design…</button></div><footer><button onClick={openWrite}><PenTool size={16} />Write article</button><button onClick={openWrite}><Layers3 size={16} />Create post</button><button onClick={openStudio}><BarChart3 size={16} />View analytics</button></footer></section><div className="feed-sort"><span>Live from your professional knowledge network</span><button>Relevance + freshness <ChevronRight size={13} /></button></div>{visibleNative.map(article => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications remain references until their source is connected in StackCraft Studio.</p></div>}{visible.map(post => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or publish the first native StackedIN post.</p></div>}</main>
       <aside className="feed-right"><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <a href={post.url} target="_blank" rel="noreferrer" key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></a>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
 }
 
-function NetworkExperience({ session, openFeed, openStudio, signOut }) {
+function SearchExperience({ session, openFeed, openNetwork, openProfile, openStudio, signOut }) {
+  const initialQuery = useRef(sessionStorage.getItem("stackedin-professional-search") || "");
+  const autoSearchStarted = useRef(false);
+  const [tenantContext, setTenantContext] = useState(null);
+  const [query, setQuery] = useState(initialQuery.current);
+  const [location, setLocation] = useState("");
+  const [role, setRole] = useState("");
+  const [minimumExperience, setMinimumExperience] = useState("");
+  const [parsed, setParsed] = useState(null);
+  const [results, setResults] = useState([]);
+  const [cursor, setCursor] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+  const [toast, setToast] = useState("");
+  const tenantId = tenantContext?.tenant?.id;
+  const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "StackedIN member";
+  const initial = name.charAt(0).toUpperCase();
+
+  useEffect(() => {
+    loadTenantContext(session.user.id).then(setTenantContext).catch(() => setError("Your workspace could not be loaded."));
+  }, [session.user.id]);
+  useEffect(() => { if (!toast) return undefined; const timer = setTimeout(() => setToast(""), 2400); return () => clearTimeout(timer); }, [toast]);
+
+  const executeSearch = useCallback(async (currentTenantId, append = false) => {
+    if (!query.trim() && !location.trim() && !role.trim()) {
+      setError("Describe the professional, skill, or location you want to find.");
+      return;
+    }
+    append ? setLoadingMore(true) : setLoading(true);
+    setError("");
+    try {
+      const page = await profileSearch.search(currentTenantId, {
+        query,
+        location,
+        role,
+        minimumExperience: minimumExperience ? Number(minimumExperience) : null,
+        limit: 10,
+        cursor: append ? cursor : null,
+      });
+      setParsed(page.query);
+      setResults(current => append ? [...current, ...page.results] : page.results);
+      setCursor(page.nextCursor);
+      setSearched(true);
+      sessionStorage.setItem("stackedin-professional-search", query.trim());
+    } catch (searchError) {
+      console.error(searchError);
+      setError(searchError.message?.includes("search_profiles")
+        ? "Professional Search V1 is built, but its Phase 3 database migration has not been applied yet."
+        : "Search could not be completed. Please try again.");
+    } finally {
+      setLoading(false); setLoadingMore(false);
+    }
+  }, [cursor, location, minimumExperience, query, role]);
+
+  useEffect(() => {
+    if (!tenantId || !initialQuery.current.trim() || autoSearchStarted.current) return;
+    autoSearchStarted.current = true;
+    executeSearch(tenantId);
+  }, [executeSearch, tenantId]);
+
+  const submit = event => {
+    event.preventDefault();
+    if (tenantId) executeSearch(tenantId);
+  };
+  const act = async (candidate, action) => {
+    if (!tenantId) return;
+    setBusy(`${candidate.profile_id}:${action}`);
+    try {
+      if (action === "connect") {
+        await professionalGraph.sendConnectionRequest(tenantId, candidate.profile_id);
+        setResults(current => current.map(item => item.profile_id === candidate.profile_id ? { ...item, is_connected: true } : item));
+        setToast(`Connection request sent to ${candidate.display_name}.`);
+      } else {
+        await professionalGraph.follow(tenantId, candidate.profile_id);
+        setToast(`Following ${candidate.display_name}.`);
+      }
+      await professionalGraph.recordInteraction({
+        tenantId,
+        entityType: "SEARCH_RESULT",
+        entityId: candidate.profile_id,
+        targetProfileId: candidate.profile_id,
+        eventType: "SEARCH_RESULT_CLICK",
+        metadata: { action },
+      });
+    } catch (actionError) { setToast(actionError.message || "The action could not be completed."); }
+    finally { setBusy(""); }
+  };
+  const intentChips = parsed ? [parsed.role, parsed.location, ...parsed.skills, ...parsed.topics, parsed.contentAuthorRequired ? "Publishes content" : null].filter(Boolean) : [];
+
+  return <div className="feed-page search-page">
+    <header className="feed-topbar"><button className="feed-logo" onClick={openFeed}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><form className="global-search-form" onSubmit={submit}><Search size={17} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="AI architects in Bengaluru writing about RAG" /><button disabled={loading || !tenantId}>Search</button></form><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button className="active"><Search size={18} /><span>Search</span></button><button className="feed-avatar" onClick={openProfile}><b>{initial}</b><span>Me</span></button></nav></header>
+    <div className="search-layout">
+      <aside className="search-filters"><section><span><SlidersHorizontal size={14} />Structured filters</span><label>Location<input value={location} onChange={event => setLocation(event.target.value)} placeholder="India or Bengaluru" /></label><label>Professional role<input value={role} onChange={event => setRole(event.target.value)} placeholder="AI Architect" /></label><label>Minimum experience<select value={minimumExperience} onChange={event => setMinimumExperience(event.target.value)}><option value="">Any experience</option><option value="2">2+ years</option><option value="5">5+ years</option><option value="10">10+ years</option><option value="15">15+ years</option></select></label><button onClick={() => tenantId && executeSearch(tenantId)} disabled={loading || !tenantId}><Filter size={14} />Apply filters</button></section><button onClick={openFeed}><Home size={15} />Back to feed</button><button onClick={openStudio}><Sparkles size={15} />Open Studio</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="search-main"><header><span>Professional Search V1</span><h1>Find the signal,<br />skip the noise.</h1><p>Search by expertise, role, location, published knowledge, and professional proximity. Results explain why they earned their position.</p></header>
+        {intentChips.length > 0 && <section className="intent-strip"><strong>Understood intent</strong><div>{intentChips.map(chip => <span key={chip}>{chip}</span>)}</div></section>}
+        {loading && <div className="network-state"><RefreshCw className="spin" size={24} /><h3>Mapping professional relevance…</h3><p>Lexical, skill, topic, and graph signals are being ranked together.</p></div>}
+        {!loading && error && <div className="network-state network-error"><ShieldCheck size={25} /><h3>Search needs attention</h3><p>{error}</p></div>}
+        {!loading && !error && !searched && <div className="search-welcome"><Search size={28} /><h2>Search like a human thinks.</h2><p>Try “senior Azure architects in India” or “people writing about Agentic AI.”</p><div>{["AI Architect Azure", ".NET developers with Kubernetes", "GraphRAG experts", "AI engineers in Bengaluru writing about RAG"].map(example => <button key={example} onClick={() => setQuery(example)}>{example}<ArrowRight size={13} /></button>)}</div></div>}
+        {!loading && !error && searched && !results.length && <div className="network-state"><Search size={27} /><h3>No strong professional matches yet.</h3><p>Try removing one filter or using a broader skill synonym. We would rather show zero results than invent relevance.</p></div>}
+        {!loading && results.length > 0 && <section className="search-results"><div className="search-results-heading"><div><span>{results.length} professionals mapped</span><h2>Ranked by useful relevance</h2></div><small>Popularity is not a ranking shortcut.</small></div>{results.map(candidate => <article className="search-result-card" key={candidate.profile_id}><div className="search-result-avatar">{candidate.avatar_url ? <img src={candidate.avatar_url} alt="" /> : candidate.display_name.charAt(0).toUpperCase()}</div><div className="search-result-body"><div className="search-result-title"><div><h3>{candidate.display_name}</h3><p>{candidate.headline || candidate.current_job_title || "StackedIN professional"}</p></div><span><Sparkles size={11} />{candidate.match_label}</span></div><div className="search-result-meta">{candidate.current_company && <span><BriefcaseBusiness size={12} />{candidate.current_company}</span>}{(candidate.location || candidate.country) && <span><MapPin size={12} />{[candidate.location, candidate.country].filter(Boolean).join(", ")}</span>}{candidate.years_experience != null && <span>{candidate.years_experience}+ years</span>}</div>{candidate.key_skills?.length > 0 && <div className="search-skills">{candidate.key_skills.map(skill => <span className={candidate.matched_terms?.includes(skill) ? "matched" : ""} key={skill}>{skill}</span>)}</div>}<div className="search-reasons">{(candidate.reasons || []).slice(0, 4).map(reason => <span key={reason}><CheckCircle2 size={12} />{reason}</span>)}</div></div><footer><button className="connect" disabled={Boolean(busy) || candidate.is_connected} onClick={() => act(candidate, "connect")}>{busy === `${candidate.profile_id}:connect` ? <RefreshCw className="spin" size={14} /> : candidate.is_connected ? <CheckCircle2 size={14} /> : <Users size={14} />}{candidate.is_connected ? "Connected" : "Connect"}</button><button disabled={Boolean(busy)} onClick={() => act(candidate, "follow")}><UserRound size={14} />Follow</button></footer></article>)}{cursor && <button className="load-more-search" onClick={() => tenantId && executeSearch(tenantId, true)} disabled={loadingMore}>{loadingMore ? <RefreshCw className="spin" size={15} /> : <ArrowRight size={15} />}Load more relevant people</button>}</section>}
+      </main>
+      <aside className="search-insight"><section><BrainCircuit size={19} /><span>Phase 3 ranking</span><h3>Words + evidence + graph.</h3><p>Full-text and trigram relevance meet verified skill, topic, article, freshness, and professional-network signals.</p></section><section><ShieldCheck size={19} /><span>Privacy boundary</span><h3>Tenant authorization first.</h3><p>Private, blocked, muted, suspended, and non-searchable profiles never enter the ranking pool.</p></section><section><Zap size={19} /><span>Always available</span><h3>No AI dependency.</h3><p>This deterministic search works even when embedding or language-model services are offline.</p></section></aside>
+    </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
+  </div>;
+}
+
+function NetworkExperience({ session, openFeed, openSearch, openProfile, openStudio, signOut }) {
+  const [networkSearch, setNetworkSearch] = useState("");
   const [tenantContext, setTenantContext] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [following, setFollowing] = useState(new Set());
@@ -326,7 +569,7 @@ function NetworkExperience({ session, openFeed, openStudio, signOut }) {
   };
 
   return <div className="feed-page network-page">
-    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input placeholder="Search people, skills, topics…" onFocus={() => setToast("Professional search arrives in Phase 3.")} /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button className="active"><Users size={18} /><span>Network</span></button><button><Bell size={18} /><span>Alerts</span></button><button className="feed-avatar"><b>{initial}</b><span>Me</span></button></nav></header>
+    <header className="feed-topbar"><button className="feed-logo" onClick={() => { window.location.hash = ""; }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={networkSearch} onChange={event => setNetworkSearch(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && networkSearch.trim()) openSearch(networkSearch); }} placeholder="Search people, skills, topics…" /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button className="active"><Users size={18} /><span>Network</span></button><button onClick={() => openSearch("")}><Search size={18} /><span>Search</span></button><button className="feed-avatar" onClick={openProfile}><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="network-layout">
       <aside className="network-sidebar"><section className="feed-profile"><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Recommendations shaped by your professional graph.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{tenantContext?.tenant?.name || "Personal workspace"}</strong><small>{tenantContext?.role || "member"}</small></div></section><button onClick={openFeed}><Home size={16} />Back to home feed</button><button onClick={openStudio}><Sparkles size={16} />Open StackCraft Studio</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside>
       <main className="network-main"><header><span>Professional knowledge graph</span><h1>People worth knowing</h1><p>Fewer suggestions. Better reasons. Every candidate passes privacy, relationship, and negative-feedback filters before appearing here.</p></header>
@@ -341,6 +584,34 @@ function NetworkExperience({ session, openFeed, openStudio, signOut }) {
       <aside className="network-insight"><section><BrainCircuit size={19} /><span>How ranking works</span><h3>Relevance before popularity.</h3><p>Shared expertise, professional interests, career fit, useful adjacency, and mutual connections matter more than follower count.</p></section><section><ShieldCheck size={19} /><span>Your controls</span><h3>Negative feedback is real data.</h3><p>Dismissals, “not relevant,” mutes, and blocks immediately change what can appear again.</p></section><section><Zap size={19} /><span>Exploration</span><h3>Small, controlled discovery.</h3><p>A narrow exploration slot prevents an echo chamber without turning your network into random roulette.</p></section></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
+}
+
+function SourceConnectionPanel() {
+  const [context, setContext] = useState(null);
+  const [sources, setSources] = useState([]);
+  const [provider, setProvider] = useState("SUBSTACK");
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const load = useCallback(async () => {
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
+    const tenant = await loadTenantContext(data.user.id);
+    setContext(tenant);
+    try { setSources(await nativePublishing.listSources()); } catch { setSources([]); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const connect = async event => {
+    event.preventDefault();
+    if (!context?.tenant?.id || !context?.profile?.id) return;
+    setBusy(true); setMessage("");
+    try {
+      await nativePublishing.connectPublicSource(context.tenant.id, context.profile.id, provider, url);
+      setUrl(""); setMessage("Source registered. It will activate after the public feed is verified by the sync worker."); await load();
+    } catch (sourceError) { setMessage(sourceError.message || "Source could not be connected."); }
+    finally { setBusy(false); }
+  };
+  return <section className="source-connection-panel"><div><span>StackedIN feed bridge</span><h3>Connect a public publication source</h3><p>Substack, Medium, Hashnode, and RSS can be imported as references after feed verification. LinkedIn remains share-only until approved API access exists.</p></div><form onSubmit={connect}><select value={provider} onChange={event => setProvider(event.target.value)}><option>SUBSTACK</option><option>MEDIUM</option><option>HASHNODE</option><option>LINKEDIN</option><option>RSS</option></select><input required type="url" value={url} onChange={event => setUrl(event.target.value)} placeholder="https://your-publication-or-profile" /><button disabled={busy || !context}>{busy ? <RefreshCw className="spin" size={14} /> : <Plus size={14} />}Connect source</button></form>{message && <div className="source-message">{message}</div>}<div className="connected-source-list">{sources.map(source => <article key={source.id}><div><PlatformIcon name={source.provider === "SUBSTACK" ? "Substack" : source.provider === "MEDIUM" ? "Medium" : source.provider === "HASHNODE" ? "Hashnode" : "LinkedIn"} size={18} /></div><section><strong>{source.provider}</strong><span>{source.profile_url}</span></section><em className={`source-status status-${source.status.toLowerCase()}`}>{source.status}</em><small>{source.capabilities?.direct_publish ? "Direct publish" : source.capabilities?.import ? "Import + share" : "Share only"}</small></article>)}{!sources.length && <p>No tenant sources connected yet.</p>}</div></section>;
 }
 
 function Dashboard({ onExit }) {
@@ -495,6 +766,7 @@ function Dashboard({ onExit }) {
         {view === "platforms" && <>
           <SectionHeading eyebrow="Publishing launchpad" title="Write securely on every platform" />
           <div className="security-note"><CheckCircle2 size={18} /><div><strong>Your passwords never touch StackCraft Studio.</strong><span>Each Write button opens the official platform. If you are signed out, that platform handles verification before opening its editor.</span></div></div>
+          <SourceConnectionPanel />
           <section className="platform-grid">{PLATFORMS.map(item => {
             const count = posts.filter(post => (post.platform || "Substack") === item.name).length;
             return <article className="platform-card" key={item.name} style={{ "--platform-color": item.color }}>
@@ -576,12 +848,20 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
   const navigate = next => { window.location.hash = next; setRoute(next); window.scrollTo({ top: 0, behavior: "instant" }); };
+  const openSearch = query => {
+    sessionStorage.setItem("stackedin-professional-search", query || "");
+    navigate("search");
+  };
   const openStudio = () => navigate(session ? "studio" : "login");
   const signOut = async () => { await supabase.auth.signOut(); navigate("home"); };
   if (!authReady) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><RefreshCw className="spin" /></div>;
-  if (route === "login" || (["feed", "network", "studio"].includes(route) && !session)) return <AuthView onBack={() => navigate("home")} />;
-  if (route === "feed" && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} signOut={signOut} />;
-  if (route === "network" && session) return <NetworkExperience session={session} openFeed={() => navigate("feed")} openStudio={() => navigate("studio")} signOut={signOut} />;
+  const protectedRoute = ["feed", "network", "search", "profile", "write", "studio"].includes(route) || route.startsWith("article-");
+  if (route === "login" || (protectedRoute && !session)) return <AuthView onBack={() => navigate("home")} />;
+  if ((route === "feed" || route.startsWith("article-")) && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} openSearch={openSearch} openWrite={() => navigate("write")} openProfile={() => navigate("profile")} signOut={signOut} />;
+  if (route === "network" && session) return <NetworkExperience session={session} openFeed={() => navigate("feed")} openSearch={openSearch} openProfile={() => navigate("profile")} openStudio={() => navigate("studio")} signOut={signOut} />;
+  if (route === "search" && session) return <SearchExperience session={session} openFeed={() => navigate("feed")} openNetwork={() => navigate("network")} openProfile={() => navigate("profile")} openStudio={() => navigate("studio")} signOut={signOut} />;
+  if (route === "profile" && session) return <ProfileExperience session={session} openFeed={() => navigate("feed")} openWrite={() => navigate("write")} signOut={signOut} />;
+  if (route === "write" && session) return <WriteExperience session={session} openFeed={() => navigate("feed")} openProfile={() => navigate("profile")} />;
   if (route === "studio" && session) return <Dashboard onExit={() => navigate("feed")} />;
   return <MarketingLanding openStudio={openStudio} />;
 }

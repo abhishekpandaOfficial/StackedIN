@@ -1,0 +1,151 @@
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import type { ArticleComment, ContentBlock, NativeArticle, NativeContentType, NativeReaction } from "../domain/nativeContent";
+import { normalizeHashtags, validateContentBlocks } from "../domain/nativeContent";
+
+export interface SaveNativeArticleInput {
+  tenantId: string;
+  articleId?: string | null;
+  title: string;
+  description: string;
+  contentType: NativeContentType;
+  blocks: ContentBlock[];
+  tags?: string[];
+  hashtags?: string[] | string;
+  coverImageUrl?: string | null;
+  status: "draft" | "published";
+}
+
+export interface PublicationSource {
+  id: string;
+  provider: "SUBSTACK" | "MEDIUM" | "HASHNODE" | "LINKEDIN" | "RSS";
+  profile_url: string;
+  feed_url: string | null;
+  handle: string | null;
+  status: "PENDING" | "ACTIVE" | "PAUSED" | "ERROR" | "REAUTH_REQUIRED";
+  capabilities: { import?: boolean; direct_publish?: boolean; share?: boolean };
+  last_synced_at: string | null;
+  last_error: string | null;
+}
+
+export class NativePublishingService {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async listFeed(limit = 30): Promise<NativeArticle[]> {
+    const { data, error } = await this.client
+      .from("articles")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,published_at,source_type,source_provider,external_url,author:profiles!articles_author_profile_fk(id,slug,display_name,headline,avatar_url)")
+      .eq("status", "published")
+      .order("published_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(Math.max(1, Math.min(limit, 60)));
+    if (error) throw new Error(error.message);
+    const articles = (data ?? []) as unknown as NativeArticle[];
+    if (!articles.length) return [];
+    const { data: reactions } = await this.client
+      .from("article_reactions")
+      .select("article_id,reaction_type,profile_id")
+      .in("article_id", articles.map(article => article.id));
+    const { data: authData } = await this.client.auth.getUser();
+    const viewerId = authData.user?.id;
+    const ownReactions = new Map((reactions ?? []).filter(item => item.profile_id === viewerId).map(item => [item.article_id, item.reaction_type as NativeReaction]));
+    const summaries = new Map<string, Partial<Record<NativeReaction, number>>>();
+    (reactions ?? []).forEach(item => {
+      const summary = summaries.get(item.article_id) ?? {};
+      const reaction = item.reaction_type as NativeReaction;
+      summary[reaction] = (summary[reaction] ?? 0) + 1;
+      summaries.set(item.article_id, summary);
+    });
+    return articles.map(article => ({ ...article, viewerReaction: ownReactions.get(article.id) ?? null, reactionSummary: summaries.get(article.id) ?? {} }));
+  }
+
+  async save(input: SaveNativeArticleInput): Promise<NativeArticle> {
+    const errors = input.status === "published" ? validateContentBlocks(input.blocks) : [];
+    if (errors.length) throw new Error(errors[0]);
+    const { data, error } = await this.client.rpc("save_native_article", {
+      requested_tenant_id: input.tenantId,
+      requested_article_id: input.articleId ?? null,
+      requested_title: input.title.trim() || (input.status === "draft" ? "Untitled draft" : input.title),
+      requested_description: input.description,
+      requested_content_type: input.contentType,
+      requested_blocks: input.blocks,
+      requested_tags: input.tags ?? [],
+      requested_hashtags: normalizeHashtags(input.hashtags ?? []),
+      requested_cover_image_url: input.coverImageUrl ?? null,
+      requested_status: input.status,
+    });
+    if (error) throw new Error(error.message);
+    return data as NativeArticle;
+  }
+
+  async uploadImage(userId: string, file: File): Promise<string> {
+    if (!file.type.startsWith("image/") || file.size > 10 * 1024 * 1024) throw new Error("Choose a JPG, PNG, WebP, or GIF under 10 MB.");
+    const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "webp";
+    const path = `${userId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await this.client.storage.from("article-media").upload(path, file, { cacheControl: "31536000", upsert: false });
+    if (error) throw new Error(error.message);
+    return this.client.storage.from("article-media").getPublicUrl(path).data.publicUrl;
+  }
+
+  async react(articleId: string, reaction: NativeReaction | null): Promise<void> {
+    const { error } = await this.client.rpc("react_to_article", { requested_article_id: articleId, requested_reaction: reaction });
+    if (error) throw new Error(error.message);
+  }
+
+  async listComments(articleId: string): Promise<ArticleComment[]> {
+    const { data, error } = await this.client
+      .from("article_comments")
+      .select("id,article_id,author_profile_id,parent_comment_id,body,status,created_at,author:profiles!article_comments_author_profile_id_fkey(id,display_name,avatar_url,headline)")
+      .eq("article_id", articleId)
+      .neq("status", "DELETED")
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as ArticleComment[];
+  }
+
+  async comment(articleId: string, body: string, parentId: string | null = null): Promise<ArticleComment> {
+    const { data, error } = await this.client.rpc("add_article_comment", {
+      requested_article_id: articleId,
+      requested_parent_id: parentId,
+      requested_body: body,
+    });
+    if (error) throw new Error(error.message);
+    return data as ArticleComment;
+  }
+
+  async recordShare(tenantId: string, profileId: string, articleId: string, destination: string): Promise<void> {
+    const { error } = await this.client.from("article_shares").insert({ tenant_id: tenantId, profile_id: profileId, article_id: articleId, destination });
+    if (error) throw new Error(error.message);
+  }
+
+  async listSources(): Promise<PublicationSource[]> {
+    const { data, error } = await this.client.from("publication_sources")
+      .select("id,provider,profile_url,feed_url,handle,status,capabilities,last_synced_at,last_error")
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []) as PublicationSource[];
+  }
+
+  async connectPublicSource(tenantId: string, ownerProfileId: string, provider: PublicationSource["provider"], profileUrl: string): Promise<void> {
+    let url: URL;
+    try { url = new URL(profileUrl); } catch { throw new Error("Enter a complete HTTPS profile or publication URL."); }
+    if (url.protocol !== "https:") throw new Error("Publication sources must use HTTPS.");
+    const { error } = await this.client.from("publication_sources").upsert({
+      tenant_id: tenantId,
+      owner_profile_id: ownerProfileId,
+      provider,
+      profile_url: url.toString(),
+      status: "PENDING",
+      import_mode: "REFERENCE",
+      capabilities: { import: provider !== "LINKEDIN", direct_publish: false, share: true },
+    }, { onConflict: "tenant_id,owner_profile_id,provider,profile_url" });
+    if (error) throw new Error(error.message);
+  }
+
+  subscribe(onChange: () => void): RealtimeChannel {
+    return this.client.channel("stackedin-native-feed")
+      .on("postgres_changes", { event: "*", schema: "public", table: "articles" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_reactions" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_comments" }, onChange)
+      .subscribe();
+  }
+}
