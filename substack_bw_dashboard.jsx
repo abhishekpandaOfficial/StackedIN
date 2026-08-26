@@ -293,17 +293,12 @@ function MarketingLanding({ openStudio }) {
       </section>
 
       <section className="community-scenes" aria-label="Knowledge in motion">
-        <header><span>Ideas become momentum</span><h2>Built around the way<br />great work actually happens.</h2><p>Research. Build. Explain. Connect. StackedIN gives every meaningful step a place in your professional story.</p></header>
         <div className="office-story-shell" aria-label="A day inside the StackedIN studio">
           <figure className="office-story">
             <img loading="lazy" src={`${base}stackedin-office-story.webp`} alt="A diverse StackedIN team working in cubicles, talking over coffee, monitoring a deployment, and preparing a professional post" />
-            <figcaption className="office-moment office-moment-focus"><b>01</b><span><small>Focus</small><strong>Build with depth.</strong></span></figcaption>
-            <figcaption className="office-moment office-moment-coffee"><b>02</b><span><small>Connect</small><strong>Coffee. Context. Clarity.</strong></span></figcaption>
-            <figcaption className="office-moment office-moment-deploy"><b>03</b><span><small>Deploy</small><strong>Ship with confidence.</strong></span></figcaption>
-            <figcaption className="office-moment office-moment-publish"><b>04</b><span><small>Publish</small><strong>Turn work into signal.</strong></span></figcaption>
-            <div className="office-live-signal"><i /><span>StackedIN studio · ideas moving</span></div>
           </figure>
         </div>
+        <header className="office-story-copy"><span>Ideas become momentum</span><h2><span>Built around the way</span><span>great work actually happens.</span></h2><p>Research. Build. Explain. Connect. StackedIN gives every meaningful step a place in your professional story.</p></header>
         <div className="work-rail-footer"><span>Real work · Real people · Useful context</span><strong>StackedIN makes every meaningful contribution discoverable.</strong></div>
       </section>
 
