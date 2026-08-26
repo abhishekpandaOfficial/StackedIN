@@ -10,6 +10,7 @@ const socialFeedMigration = readFileSync(resolve("supabase/migrations/2026082500
 const profileHubMigration = readFileSync(resolve("supabase/migrations/202608250007_profile_journey_and_inbox.sql"), "utf8");
 const xstudioMigration = readFileSync(resolve("supabase/migrations/202608250008_xstudio_imports_and_messaging.sql"), "utf8");
 const cmsMigration = readFileSync(resolve("supabase/migrations/202608250009_xstudio_cms_and_scheduling.sql"), "utf8");
+const trashMigration = readFileSync(resolve("supabase/migrations/202608250010_xstudio_article_trash.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -325,5 +326,31 @@ describe("XStudio CMS and scheduling migration contract", () => {
   it("parenthesizes arrays before slicing", () => {
     expect(cmsMigration).toContain("(coalesce(requested_tags, '{}'::text[]))[1:20]");
     expect(cmsMigration).toContain("(coalesce(array_agg(left(tags.tag, 80)), '{}'::text[]))[1:20]");
+  });
+});
+
+describe("XStudio recoverable Trash migration contract", () => {
+  it.each([
+    "add column if not exists deleted_at timestamptz",
+    "create or replace function public.trash_cms_article",
+    "create or replace function public.restore_cms_article",
+    "create trigger articles_guard_trashed_update",
+  ])("contains %s", statement => expect(trashMigration.toLowerCase()).toContain(statement));
+
+  it("uses soft deletion and never permanently deletes an article", () => {
+    expect(trashMigration).toContain("set deleted_at = now()");
+    expect(trashMigration).toContain("status = 'archived'");
+    expect(trashMigration).not.toMatch(/delete\s+from\s+public\.articles/i);
+  });
+
+  it("restores safely as a draft instead of republishing", () => {
+    expect(trashMigration).toContain("set deleted_at = null");
+    expect(trashMigration).toContain("status = 'draft'");
+  });
+
+  it("guards mutations and cancels unpublished delivery jobs", () => {
+    expect(trashMigration).toContain("Restore this article from Trash before editing it.");
+    expect(trashMigration).toContain("status = 'CANCELLED'");
+    expect(trashMigration).toContain("status <> 'PUBLISHED'");
   });
 });

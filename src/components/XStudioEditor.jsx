@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, CalendarClock, Check, ChevronRight, Clock3, Copy, Eye, FileText,
-  Globe2, History, ImagePlus, Library, LoaderCircle, Monitor, PanelRight, PenTool,
-  Plus, Save, Search, Send, Settings2, ShieldCheck, Smartphone, Sparkles, Undo2, X, Zap,
+  ArchiveRestore, ArrowLeft, CalendarClock, Check, ChevronRight, Clock3, Copy, Eye, FileText,
+  Globe2, History, ImagePlus, ImageUp, Library, LoaderCircle, Monitor, PanelRight, PenTool,
+  Plus, Save, Search, Send, Settings2, ShieldCheck, Smartphone, Sparkles, Trash2, Undo2, X, Zap,
 } from "lucide-react";
 import { SiHashnode, SiMedium, SiSubstack } from "@icons-pack/react-simple-icons";
 import { supabase } from "../../supabase.js";
@@ -30,6 +30,7 @@ const PLATFORM_META = {
 const slugify = value => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100);
 const splitValues = value => [...new Set(String(value || "").split(/[\s,]+/).map(item => item.trim().replace(/^#/, "")).filter(Boolean))].slice(0, 20);
 const formatMoment = value => value ? new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) : "Never";
+const displayTitle = value => value?.trim() || "New article";
 const emptyDraft = () => ({
   id: null,
   title: "",
@@ -100,7 +101,7 @@ function toMarkdown(draft) {
     if (block.type === "divider") return "---";
     return block.text || "";
   }).filter(Boolean).join("\n\n");
-  return `# ${draft.title || "Untitled"}\n\n${draft.description ? `${draft.description}\n\n` : ""}${body}\n\n${splitValues(draft.hashtags).map(tag => `#${tag}`).join(" ")}`.trim();
+  return `# ${draft.title || "New article"}\n\n${draft.description ? `${draft.description}\n\n` : ""}${body}\n\n${splitValues(draft.hashtags).map(tag => `#${tag}`).join(" ")}`.trim();
 }
 
 function PlatformIcon({ platform, size = 16 }) {
@@ -118,12 +119,17 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
   const [mode, setMode] = useState("edit");
   const [device, setDevice] = useState("desktop");
   const [query, setQuery] = useState("");
+  const [libraryView, setLibraryView] = useState("all");
+  const [selectedTrash, setSelectedTrash] = useState(null);
+  const [confirmTrash, setConfirmTrash] = useState(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [saveState, setSaveState] = useState("Saved locally");
   const initialized = useRef(false);
   const saveTimer = useRef(null);
+  const bannerInputRef = useRef(null);
+  const suppressAutosave = useRef(false);
 
   const patchDraft = useCallback(patch => setDraft(current => ({ ...current, ...(typeof patch === "function" ? patch(current) : patch) })), []);
   const loadLibrary = useCallback(async tenantId => {
@@ -139,6 +145,7 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
         publishing.getCMSArticle(articleId), publishing.listRevisions(articleId), publishing.listDistributionJobs(context?.tenant?.id || "", articleId),
       ]);
       setDraft(articleToDraft(article));
+      setSelectedTrash(null);
       setRevisions(articleRevisions);
       setJobs(distributionJobs);
       sessionStorage.setItem("xstudio-editor-article", articleId);
@@ -159,7 +166,7 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
       try {
         const items = await loadLibrary(loaded.tenant.id);
         const requestedId = sessionStorage.getItem("xstudio-editor-article");
-        const requested = items.find(item => item.id === requestedId);
+        const requested = items.find(item => item.id === requestedId && !item.deleted_at);
         if (requested) {
           setDraft(articleToDraft(requested));
           const [history, queue] = await Promise.all([publishing.listRevisions(requested.id), publishing.listDistributionJobs(loaded.tenant.id, requested.id)]);
@@ -181,16 +188,16 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
   }, [loadLibrary, session.user.id]);
 
   useEffect(() => {
-    if (!initialized.current) return;
+    if (!initialized.current || suppressAutosave.current || selectedTrash) return;
     localStorage.setItem(RECOVERY_KEY, JSON.stringify(draft));
     setSaveState("Unsaved changes");
     clearTimeout(saveTimer.current);
-    if (!context?.tenant?.id || (!draft.title.trim() && !draft.blocks.some(block => blockPlainText(block).trim()))) return;
+    if (!context?.tenant?.id || !draft.title.trim()) return;
     saveTimer.current = setTimeout(() => void persist("draft", true), 2200);
     return () => clearTimeout(saveTimer.current);
   // persist intentionally uses the latest draft snapshot from this effect.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, context?.tenant?.id]);
+  }, [draft, context?.tenant?.id, selectedTrash]);
 
   useEffect(() => {
     const shortcut = event => {
@@ -204,12 +211,21 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
 
   const wordCount = useMemo(() => `${draft.title} ${draft.description} ${draft.blocks.map(blockPlainText).join(" ")}`.trim().split(/\s+/).filter(Boolean).length, [draft]);
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 220));
-  const filteredArticles = useMemo(() => articles.filter(article => `${article.title} ${article.status}`.toLowerCase().includes(query.toLowerCase())), [articles, query]);
+  const activeArticles = useMemo(() => articles.filter(article => !article.deleted_at), [articles]);
+  const trashedArticles = useMemo(() => articles.filter(article => Boolean(article.deleted_at)), [articles]);
+  const filteredArticles = useMemo(() => {
+    const source = libraryView === "trash" ? trashedArticles
+      : libraryView === "draft" ? activeArticles.filter(article => article.status === "draft")
+        : libraryView === "scheduled" ? activeArticles.filter(article => article.status === "scheduled")
+          : activeArticles;
+    const normalizedQuery = query.trim().toLowerCase();
+    return source.filter(article => !normalizedQuery || `${article.title} ${article.description} ${article.status}`.toLowerCase().includes(normalizedQuery));
+  }, [activeArticles, trashedArticles, libraryView, query]);
   const selectedTargets = Object.entries(draft.targets).filter(([, enabled]) => enabled).map(([platform]) => platform);
 
   async function persist(status = "draft", automatic = false) {
-    if (!context?.tenant?.id || busy && !automatic) return null;
-    if (status !== "draft" && !draft.title.trim()) { setError("Add a title before publishing or scheduling."); return null; }
+    if (suppressAutosave.current || selectedTrash || !context?.tenant?.id || busy && !automatic) return null;
+    if (!draft.title.trim()) { if (!automatic) setError("Add an article title before saving or publishing."); return null; }
     setBusy(automatic ? "autosave" : status);
     setError("");
     if (automatic) setSaveState("Autosaving…");
@@ -256,16 +272,38 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
   }
 
   const newDraft = () => {
+    suppressAutosave.current = true;
+    clearTimeout(saveTimer.current);
     sessionStorage.removeItem("xstudio-editor-article");
     localStorage.removeItem(RECOVERY_KEY);
     setDraft(emptyDraft());
+    setSelectedTrash(null);
+    setConfirmTrash(null);
+    setLibraryView("all");
     setRevisions([]);
     setJobs([]);
     setMode("edit");
     setNotice("");
     setError("");
+    queueMicrotask(() => { suppressAutosave.current = false; });
   };
   const uploadImage = file => publishing.uploadImage(session.user.id, file);
+  const uploadBanner = async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setBusy("banner");
+    setError("");
+    try {
+      const url = await uploadImage(file);
+      patchDraft({ coverImageUrl: url, socialImageUrl: draft.socialImageUrl || url });
+      setNotice("Banner uploaded. It will appear in the article and social preview.");
+    } catch (uploadError) {
+      setError(uploadError.message || "The banner could not be uploaded.");
+    } finally {
+      setBusy("");
+      event.target.value = "";
+    }
+  };
   const copyPackage = async platform => {
     await navigator.clipboard.writeText(toMarkdown({ ...draft, ...(draft.platformOverrides[platform] || {}) }));
     setNotice(`${PLATFORM_META[platform].label} publishing package copied. Paste it into the official editor.`);
@@ -279,34 +317,107 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
       await loadArticle(restored.id);
     } catch (restoreError) { setError(restoreError.message); } finally { setBusy(""); }
   };
-  const chooseArticle = article => { void loadArticle(article.id); setMode("edit"); };
-  const statusLabel = articles.find(article => article.id === draft.id)?.status || "draft";
+  const trashArticle = async article => {
+    const trashingCurrentArticle = article.id === draft.id;
+    if (trashingCurrentArticle) {
+      suppressAutosave.current = true;
+      clearTimeout(saveTimer.current);
+    }
+    setBusy("trash");
+    setError("");
+    try {
+      const trashed = await publishing.trashCMSArticle(article.id);
+      setConfirmTrash(null);
+      setLibraryView("trash");
+      if (trashingCurrentArticle) {
+        setDraft(emptyDraft());
+        setRevisions([]);
+        setJobs([]);
+        setSelectedTrash(trashed);
+        sessionStorage.removeItem("xstudio-editor-article");
+        localStorage.removeItem(RECOVERY_KEY);
+      }
+      await loadLibrary(context.tenant.id);
+      setNotice("Article moved to Trash. You can restore it whenever you need it.");
+    } catch (trashError) {
+      setError(trashError.message || "The article could not be moved to Trash.");
+    } finally {
+      setBusy("");
+      if (trashingCurrentArticle) suppressAutosave.current = false;
+    }
+  };
+  const restoreTrashedArticle = async article => {
+    setBusy("trash-restore");
+    setError("");
+    try {
+      const restored = await publishing.restoreCMSArticle(article.id);
+      await loadLibrary(context.tenant.id);
+      setSelectedTrash(null);
+      setLibraryView("all");
+      setNotice("Article restored as a draft. Review it before publishing again.");
+      await loadArticle(restored.id);
+      setMode("edit");
+    } catch (restoreError) {
+      setError(restoreError.message || "The article could not be restored.");
+    } finally {
+      setBusy("");
+    }
+  };
+  const chooseArticle = article => {
+    if (article.deleted_at) {
+      setSelectedTrash(article);
+      setMode("preview");
+      return;
+    }
+    setSelectedTrash(null);
+    void loadArticle(article.id);
+    setMode("edit");
+  };
+  const statusLabel = selectedTrash ? "trashed" : articles.find(article => article.id === draft.id)?.status || "draft";
 
   return <div className="xstudio-editor-page">
     <header className="xstudio-editor-topbar">
       <div><button onClick={openStudio}><ArrowLeft size={16} />XStudio</button><span className="xstudio-editor-logo"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><b>XStudio</b><em>CMS</em></span></div>
-      <section><span className={`save-state ${saveState === "Unsaved changes" ? "dirty" : ""}`}>{busy === "autosave" ? <LoaderCircle className="spin" size={13} /> : <Check size={13} />}{saveState}</span><button className={mode === "edit" ? "active" : ""} onClick={() => setMode("edit")}><PenTool size={14} />Edit</button><button className={mode === "preview" ? "active" : ""} onClick={() => setMode("preview")}><Eye size={14} />Preview</button><button onClick={() => void persist("draft")} disabled={Boolean(busy)}><Save size={14} />Save</button><button className="publish" onClick={() => { setSideTab("publish"); }}><Send size={14} />Publish</button></section>
+      {selectedTrash ? <section><span className="save-state"><Trash2 size={13} />In Trash</span><button className="publish" disabled={Boolean(busy)} onClick={() => void restoreTrashedArticle(selectedTrash)}><ArchiveRestore size={14} />Restore draft</button></section>
+        : <section><span className={`save-state ${saveState === "Unsaved changes" ? "dirty" : ""}`}>{busy === "autosave" ? <LoaderCircle className="spin" size={13} /> : <Check size={13} />}{saveState}</span><button className={mode === "edit" ? "active" : ""} onClick={() => setMode("edit")}><PenTool size={14} />Edit</button><button className={mode === "preview" ? "active" : ""} onClick={() => setMode("preview")}><Eye size={14} />Preview</button><button onClick={() => void persist("draft")} disabled={Boolean(busy)}><Save size={14} />Save</button><button className="publish" onClick={() => { setSideTab("publish"); }}><Send size={14} />Publish</button></section>}
     </header>
     <main className="xstudio-cms-shell">
       <aside className="xstudio-content-rail">
         <header><div><span>Content workspace</span><h2>Library</h2></div><button onClick={newDraft} title="New article"><Plus size={16} /></button></header>
-        <label><Search size={14} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search drafts" /></label>
-        <div className="content-rail-filters"><button className="active">All <b>{articles.length}</b></button><button>Drafts <b>{articles.filter(item => item.status === "draft").length}</b></button><button>Queue <b>{articles.filter(item => item.status === "scheduled").length}</b></button></div>
-        <div className="content-rail-list">{filteredArticles.map(article => <button className={article.id === draft.id ? "active" : ""} key={article.id} onClick={() => chooseArticle(article)}><span className={`content-status ${article.status}`} /><section><strong>{article.title || "Untitled draft"}</strong><small>{article.status} · {formatMoment(article.updated_at)}</small></section><ChevronRight size={13} /></button>)}{!filteredArticles.length && <div className="content-rail-empty"><FileText size={22} /><p>Your first draft starts here.</p></div>}</div>
+        <label><Search size={14} /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search articles" /></label>
+        <div className="content-rail-filters">
+          <button className={libraryView === "all" ? "active" : ""} onClick={() => { setLibraryView("all"); setSelectedTrash(null); }}>All <b>{activeArticles.length}</b></button>
+          <button className={libraryView === "draft" ? "active" : ""} onClick={() => { setLibraryView("draft"); setSelectedTrash(null); }}>Drafts <b>{activeArticles.filter(item => item.status === "draft").length}</b></button>
+          <button className={libraryView === "scheduled" ? "active" : ""} onClick={() => { setLibraryView("scheduled"); setSelectedTrash(null); }}>Queue <b>{activeArticles.filter(item => item.status === "scheduled").length}</b></button>
+          <button className={libraryView === "trash" ? "active" : ""} onClick={() => setLibraryView("trash")}><Trash2 size={10} /> <b>{trashedArticles.length}</b></button>
+        </div>
+        <div className="content-rail-list">{filteredArticles.map(article => <article className={`${article.id === draft.id && !selectedTrash || selectedTrash?.id === article.id ? "active" : ""} ${article.deleted_at ? "trashed" : ""}`} key={article.id}>
+          <button className="content-rail-open" onClick={() => chooseArticle(article)}><span className={`content-status ${article.deleted_at ? "trashed" : article.status}`} /><section><strong>{displayTitle(article.title)}</strong><small>{article.deleted_at ? `Trashed · ${formatMoment(article.deleted_at)}` : `${article.status} · ${formatMoment(article.updated_at)}`}</small></section><ChevronRight size={13} /></button>
+          {article.deleted_at ? <button className="content-rail-action restore" onClick={() => void restoreTrashedArticle(article)} title="Restore as draft" aria-label={`Restore ${displayTitle(article.title)}`}><ArchiveRestore size={13} /></button>
+            : <button className="content-rail-action trash" onClick={() => setConfirmTrash(article)} title="Move to Trash" aria-label={`Move ${displayTitle(article.title)} to Trash`}><Trash2 size={13} /></button>}
+        </article>)}{!filteredArticles.length && <div className="content-rail-empty">{libraryView === "trash" ? <Trash2 size={22} /> : <FileText size={22} />}<p>{libraryView === "trash" ? "Trash is empty." : "No articles in this view."}</p>{libraryView !== "trash" && <button onClick={newDraft}>Create an article</button>}</div>}</div>
         <footer><button onClick={openFeed}><Globe2 size={14} />View live feed</button><button onClick={openProfile}><Library size={14} />My profile</button></footer>
       </aside>
 
       <section className={`xstudio-editor-workspace ${mode} ${device}`}>
-        <header className="editor-document-bar"><div><span className={`document-status ${statusLabel}`}>{statusLabel}</span><small>{wordCount} words · {readingMinutes} min read</small></div>{mode === "preview" && <div><button className={device === "desktop" ? "active" : ""} onClick={() => setDevice("desktop")}><Monitor size={14} /></button><button className={device === "mobile" ? "active" : ""} onClick={() => setDevice("mobile")}><Smartphone size={14} /></button></div>}</header>
-        {mode === "edit" ? <div className="xstudio-document-canvas">
-          <input className="xstudio-document-title" value={draft.title} onChange={event => patchDraft({ title: event.target.value, slug: draft.slug || slugify(event.target.value) })} placeholder="Untitled masterpiece" maxLength={240} />
-          <textarea className="xstudio-document-deck" value={draft.description} onChange={event => patchDraft({ description: event.target.value })} placeholder="Give readers a crisp promise: what will they learn or be able to do?" maxLength={1000} />
-          {draft.coverImageUrl && <div className="xstudio-cover-preview"><img src={draft.coverImageUrl} alt="Cover preview" /><button onClick={() => patchDraft({ coverImageUrl: "" })}><X size={14} /></button></div>}
+        <header className="editor-document-bar"><div><span className={`document-status ${statusLabel}`}>{statusLabel}</span><small>{selectedTrash ? `Moved ${formatMoment(selectedTrash.deleted_at)}` : `${wordCount} words · ${readingMinutes} min read`}</small></div>{!selectedTrash && mode === "preview" && <div><button className={device === "desktop" ? "active" : ""} onClick={() => setDevice("desktop")}><Monitor size={14} /></button><button className={device === "mobile" ? "active" : ""} onClick={() => setDevice("mobile")}><Smartphone size={14} /></button></div>}</header>
+        {selectedTrash ? <article className="xstudio-trash-preview">
+          <header className={selectedTrash.cover_image_url ? "has-banner" : ""}>{selectedTrash.cover_image_url ? <img src={selectedTrash.cover_image_url} alt="" /> : <div><Trash2 size={28} /><span>Recoverable article</span></div>}</header>
+          <section><span>In Trash · previously {selectedTrash.deleted_from_status || "draft"}</span><h1>{displayTitle(selectedTrash.title)}</h1>{selectedTrash.description && <p>{selectedTrash.description}</p>}<button disabled={Boolean(busy)} onClick={() => void restoreTrashedArticle(selectedTrash)}><ArchiveRestore size={15} />Restore as draft</button></section>
+          <ContentBlocks blocks={selectedTrash.content_blocks || []} />
+        </article> : mode === "edit" ? <div className="xstudio-document-canvas">
+          <input ref={bannerInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={uploadBanner} />
+          <div className={`xstudio-banner-editor ${draft.coverImageUrl ? "has-image" : ""}`}>
+            {draft.coverImageUrl ? <img src={draft.coverImageUrl} alt="Article banner preview" /> : <div className="xstudio-banner-placeholder"><ImageUp size={25} /><span><strong>Add an article banner</strong><small>LinkedIn-style landscape image · JPG, PNG, WebP or GIF</small></span></div>}
+            <div className="xstudio-banner-actions"><button type="button" disabled={busy === "banner"} onClick={() => bannerInputRef.current?.click()}>{busy === "banner" ? <LoaderCircle className="spin" size={14} /> : <ImageUp size={14} />}{draft.coverImageUrl ? "Replace" : "Upload banner"}</button>{draft.coverImageUrl && <button type="button" className="remove" onClick={() => patchDraft({ coverImageUrl: "" })}><Trash2 size={14} />Remove</button>}</div>
+          </div>
+          <input className="xstudio-document-title" value={draft.title} onChange={event => patchDraft({ title: event.target.value, slug: draft.slug || slugify(event.target.value) })} placeholder="Article title" maxLength={240} />
+          <textarea className="xstudio-document-deck" value={draft.description} onChange={event => patchDraft({ description: event.target.value })} placeholder="Add a subtitle that tells readers why this matters." maxLength={1000} />
           <RichBlockEditor blocks={draft.blocks} onChange={blocks => patchDraft({ blocks })} onUploadImage={uploadImage} />
-        </div> : <article className="xstudio-live-preview"><header>{draft.coverImageUrl && <img src={draft.coverImageUrl} alt="" />}<span>{draft.pillar || "StackedIN Knowledge"}{draft.series ? ` · ${draft.series}` : ""}</span><h1>{draft.title || "Untitled draft"}</h1><p>{draft.description}</p><footer><b>{context?.profile?.display_name || session.user.email?.split("@")[0]}</b><span>{readingMinutes} min read · {selectedTargets.length} destination{selectedTargets.length === 1 ? "" : "s"}</span></footer></header><div className="preview-hashtags">{splitValues(draft.hashtags).map(tag => <b key={tag}>#{tag}</b>)}</div><ContentBlocks blocks={draft.blocks} /></article>}
+        </div> : <article className="xstudio-live-preview"><header>{draft.coverImageUrl && <img src={draft.coverImageUrl} alt="" />}<span>{draft.pillar || "StackedIN Knowledge"}{draft.series ? ` · ${draft.series}` : ""}</span><h1>{draft.title || "Article title"}</h1><p>{draft.description}</p><footer><b>{context?.profile?.display_name || session.user.email?.split("@")[0]}</b><span>{readingMinutes} min read · {selectedTargets.length} destination{selectedTargets.length === 1 ? "" : "s"}</span></footer></header><div className="preview-hashtags">{splitValues(draft.hashtags).map(tag => <b key={tag}>#{tag}</b>)}</div><ContentBlocks blocks={draft.blocks} /></article>}
       </section>
 
-      <aside className="xstudio-settings-rail">
+      {selectedTrash ? <aside className="xstudio-settings-rail xstudio-trash-rail"><div className="xstudio-trash-guidance"><Trash2 size={25} /><span>Trash</span><h3>Safe, not permanent</h3><p>This article is hidden from StackedIN and removed from the publishing queue. Restore it as a draft whenever you are ready.</p><button disabled={Boolean(busy)} onClick={() => void restoreTrashedArticle(selectedTrash)}><ArchiveRestore size={14} />Restore article</button></div></aside> : <aside className="xstudio-settings-rail">
         <nav>{[["publish", Send], ["details", Settings2], ["seo", Search], ["distribution", Globe2], ["history", History]].map(([id, Icon]) => <button key={id} className={sideTab === id ? "active" : ""} onClick={() => setSideTab(id)} title={id}><Icon size={16} /><span>{id}</span></button>)}</nav>
         <div className="xstudio-settings-panel">
           {sideTab === "publish" && <><header><span>Workflow</span><h3>Publish</h3><p>Choose when this version becomes visible.</p></header><div className="publish-actions"><button disabled={Boolean(busy)} onClick={() => void persist("draft")}><Save size={15} /><span><strong>Save draft</strong><small>Create a restorable revision</small></span></button><button className="primary" disabled={Boolean(busy)} onClick={() => void persist("published")}><Zap size={15} /><span><strong>Publish now</strong><small>Live in the StackedIN feed</small></span></button></div><label className="schedule-field"><CalendarClock size={15} /><span>Schedule date and time</span><input type="datetime-local" value={draft.scheduledFor} min={new Date(Date.now() + 60000).toISOString().slice(0, 16)} onChange={event => patchDraft({ scheduledFor: event.target.value })} /></label><button className="schedule-button" disabled={Boolean(busy) || !draft.scheduledFor} onClick={() => void persist("scheduled")}><Clock3 size={14} />Add to schedule</button><div className="timezone-note"><Globe2 size={13} />Your browser timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}</div></>}
@@ -315,8 +426,9 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
           {sideTab === "distribution" && <><header><span>Write once</span><h3>Distribution</h3><p>StackedIN is native. Other destinations use an official-editor handoff until an approved API connector is active.</p></header><div className="distribution-targets">{Object.entries(PLATFORM_META).map(([platform, meta]) => <article className={draft.targets[platform] ? "selected" : ""} key={platform}><label><input type="checkbox" checked={Boolean(draft.targets[platform])} disabled={platform === "STACKEDIN"} onChange={event => patchDraft(current => ({ targets: { ...current.targets, [platform]: event.target.checked } }))} /><PlatformIcon platform={platform} /><span><strong>{meta.label}</strong><small>{meta.mode}</small></span></label>{draft.targets[platform] && platform !== "STACKEDIN" && <footer><button onClick={() => void copyPackage(platform)}><Copy size={12} />Copy package</button><a href={EDITORS[platform]} target="_blank" rel="noreferrer"><Send size={12} />Official editor</a></footer>}</article>)}</div><div className="distribution-trust"><ShieldCheck size={15} /><p>XStudio never asks for platform passwords. API connectors will use provider OAuth and server-side secrets.</p></div>{jobs.length > 0 && <div className="article-job-list"><strong>Current delivery status</strong>{jobs.map(job => <div key={job.id}><PlatformIcon platform={job.platform} size={13} /><span>{PLATFORM_META[job.platform]?.label || job.platform}</span><b className={job.status.toLowerCase()}>{job.status.replaceAll("_", " ")}</b></div>)}</div>}</>}
           {sideTab === "history" && <><header><span>Version control</span><h3>Revision history</h3><p>Every manual save, schedule, and publication creates a restorable snapshot.</p></header><div className="revision-list">{revisions.map(revision => <article key={revision.id}><div><History size={14} /><span><strong>Version {revision.revision_no}</strong><small>{formatMoment(revision.created_at)}</small></span></div><button disabled={Boolean(busy)} onClick={() => void restore(revision.id)}><Undo2 size={12} />Restore</button></article>)}{!revisions.length && <div className="settings-empty"><History size={22} /><p>Save the draft to create its first revision.</p></div>}</div></>}
         </div>
-      </aside>
+      </aside>}
     </main>
+    {confirmTrash && <div className="xstudio-confirm-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setConfirmTrash(null); }}><section className="xstudio-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="trash-dialog-title"><span><Trash2 size={20} /></span><h3 id="trash-dialog-title">Move this article to Trash?</h3><p><strong>{displayTitle(confirmTrash.title)}</strong> will disappear from the feed and its pending schedule will be cancelled. You can restore it later as a draft.</p><footer><button onClick={() => setConfirmTrash(null)}>Keep article</button><button className="danger" disabled={Boolean(busy)} onClick={() => void trashArticle(confirmTrash)}>{busy === "trash" ? <LoaderCircle className="spin" size={14} /> : <Trash2 size={14} />}Move to Trash</button></footer></section></div>}
     {(error || notice) && <div className={`xstudio-editor-toast ${error ? "error" : "success"}`}>{error ? <X size={15} /> : <Check size={15} />}<span>{error || notice}</span><button onClick={() => { setError(""); setNotice(""); }}><X size={13} /></button></div>}
   </div>;
 }

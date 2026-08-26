@@ -9,6 +9,11 @@ only published content enters the public feed. Manual saves create immutable
 article revisions, while autosaves update the recovery state without flooding
 revision history.
 
+XStudio article deletion is recoverable. The Trash RPC archives the article,
+cancels unpublished distribution jobs, records the actor and previous status,
+and preserves its revisions. Restore always returns the article as a draft so
+content never becomes public again without an explicit publication action.
+
 Scheduled StackedIN publication runs through a service-role-only RPC. External
 destinations remain `HANDOFF_READY` until a provider-approved OAuth/API
 connector is configured; XStudio never collects external platform passwords or

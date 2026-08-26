@@ -54,7 +54,15 @@ export interface CMSArticle extends NativeArticle {
   editor_metadata: Record<string, unknown>;
   distribution_targets: DistributionPlatform[];
   updated_at: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  deleted_from_status: CMSStatus | null;
 }
+
+const CMS_ARTICLE_FIELDS = "id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at,deleted_at,deleted_by,deleted_from_status";
+const LEGACY_CMS_ARTICLE_FIELDS = "id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at";
+const withTrashDefaults = (article: Record<string, unknown>) => ({ ...article, deleted_at: null, deleted_by: null, deleted_from_status: null }) as unknown as CMSArticle;
+const isMissingTrashSchema = (error: { message?: string; code?: string } | null) => Boolean(error && (error.code === "42703" || /deleted_(at|by|from_status)/i.test(error.message || "")));
 
 export interface ArticleRevision {
   id: string;
@@ -190,7 +198,7 @@ export class NativePublishingService {
     const { data, error } = await this.client.rpc("save_cms_article", {
       requested_tenant_id: input.tenantId,
       requested_article_id: input.articleId ?? null,
-      requested_title: input.title.trim() || "Untitled draft",
+      requested_title: input.title.trim() || "New article",
       requested_description: input.description,
       requested_content_type: input.contentType,
       requested_blocks: input.blocks,
@@ -211,19 +219,27 @@ export class NativePublishingService {
   }
 
   async listCMSArticles(tenantId: string): Promise<CMSArticle[]> {
-    const { data, error } = await this.client.from("articles")
-      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at")
+    const current = await this.client.from("articles")
+      .select(CMS_ARTICLE_FIELDS)
       .eq("tenant_id", tenantId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
-    if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as CMSArticle[];
+    if (!current.error) return (current.data ?? []) as unknown as CMSArticle[];
+    if (!isMissingTrashSchema(current.error)) throw new Error(current.error.message);
+    const legacy = await this.client.from("articles")
+      .select(LEGACY_CMS_ARTICLE_FIELDS)
+      .eq("tenant_id", tenantId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
+    if (legacy.error) throw new Error(legacy.error.message);
+    return (legacy.data ?? []).map(article => withTrashDefaults(article as Record<string, unknown>));
   }
 
   async getCMSArticle(articleId: string): Promise<CMSArticle> {
-    const { data, error } = await this.client.from("articles")
-      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,pillar,series,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,status,slug,seo_title,seo_description,canonical_url,social_image_url,scheduled_for,first_published_at,editor_metadata,distribution_targets,updated_at")
+    const current = await this.client.from("articles")
+      .select(CMS_ARTICLE_FIELDS)
       .eq("id", articleId).single();
-    if (error) throw new Error(error.message);
-    return data as unknown as CMSArticle;
+    if (!current.error) return current.data as unknown as CMSArticle;
+    if (!isMissingTrashSchema(current.error)) throw new Error(current.error.message);
+    const legacy = await this.client.from("articles").select(LEGACY_CMS_ARTICLE_FIELDS).eq("id", articleId).single();
+    if (legacy.error) throw new Error(legacy.error.message);
+    return withTrashDefaults(legacy.data as Record<string, unknown>);
   }
 
   async listRevisions(articleId: string): Promise<ArticleRevision[]> {
@@ -237,6 +253,24 @@ export class NativePublishingService {
   async restoreRevision(revisionId: string): Promise<CMSArticle> {
     const { data, error } = await this.client.rpc("restore_article_revision", { requested_revision_id: revisionId });
     if (error) throw new Error(error.message);
+    return data as CMSArticle;
+  }
+
+  async trashCMSArticle(articleId: string): Promise<CMSArticle> {
+    const { data, error } = await this.client.rpc("trash_cms_article", { requested_article_id: articleId });
+    if (error) {
+      if (/trash_cms_article|schema cache|function.*does not exist/i.test(error.message)) throw new Error("Apply Supabase migration 010 to activate XStudio Trash.");
+      throw new Error(error.message);
+    }
+    return data as CMSArticle;
+  }
+
+  async restoreCMSArticle(articleId: string): Promise<CMSArticle> {
+    const { data, error } = await this.client.rpc("restore_cms_article", { requested_article_id: articleId });
+    if (error) {
+      if (/restore_cms_article|schema cache|function.*does not exist/i.test(error.message)) throw new Error("Apply Supabase migration 010 to activate XStudio Trash.");
+      throw new Error(error.message);
+    }
     return data as CMSArticle;
   }
 

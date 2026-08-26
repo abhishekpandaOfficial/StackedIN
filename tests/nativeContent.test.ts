@@ -89,4 +89,13 @@ describe("native publishing service", () => {
       ]),
     }));
   });
+
+  it("moves CMS articles to recoverable Trash and restores them through guarded RPCs", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { id: "article-1", status: "archived" }, error: null });
+    const service = new NativePublishingService({ rpc } as never);
+    await service.trashCMSArticle("article-1");
+    await service.restoreCMSArticle("article-1");
+    expect(rpc).toHaveBeenNthCalledWith(1, "trash_cms_article", { requested_article_id: "article-1" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "restore_cms_article", { requested_article_id: "article-1" });
+  });
 });

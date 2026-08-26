@@ -29,16 +29,17 @@ After adding the variables, create a Vercel Cron for
 `/api/publish-scheduled` at the frequency supported by your Vercel plan. The
 endpoint rejects requests without `Authorization: Bearer $CRON_SECRET` and
 calls only the service-role-protected `publish_due_articles()` database
-function. The schedule is deliberately not hard-coded in `vercel.json`, so a
-plan-specific cadence cannot block the application deployment.
+function. The repository configures one daily Hobby-compatible execution at
+`03:30 UTC` (`09:00 Asia/Kolkata`) in `vercel.json`.
 
 ## 2. Create the multitenant database
 
 In Supabase, open **SQL Editor → New query**, paste the complete contents of:
 
 every SQL file in `supabase/migrations` in filename order, from `001` through
-`009`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
-revision history, content schedule, and distribution queue.
+`010`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
+revision history, content schedule, and distribution queue. Migration `010`
+adds recoverable article Trash and guarded restore operations.
 
 Then choose **Run** once. It creates:
 
@@ -51,6 +52,7 @@ Then choose **Run** once. It creates:
 - a safe backfill for accounts that already exist.
 - tenant-scoped XStudio drafts, SEO metadata, revisions, and delivery jobs;
 - a backend-only scheduled-publishing function.
+- soft-deleted articles that can be reviewed and restored safely as drafts.
 
 The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
 
