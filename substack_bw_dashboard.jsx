@@ -207,6 +207,15 @@ function MarketingLanding({ openStudio }) {
     { icon: BrainCircuit, number: "03", title: "Be discovered by intent", text: "AI-native discovery connects readers to the right expert, not merely the loudest timeline." },
     { icon: ShieldCheck, number: "04", title: "Own your professional signal", text: "One credible profile shaped by what you know, what you build, and what you teach." }
   ];
+  const professionalPortraits = [
+    { className: "portrait-one", src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=720&q=88", alt: "Professional woman smiling" },
+    { className: "portrait-two", src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=620&q=88", alt: "Professional man smiling" },
+    { className: "portrait-three", src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=620&q=88", alt: "Professional woman portrait" },
+    { className: "portrait-four", src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=720&q=88", alt: "Professional man portrait" },
+    { className: "portrait-five", src: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=620&q=88", alt: "Professional woman in a red top" },
+    { className: "portrait-six", src: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=720&q=88", alt: "Professional man in a jacket" },
+    { className: "portrait-seven", src: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=620&q=88", alt: "Professional woman portrait outdoors" }
+  ];
   return <div className="stackedin-site">
     <header className="marketing-nav">
       <a className="marketing-brand" href="#top" aria-label="StackedIN home"><img src={`${base}stackedin-wordmark.webp`} alt="StackedIN" /></a>
@@ -237,6 +246,20 @@ function MarketingLanding({ openStudio }) {
       <section className="signal-marquee" aria-label="StackedIN topics"><div>{["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"].concat(["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"]).map((item, index) => <span key={`${item}-${index}`}>{item}<i /></span>)}</div></section>
 
       <section className="platform-trust-rail" aria-label="Connected publishing platforms"><span>One professional signal, connected across</span><div><b><PlatformIcon name="Substack" size={17} />Substack</b><b><PlatformIcon name="Medium" size={17} />Medium</b><b><PlatformIcon name="Hashnode" size={17} />Hashnode</b><b><PlatformIcon name="LinkedIn" size={17} />LinkedIn</b><b><Rss size={17} />Open RSS</b></div></section>
+
+      <section className="professional-constellation" aria-labelledby="constellation-title">
+        <div className="constellation-heading"><span>People, not vanity metrics</span><h2 id="constellation-title">Find the minds behind<br />the meaningful work.</h2><p>StackedIN turns expertise, shared interests, and real contributions into a network that feels human again.</p></div>
+        <div className="constellation-stage" aria-label="Animated professional network preview">
+          <div className="constellation-orbit orbit-a" /><div className="constellation-orbit orbit-b" /><div className="constellation-glow" />
+          {professionalPortraits.map((portrait) => <figure className={`constellation-portrait ${portrait.className}`} key={portrait.className}><img loading="lazy" src={portrait.src} alt={portrait.alt} /></figure>)}
+          <article className="constellation-card message-signal"><span><MessageCircle size={14} /></span><div><strong>New message</strong><small>Let’s connect over your RAG article.</small></div><b>3</b></article>
+          <article className="constellation-card connection-signal"><figure><img loading="lazy" src="https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=160&q=86" alt="Connection profile" /></figure><div><strong>Priya Sharma</strong><small>AI product architect</small><span><button>Connect</button><button>Later</button></span></div></article>
+          <article className="constellation-card talent-signal"><header><span>Knowledge signal</span><BrainCircuit size={14} /></header><div><i /><i /><i /><i /><i /><i /><i /></div><strong>92</strong><small>Architecture · AI · Cloud</small></article>
+          <article className="constellation-card achievement-signal"><Award size={21} /><div><strong>Top Knowledge Voice</strong><small>System Architecture · 2026</small></div><span>★★★★★</span></article>
+          <div className="constellation-core"><img src={`${base}stackedin-icon.webp`} alt="StackedIN" /><span>Ideas connect<br />people.</span></div>
+        </div>
+        <footer><div><span>Professional discovery</span><strong>Built on relevance, expertise, and shared intent.</strong></div><button onClick={openStudio}>Join the network <ArrowRight size={16} /></button></footer>
+      </section>
 
       <section className="manifesto-section" id="why">
         <div className="manifesto-kicker">Why StackedIN</div>
