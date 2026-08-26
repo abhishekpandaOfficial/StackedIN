@@ -293,14 +293,15 @@ function MarketingLanding({ openStudio }) {
 
       <section className="community-scenes" aria-label="Knowledge in motion">
         <header><span>Ideas become momentum</span><h2>Built around the way<br />great work actually happens.</h2><p>Research. Build. Explain. Connect. StackedIN gives every meaningful step a place in your professional story.</p></header>
-        <div className="work-photo-rail">
-          <figure className="work-panel work-panel-focus"><img loading="lazy" src="https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=900&q=92" alt="A developer focused on code" /><figcaption><span>01 · Focus</span><strong>Deep work creates the signal.</strong></figcaption></figure>
-          <figure className="work-panel work-panel-build"><img loading="lazy" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=92" alt="A technology team building together" /><figcaption><span>02 · Build</span><strong>Great systems are collaborative.</strong></figcaption></figure>
-          <figure className="work-panel work-panel-connect"><img loading="lazy" src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1400&q=92" alt="Professionals connecting in a modern technology workspace" /><figcaption><span>03 · Connect</span><strong>Context turns people into a network.</strong></figcaption></figure>
-          <article className="work-avatar work-avatar-one"><img loading="lazy" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=160&q=88" alt="Professional avatar" /><span><strong>Researching</strong><small>Agentic systems</small></span><i /></article>
-          <article className="work-avatar work-avatar-two"><img loading="lazy" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=160&q=88" alt="Professional avatar" /><span><strong>Building</strong><small>Cloud platforms</small></span><i /></article>
-          <article className="work-avatar work-avatar-three"><img loading="lazy" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160&q=88" alt="Professional avatar" /><span><strong>Sharing</strong><small>ML engineering</small></span><i /></article>
-          <div className="work-scroll-signal"><Sparkles size={15} /><span>Scroll through the work</span><i /></div>
+        <div className="office-story-shell" aria-label="A day inside the StackedIN studio">
+          <figure className="office-story">
+            <img loading="lazy" src={`${base}stackedin-office-story.webp`} alt="A diverse StackedIN team working in cubicles, talking over coffee, monitoring a deployment, and preparing a professional post" />
+            <figcaption className="office-moment office-moment-focus"><b>01</b><span><small>Focus</small><strong>Build with depth.</strong></span></figcaption>
+            <figcaption className="office-moment office-moment-coffee"><b>02</b><span><small>Connect</small><strong>Coffee. Context. Clarity.</strong></span></figcaption>
+            <figcaption className="office-moment office-moment-deploy"><b>03</b><span><small>Deploy</small><strong>Ship with confidence.</strong></span></figcaption>
+            <figcaption className="office-moment office-moment-publish"><b>04</b><span><small>Publish</small><strong>Turn work into signal.</strong></span></figcaption>
+            <div className="office-live-signal"><i /><span>StackedIN studio · ideas moving</span></div>
+          </figure>
         </div>
         <div className="work-rail-footer"><span>Real work · Real people · Useful context</span><strong>StackedIN makes every meaningful contribution discoverable.</strong></div>
       </section>
