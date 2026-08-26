@@ -26,6 +26,7 @@ import {
   GraduationCap,
   Grid2X2,
   Heart,
+  HelpCircle,
   Home,
   KeyRound,
   Layers3,
@@ -867,6 +868,16 @@ function ProfileExperience({ session, targetProfileRef, openFeed, openWrite, ope
       setBusy(false);
     }
   };
+  useEffect(() => {
+    if (!bundle || !isOwner) return;
+    const requestedSection = sessionStorage.getItem("stackedin-profile-edit-section");
+    if (!["about", "skills", "links"].includes(requestedSection)) return;
+    sessionStorage.removeItem("stackedin-profile-edit-section");
+    setDraft({ ...bundle.profile });
+    setUsernameCheck(null);
+    setEditingProfile(requestedSection);
+    setTab(requestedSection === "skills" ? "skills" : requestedSection === "links" ? "portfolio" : "about");
+  }, [bundle, isOwner]);
   if (!bundle) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" />{busy ? <RefreshCw className="spin" /> : <ShieldCheck size={24} />}<p>{message || "Loading the professional journey\u2026"}</p>{message && <button onClick={openFeed}>Return to feed</button>}</div>;
   const profile = bundle.profile;
   const identityFields = [["display_name", "Display name"], ["headline", "Headline"], ["current_job_title", "Current role"], ["current_company", "Company"], ["industry", "Industry"], ["location", "Location"], ["country", "Country"], ["years_experience", "Years experience"]];
@@ -964,6 +975,71 @@ function MessagingExperience({ session, initialConversationId, openFeed, openPro
 function FeedPeoplePanel({ people, busy, onAction, onOpenNetwork, onOpenProfile }) {
   return <section className="feed-people-card"><header><div><span>Your professional graph</span><h3>People worth knowing</h3></div><Users size={17} /></header><div className="feed-people-list">{people.map((person) => <article key={person.profile_id}><button className="feed-person-avatar" onClick={() => onOpenProfile(person.profile_id)}>{person.avatar_url ? <img src={person.avatar_url} alt="" /> : person.display_name.charAt(0).toUpperCase()}</button><section><div><button className="feed-person-name" onClick={() => onOpenProfile(person.profile_id)}>{person.display_name}</button><em>{person.degree}{person.degree === 1 ? "st" : person.degree === 2 ? "nd" : "rd"}</em></div><span>{person.headline || person.current_company || "StackedIN professional"}</span><small>{person.reason}</small><footer><button className={person.is_following ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "follow")}><UserRound size={12} />{person.is_following ? "Following" : "Follow"}</button><button className={person.is_subscribed ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "subscribe")}><BellRing size={12} />{person.is_subscribed ? "Subscribed" : "Subscribe"}</button></footer></section></article>)}{!people.length && <p>Complete your profile and add interests to unlock stronger people recommendations.</p>}</div><button className="feed-people-more" onClick={onOpenNetwork}>Explore your network <ArrowRight size={13} /></button></section>;
 }
+
+function ProfileMenu({ session, context, networkSummary, preferences, onPreferencesChange, openProfile, openInbox, openStudio, signOut }) {
+  const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState("");
+  const menuRef = useRef(null);
+  const profile = context?.profile || {};
+  const name = profile.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
+  const initial = name.charAt(0).toUpperCase();
+  const provider = session.user.app_metadata?.provider || "email";
+  const signals = [profile.display_name, profile.username, profile.avatar_url, profile.headline, profile.bio, profile.current_job_title];
+  const completion = Math.round(signals.filter(Boolean).length / signals.length * 100);
+  useEffect(() => {
+    const close = event => {
+      if (event.key === "Escape") { setOpen(false); setDialog(""); }
+      if (event.type === "mousedown" && menuRef.current && !menuRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+  const navigate = action => { setOpen(false); action(); };
+  const editProfile = () => {
+    sessionStorage.setItem("stackedin-profile-edit-section", "about");
+    navigate(() => openProfile());
+  };
+  const showDialog = type => { setOpen(false); setDialog(type); };
+  const togglePreference = key => onPreferencesChange({ ...preferences, [key]: !preferences[key] });
+  return <div className="profile-menu-wrap" ref={menuRef}>
+    <button className={`feed-avatar profile-menu-trigger ${open ? "menu-open" : ""}`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>
+      <b>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : initial}</b><span>Me <ChevronRight size={8} /></span>
+    </button>
+    {open && <section className="profile-dropdown" role="menu">
+      <header><div>{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : initial}</div><section><strong>{name}</strong><span>{profile.username ? `@${profile.username}` : "Choose your username"}</span><small>{profile.headline || profile.current_job_title || "StackedIN professional"}</small></section></header>
+      <button className="profile-view-button" onClick={() => navigate(() => openProfile())}>View complete profile</button>
+      <div className="profile-completion-mini"><span><strong>Profile strength</strong><small>{completion}% complete</small></span><i><em style={{ width: `${completion}%` }} /></i></div>
+      <div className="profile-dropdown-links" aria-label="Profile menu">
+        <span>Account</span>
+        <button role="menuitem" onClick={editProfile}><PenTool size={16} /><div><strong>Edit profile</strong><small>Identity, skills, links and experience</small></div><ChevronRight size={14} /></button>
+        <button role="menuitem" onClick={() => showDialog("preferences")}><SlidersHorizontal size={16} /><div><strong>Feed preferences</strong><small>Density, motion and references</small></div><ChevronRight size={14} /></button>
+        <button role="menuitem" onClick={() => showDialog("security")}><ShieldCheck size={16} /><div><strong>Account & security</strong><small>{provider} sign-in · verified session</small></div><ChevronRight size={14} /></button>
+        <span>Workspace</span>
+        <button role="menuitem" onClick={() => navigate(openStudio)}><Sparkles size={16} /><div><strong>Open XStudio</strong><small>{context?.tenant?.name || "Personal workspace"} · {context?.role || "member"}</small></div><ChevronRight size={14} /></button>
+        <button role="menuitem" onClick={() => navigate(() => openInbox())}><MessageCircle size={16} /><div><strong>Inbox & requests</strong><small>Messages, notifications and invitations</small></div><ChevronRight size={14} /></button>
+        <button role="menuitem" onClick={() => showDialog("help")}><HelpCircle size={16} /><div><strong>Help & shortcuts</strong><small>Navigate StackedIN faster</small></div><ChevronRight size={14} /></button>
+      </div>
+      <footer><div><strong>{networkSummary.followers || 0}</strong><span>Followers</span><strong>{networkSummary.connections || 0}</strong><span>Connections</span></div><button onClick={() => navigate(signOut)}><LogOut size={15} />Sign out</button></footer>
+    </section>}
+    {dialog && <div className="profile-menu-dialog-backdrop" onMouseDown={event => event.target === event.currentTarget && setDialog("")}>
+      <section className="profile-menu-dialog" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title">
+        <header><div><span>StackedIN account</span><h2 id="profile-dialog-title">{dialog === "preferences" ? "Feed preferences" : dialog === "security" ? "Account & security" : "Help & shortcuts"}</h2></div><button aria-label="Close dialog" onClick={() => setDialog("")}><X size={17} /></button></header>
+        {dialog === "preferences" && <div className="profile-preference-list">
+          <button onClick={() => togglePreference("compact")}><div><strong>Compact feed</strong><span>See more professional updates at once.</span></div><i className={preferences.compact ? "on" : ""}><em /></i></button>
+          <button onClick={() => togglePreference("hideExternal")}><div><strong>Hide external references</strong><span>Show only native StackedIN posts in your feed.</span></div><i className={preferences.hideExternal ? "on" : ""}><em /></i></button>
+          <button onClick={() => togglePreference("reduceMotion")}><div><strong>Reduce motion</strong><span>Calm animated transitions across this feed.</span></div><i className={preferences.reduceMotion ? "on" : ""}><em /></i></button>
+        </div>}
+        {dialog === "security" && <div className="profile-security-panel"><div><ShieldCheck size={22} /><section><strong>Authenticated session</strong><span>Your account is signed in securely through {provider === "email" ? "email and password" : provider}.</span></section><b>Active</b></div><dl><div><dt>Username</dt><dd>{profile.username ? `@${profile.username}` : "Not configured"}</dd></div><div><dt>Private email</dt><dd>{session.user.email || "Managed by your identity provider"}</dd></div><div><dt>Email status</dt><dd>{session.user.email_confirmed_at ? "Verified" : "Confirmation pending"}</dd></div><div><dt>Workspace</dt><dd>{context?.tenant?.name || "Personal workspace"}</dd></div><div><dt>Role</dt><dd>{context?.role || "Member"}</dd></div></dl><p><LockKeyhole size={14} />Your email and authentication details never appear on your public profile.</p></div>}
+        {dialog === "help" && <div className="profile-help-grid"><article><b>@</b><div><strong>Mention professionals</strong><span>Use @ while writing a post or discussion.</span></div></article><article><b>/</b><div><strong>Open editor commands</strong><span>Use / inside XStudio for rich content blocks.</span></div></article><article><MessageCircle size={18} /><div><strong>Message connections</strong><span>Open Inbox to continue private conversations.</span></div></article><article><Bookmark size={18} /><div><strong>Build your reading list</strong><span>Saved posts appear in the personalized feed view.</span></div></article></div>}
+        <footer><button onClick={() => setDialog("")}>Done</button></footer>
+      </section>
+    </div>}
+  </div>;
+}
 function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, openNetwork, openSearch, openWrite, openProfile, openInbox, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
   const [nativeArticles, setNativeArticles] = useState([]);
@@ -975,6 +1051,14 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
   const [saved, setSaved] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-saved-${session.user.id}`) || "[]")));
   const [toast, setToast] = useState("");
+  const [feedPreferences, setFeedPreferences] = useState(() => {
+    try { return { compact: false, hideExternal: false, reduceMotion: false, ...JSON.parse(localStorage.getItem(`stackedin-feed-preferences:${session.user.id}`) || "{}") }; }
+    catch { return { compact: false, hideExternal: false, reduceMotion: false }; }
+  });
+  const updateFeedPreferences = useCallback(next => {
+    setFeedPreferences(next);
+    localStorage.setItem(`stackedin-feed-preferences:${session.user.id}`, JSON.stringify(next));
+  }, [session.user.id]);
   useEffect(() => {
     fetch(`${DATA_URL}?v=${Date.now()}`, { cache: "no-store" }).then((response) => response.json()).then(setCatalogue).catch(() => setCatalogue({ posts: [] }));
   }, []);
@@ -1016,12 +1100,12 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
   }, [toast]);
   const posts = useMemo(() => [...catalogue.posts || []].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
   const visible = useMemo(() => {
-    if (!["all", "saved"].includes(feedMode)) return [];
+    if (feedPreferences.hideExternal || !["all", "saved"].includes(feedMode)) return [];
     return posts.filter((post) => {
       const matchesMode = feedMode === "all" || saved.has(post.url);
       return matchesMode && `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase());
     }).slice(0, 30);
-  }, [posts, search, feedMode, saved]);
+  }, [posts, search, feedMode, saved, feedPreferences.hideExternal]);
   const visibleNative = useMemo(() => nativeArticles.filter((article) => {
     const matchesMode = feedMode === "following" ? article.viewerFollowingAuthor || article.author_id === session.user.id
       : feedMode === "subscribed" ? article.viewerSubscribedAuthor
@@ -1079,12 +1163,12 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
     subscribed: ["New posts from your subscriptions", "Subscribed"],
     saved: ["Your saved StackedIN posts and references", "Saved"],
   }[feedMode] || ["Live from your professional knowledge network", "Relevance + freshness"];
-  return <div className="feed-page">
+  return <div className={`feed-page ${feedPreferences.compact ? "feed-compact" : ""} ${feedPreferences.reduceMotion ? "feed-reduce-motion" : ""}`}>
     <header className="feed-topbar"><button className="feed-logo" onClick={() => {
     window.location.hash = "";
   }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
     if (event.key === "Enter" && search.trim()) openSearch(search);
-  }} placeholder="Search articles—press Enter for people…" /></label><nav><button className={feedMode === "all" ? "active" : ""} onClick={() => openFeedMode("all")}><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button><button className="feed-avatar" onClick={() => openProfile()}><b>{initial}</b><span>Me</span></button></nav></header>
+  }} placeholder="Search articles—press Enter for people…" /></label><nav><button className={feedMode === "all" ? "active" : ""} onClick={() => openFeedMode("all")}><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button><ProfileMenu session={session} context={tenantContext} networkSummary={networkSummary} preferences={feedPreferences} onPreferencesChange={updateFeedPreferences} openProfile={openProfile} openInbox={openInbox} openStudio={openStudio} signOut={signOut} /></nav></header>
     <div className="feed-layout">
       <aside className="feed-left"><section className="feed-profile" onClick={() => openProfile()} onKeyDown={(event) => {
     if (event.key === "Enter") openProfile();
