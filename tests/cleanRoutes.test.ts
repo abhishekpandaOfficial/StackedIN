@@ -33,5 +33,6 @@ describe("clean application routes", () => {
       "/login",
       "/article/:path*",
     ]));
+    expect(vercelConfig.rewrites.every((rewrite: { destination: string }) => rewrite.destination === "/")).toBe(true);
   });
 });
