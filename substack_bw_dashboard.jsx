@@ -210,7 +210,7 @@ function MarketingLanding({ openStudio }) {
   return <div className="stackedin-site">
     <header className="marketing-nav">
       <a className="marketing-brand" href="#top" aria-label="StackedIN home"><img src={`${base}stackedin-wordmark.webp`} alt="StackedIN" /></a>
-      <nav aria-label="Marketing navigation"><a href="#why">Why StackedIN</a><a href="#experience">Experience</a><a href="#how">How it works</a></nav>
+      <nav aria-label="Marketing navigation"><a href="#why">Why StackedIN</a><a href="#experience">Experience</a><a href="#ecosystem">Ecosystem</a><a href="#how">How it works</a></nav>
       <button className="nav-cta" onClick={openStudio}>Open XStudio <ArrowUpRight size={15} /></button>
     </header>
 
@@ -236,12 +236,28 @@ function MarketingLanding({ openStudio }) {
 
       <section className="signal-marquee" aria-label="StackedIN topics"><div>{["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"].concat(["AI Architecture", "System Design", "MLOps", "Cloud Native", "Deep Learning", "RAG Systems", "Data Engineering", "Forward Deployed Engineering"]).map((item, index) => <span key={`${item}-${index}`}>{item}<i /></span>)}</div></section>
 
+      <section className="platform-trust-rail" aria-label="Connected publishing platforms"><span>One professional signal, connected across</span><div><b><PlatformIcon name="Substack" size={17} />Substack</b><b><PlatformIcon name="Medium" size={17} />Medium</b><b><PlatformIcon name="Hashnode" size={17} />Hashnode</b><b><PlatformIcon name="LinkedIn" size={17} />LinkedIn</b><b><Rss size={17} />Open RSS</b></div></section>
+
       <section className="manifesto-section" id="why">
         <div className="manifesto-kicker">Why StackedIN</div>
         <div className="manifesto-copy"><h2>The internet has enough noise.<br />We’re building <em>signal.</em></h2><p>Professional identity should be earned through ideas, systems, and real work—not optimized posting rituals. StackedIN turns knowledge into a living portfolio that keeps working long after you hit publish.</p></div>
       </section>
 
+      <section className="community-scenes" aria-label="Knowledge in motion">
+        <header><span>Ideas become momentum</span><h2>Built around the way<br />great work actually happens.</h2><p>Research. Build. Explain. Connect. StackedIN gives every meaningful step a place in your professional story.</p></header>
+        <div className="community-scenes-grid"><figure className="scene-primary"><img loading="lazy" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1200&q=88" alt="Professionals collaborating around a table" /><figcaption><span>01 · Collaborate</span><strong>Knowledge gets stronger when it moves between people.</strong></figcaption></figure><figure><img loading="lazy" src="https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=900&q=88" alt="A team discussing ideas in a bright workspace" /><figcaption><span>02 · Build</span><strong>Turn real work into a visible body of expertise.</strong></figcaption></figure><figure><img loading="lazy" src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=900&q=88" alt="A professional using a mobile device" /><figcaption><span>03 · Share</span><strong>Your signal travels without losing its shape.</strong></figcaption></figure></div>
+      </section>
+
       <section className="feature-grid" id="experience">{features.map(({ icon: Icon, number, title, text }) => <article className="marketing-feature" key={number}><div><span>{number}</span><Icon size={22} /></div><h3>{title}</h3><p>{text}</p><ArrowUpRight className="feature-arrow" size={19} /></article>)}</section>
+
+      <section className="product-theatre" id="ecosystem">
+        <header><span>One product. Three powerful surfaces.</span><h2>From first thought<br />to lasting authority.</h2><p>A professional network, a publishing system, and a living profile—designed as one continuous experience.</p></header>
+        <div className="product-theatre-frame">
+          <div className="theatre-window-bar"><i /><i /><i /><span>stackedin.app / feed</span><b>LIVE</b></div>
+          <div className="theatre-layout"><aside><img src={`${base}stackedin-icon.webp`} alt="" /><span>Home</span><span>My Network</span><span>Saved knowledge</span><span>My profile</span><button onClick={openStudio}><Sparkles size={13} />Open XStudio</button></aside><main><div className="theatre-composer"><div>A</div><span>Share an insight, lesson, or build…</span><b><PenTool size={13} />Write</b></div><article className="theatre-post"><header><div>A</div><span><strong>Abhishek Panda</strong><small>@abhishekpanda · AI Architect</small></span><MoreHorizontal size={16} /></header><p>Architecture becomes useful when the trade-offs are visible—not hidden behind a diagram.</p><div className="theatre-code"><span>ARCHITECTURE NOTE</span><strong>Designing reliable agentic systems</strong><code>observe → reason → act → verify</code></div><footer><span>👏 128</span><span><MessageCircle size={12} />24</span><span><Repeat2 size={12} />12</span><span><Share2 size={12} />Share</span></footer></article></main><aside className="theatre-right"><span>Signal this week</span><strong>+28%</strong><small>Useful engagement</small><div><BrainCircuit size={15} /><p><b>Human signal</b><small>Clear ideas · concrete examples</small></p><em>91%</em></div><div><Users size={15} /><p><b>Network fit</b><small>AI architecture · cloud systems</small></p><em>High</em></div></aside></div>
+        </div>
+        <div className="product-mode-tabs"><article><span>01</span><strong>Professional feed</strong><p>Realtime posts, articles, reactions, discussions, restacks, and people worth following.</p></article><article><span>02</span><strong>XStudio CMS</strong><p>A Notion-style editor for drafting, previewing, scheduling, and distributing your work.</p></article><article><span>03</span><strong>Living profile</strong><p>Your journey, experience, projects, skills, and published thinking in one canonical identity.</p></article></div>
+      </section>
 
       <section className="product-story">
         <div className="product-story-copy"><span>Built for people who build</span><h2>Your body of work.<br />Finally, in one orbit.</h2><p>Articles from Substack, Medium, Hashnode, and LinkedIn become one modular, searchable map of your professional thinking.</p><button onClick={openStudio}>See it in action <ArrowRight size={16} /></button></div>
@@ -250,6 +266,11 @@ function MarketingLanding({ openStudio }) {
           <div className="story-columns"><article><span>TOPIC 01</span><strong>AI & Machine Learning</strong><small>18 articles · 4 series</small></article><article><span>TOPIC 02</span><strong>System Architecture</strong><small>12 articles · 3 series</small></article><article><span>TOPIC 03</span><strong>Cloud Engineering</strong><small>15 articles · 5 series</small></article></div>
           <div className="story-track"><i /><i /><i /><i /><i /></div>
         </div>
+      </section>
+
+      <section className="import-bridge">
+        <div className="import-bridge-copy"><span>Bring your archive</span><h2>Your work is already out there.<br />Bring it into focus.</h2><p>Connect the publications you already use. XStudio fetches public articles, preserves the source, organizes them into topics, and makes them discoverable inside your StackedIN knowledge feed.</p><ul><li><CheckCircle2 size={15} />Public articles preserved with source attribution</li><li><CheckCircle2 size={15} />Topics, series, tags, and reading paths organized</li><li><CheckCircle2 size={15} />New posts synchronized into your native feed</li></ul><button onClick={openStudio}>Connect your publications <ArrowRight size={15} /></button></div>
+        <div className="import-console"><header><div><Layers3 size={17} /><span><strong>XStudio import</strong><small>Knowledge source engine</small></span></div><b>SYNCING</b></header><div className="import-source-row"><span><PlatformIcon name="Substack" size={18} /></span><div><strong>Substack archive</strong><small>44 articles discovered</small><i><em style={{ width: "100%" }} /></i></div><b><Check size={14} /></b></div><div className="import-source-row"><span><PlatformIcon name="Medium" size={18} /></span><div><strong>Medium stories</strong><small>Reading public RSS feed</small><i><em style={{ width: "78%" }} /></i></div><b className="pulse-dot" /></div><div className="import-source-row"><span><PlatformIcon name="Hashnode" size={18} /></span><div><strong>Hashnode publication</strong><small>1 article synchronized</small><i><em style={{ width: "100%" }} /></i></div><b><Check size={14} /></b></div><footer><span>45 knowledge objects ready</span><strong>Unified profile →</strong></footer></div>
       </section>
 
       <section className="how-section" id="how"><div className="how-heading"><span>From thought to authority</span><h2>Stack it. Connect it.<br />Let it compound.</h2></div><div className="how-steps"><article><b>01</b><div><PenTool /><h3>Write where you love</h3><p>Publish through your official Substack, Medium, Hashnode, or LinkedIn editor.</p></div></article><article><b>02</b><div><Zap /><h3>StackedIN organizes</h3><p>Your public work is classified into topics, series, tags, and learning paths.</p></div></article><article><b>03</b><div><Users /><h3>Your signal travels</h3><p>Readers discover the ideas, expertise, and professional story behind the profile.</p></div></article></div></section>
