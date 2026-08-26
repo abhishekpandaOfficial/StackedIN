@@ -42,6 +42,9 @@ revision history, content schedule, and distribution queue. Migration `010`
 adds recoverable article Trash and guarded restore operations. Migration `011`
 adds the unified feed composer, mentions, social account metadata, polls, and
 writing-signal scores.
+Migration `013` adds canonical usernames, instant availability checks,
+name-derived Google/GitHub handles, username profile URLs, and secure
+email-or-username sign-in.
 
 Then choose **Run** once. It creates:
 
@@ -55,6 +58,7 @@ Then choose **Run** once. It creates:
 - tenant-scoped XStudio drafts, SEO metadata, revisions, and delivery jobs;
 - a backend-only scheduled-publishing function.
 - soft-deleted articles that can be reviewed and restored safely as drafts.
+- globally unique public usernames with private email-to-username login mapping.
 
 The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
 
@@ -148,6 +152,16 @@ GitHub OAuth Apps accept a single callback URL, which is sufficient because Supa
 7. In XStudio, save a draft, restore a revision, schedule it a few minutes ahead,
    and confirm the Vercel Cron run changes it to `published` and creates a live
    StackedIN feed entry.
+8. Confirm signup checks username availability before submission, then sign out
+   and sign in using the username instead of the email address.
+9. Open `#profile/YOUR_USERNAME`, edit the username, and confirm both the old
+   handle and another account cannot claim the new one.
+
+Username login uses the existing server-only `SUPABASE_SERVICE_ROLE_KEY` to
+resolve a handle inside the RLS-protected `account_usernames` directory. The
+browser receives only the normal Supabase session tokens after a successful
+password exchange. Do not expose the service-role key through a `VITE_`
+variable.
 
 ## 7. Custom domain later
 

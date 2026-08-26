@@ -119,6 +119,9 @@ const formatMessageTime = (value) => {
   return new Intl.DateTimeFormat("en", sameDay ? { hour: "numeric", minute: "2-digit" } : { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
 };
 const isSafeExternalUrl = (value) => typeof value === "string" && /^https:\/\//i.test(value);
+const normalizeUsername = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9._]+/g, ".").replace(/[._]{2,}/g, ".").replace(/^[._]+|[._]+$/g, "").slice(0, 30);
+const isEmailIdentity = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+const profileUrlFor = (username) => `${new URL(import.meta.env.BASE_URL || "/", window.location.origin)}#profile/${encodeURIComponent(username || "")}`;
 const slugOf = (url) => {
   try {
     return new URL(url).pathname.split("/p/")[1]?.replace(/\/$/, "") || url;
@@ -259,7 +262,11 @@ function MarketingLanding({ openStudio }) {
 function AuthView({ onBack }) {
   const [mode, setMode] = useState("signin");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [identity, setIdentity] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  const [usernameCheck, setUsernameCheck] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [providers, setProviders] = useState({ google: null, github: null });
@@ -269,6 +276,30 @@ function AuthView({ onBack }) {
   useEffect(() => {
     fetch(`${supabasePublicConfig.url}/auth/v1/settings`, { headers: { apikey: supabasePublicConfig.anonKey } }).then((response) => response.json()).then((settings) => setProviders({ google: Boolean(settings.external?.google), github: Boolean(settings.external?.github) })).catch(() => setProviders({ google: null, github: null }));
   }, []);
+  useEffect(() => {
+    if (mode !== "signup" || usernameEdited) return;
+    const emailPrefix = isEmailIdentity(identity) ? identity.split("@")[0] : "";
+    setUsername(normalizeUsername(name || emailPrefix));
+  }, [name, identity, mode, usernameEdited]);
+  useEffect(() => {
+    if (mode !== "signup" || username.length < 3) {
+      setUsernameCheck(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setCheckingUsername(true);
+    const timer = setTimeout(() => {
+      profileHub.checkUsernameAvailability(username).then((result) => {
+        if (!cancelled) {
+          setUsernameCheck(result);
+          if (result.normalizedUsername && result.normalizedUsername !== username) setUsername(result.normalizedUsername);
+        }
+      }).catch((checkError) => {
+        if (!cancelled) setUsernameCheck({ available: false, reason: `${checkError.message}. Apply migration 013 first.`, suggestions: [] });
+      }).finally(() => { if (!cancelled) setCheckingUsername(false); });
+    }, 320);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [mode, username]);
   const submit = async (event) => {
     event.preventDefault();
     setBusy(true);
@@ -277,12 +308,21 @@ function AuthView({ onBack }) {
     try {
       if (password.length < 8) throw new Error("Use at least 8 characters for your password.");
       if (mode === "signup") {
-        const { data, error: authError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name.trim() }, emailRedirectTo: redirectTo } });
+        if (!usernameCheck?.available) throw new Error(usernameCheck?.reason || "Choose an available username before creating your account.");
+        const { data, error: authError } = await supabase.auth.signUp({ email: identity, password, options: { data: { full_name: name.trim(), preferred_username: usernameCheck.normalizedUsername || username }, emailRedirectTo: redirectTo } });
         if (authError) throw authError;
         if (!data.session) setMessage("Check your inbox to confirm your email, then return here to sign in.");
       } else {
-        const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError) throw authError;
+        if (isEmailIdentity(identity)) {
+          const { error: authError } = await supabase.auth.signInWithPassword({ email: identity, password });
+          if (authError) throw authError;
+        } else {
+          const response = await fetch("/api/username-login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ username: identity, password }) });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.error || "Username login could not be completed.");
+          const { error: sessionError } = await supabase.auth.setSession({ access_token: payload.accessToken, refresh_token: payload.refreshToken });
+          if (sessionError) throw sessionError;
+        }
       }
     } catch (authError) {
       setError(authError.message || "Authentication could not be completed.");
@@ -300,13 +340,13 @@ function AuthView({ onBack }) {
     }
   };
   const resetPassword = async () => {
-    if (!email) {
-      setError("Enter your email first, then choose reset password.");
+    if (!isEmailIdentity(identity)) {
+      setError("Enter the email address for this account to reset its password.");
       return;
     }
     setBusy(true);
     setError("");
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    const { error: authError } = await supabase.auth.resetPasswordForEmail(identity, { redirectTo });
     authError ? setError(authError.message) : setMessage("Password reset instructions are on the way.");
     setBusy(false);
   };
@@ -317,9 +357,13 @@ function AuthView({ onBack }) {
       <div className="oauth-grid"><button disabled={busy || providers.google === false} onClick={() => oauth("google")}><SiGoogle size={16} /><span>Continue with Google{providers.google === false && <small>Setup required</small>}</span></button><button disabled={busy || providers.github === false} onClick={() => oauth("github")}><SiGithub size={17} /><span>Continue with GitHub{providers.github === false && <small>Setup required</small>}</span></button></div>
       {(providers.google === false || providers.github === false) && <div className="provider-note"><ShieldCheck size={14} />Email registration is live. Social login activates when its provider is enabled in Supabase.</div>}
       <div className="auth-divider"><span>or continue with email</span></div>
-      <form onSubmit={submit}>{mode === "signup" && <label><span>Full name</span><div><UserRound size={16} /><input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Your professional name" autoComplete="name" /></div></label>}<label><span>Email address</span><div><Mail size={16} /><input required type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" /></div></label><label><span>Password</span><div><KeyRound size={16} /><input required minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" autoComplete={mode === "signin" ? "current-password" : "new-password"} /></div></label>{mode === "signin" && <button type="button" className="forgot-link" onClick={resetPassword}>Forgot password?</button>}{error && <div className="auth-alert error"><X size={15} />{error}</div>}{message && <div className="auth-alert success"><CheckCircle2 size={15} />{message}</div>}<button className="auth-submit" disabled={busy}>{busy ? <RefreshCw className="spin" size={16} /> : <LockKeyhole size={16} />}{mode === "signin" ? "Sign in securely" : "Create account"}</button></form>
+      <form onSubmit={submit}>{mode === "signup" && <><label><span>Full name</span><div><UserRound size={16} /><input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Your professional name" autoComplete="name" /></div></label><label><span>Choose your username</span><div className={usernameCheck?.available ? "username-input available" : usernameCheck && !usernameCheck.available ? "username-input unavailable" : "username-input"}><b>@</b><input required minLength={3} maxLength={30} value={username} onChange={(event) => { setUsernameEdited(true); setUsername(normalizeUsername(event.target.value)); }} placeholder="your.name" autoComplete="username" />{checkingUsername ? <RefreshCw className="spin" size={15} /> : usernameCheck?.available ? <CheckCircle2 size={15} /> : null}</div>{usernameCheck && <small className={`username-status ${usernameCheck.available ? "available" : "unavailable"}`}>{usernameCheck.available ? profileUrlFor(usernameCheck.normalizedUsername) : usernameCheck.reason}</small>}{usernameCheck?.suggestions?.length > 0 && <div className="username-suggestions">Try:{usernameCheck.suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => { setUsernameEdited(true); setUsername(suggestion); }}>@{suggestion}</button>)}</div>}</label></>}<label><span>{mode === "signin" ? "Email or username" : "Email address"}</span><div><Mail size={16} /><input required type={mode === "signup" ? "email" : "text"} value={identity} onChange={(event) => setIdentity(event.target.value)} placeholder={mode === "signin" ? "you@example.com or your.username" : "you@example.com"} autoComplete={mode === "signin" ? "username" : "email"} /></div></label><label><span>Password</span><div><KeyRound size={16} /><input required minLength={8} type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" autoComplete={mode === "signin" ? "current-password" : "new-password"} /></div></label>{mode === "signin" && <button type="button" className="forgot-link" onClick={resetPassword}>Forgot password?</button>}{error && <div className="auth-alert error"><X size={15} />{error}</div>}{message && <div className="auth-alert success"><CheckCircle2 size={15} />{message}</div>}<button className="auth-submit" disabled={busy || mode === "signup" && (!usernameCheck?.available || checkingUsername)}>{busy ? <RefreshCw className="spin" size={16} /> : <LockKeyhole size={16} />}{mode === "signin" ? "Sign in securely" : "Create account"}</button></form>
       <div className="auth-switch">{mode === "signin" ? "New to StackedIN?" : "Already have an account?"}<button onClick={() => {
     setMode(mode === "signin" ? "signup" : "signin");
+    setIdentity("");
+    setUsername("");
+    setUsernameEdited(false);
+    setUsernameCheck(null);
     setError("");
     setMessage("");
   }}>{mode === "signin" ? "Create an account" : "Sign in"}</button></div><small className="auth-legal">By continuing, you agree to build useful things and avoid adding more internet noise. The serious legal copy can arrive before commercial launch.</small>
@@ -608,7 +652,7 @@ function ProfileRecordEditor({ type, record, onSave, onCancel, busy }) {
   return <form className="profile-record-editor" onSubmit={submit}><header><div><span>{record?.id ? "Update" : "Add"}</span><h3>{config.title}</h3></div><button type="button" onClick={onCancel}><X size={15} /></button></header><div>{config.fields.map(([field, label, inputType]) => <label className={inputType === "checkbox" ? "checkbox-field" : ""} key={field}>{inputType === "checkbox" ? <><input type="checkbox" checked={Boolean(draft[field])} onChange={(event) => change(field, event.target.checked)} />{label}</> : <>{label}{inputType === "textarea" ? <textarea value={draft[field] || ""} onChange={(event) => change(field, event.target.value)} /> : inputType === "employment" ? <select value={draft[field] || "FULL_TIME"} onChange={(event) => change(field, event.target.value)}>{["FULL_TIME", "PART_TIME", "CONTRACT", "FREELANCE", "INTERNSHIP", "SELF_EMPLOYED", "OTHER"].map((option) => <option value={option} key={option}>{option.replaceAll("_", " ")}</option>)}</select> : inputType === "link-type" ? <select value={draft[field] || "OTHER"} onChange={(event) => change(field, event.target.value)}>{["WEBSITE", "GITHUB", "GITLAB", "LINKEDIN", "MEDIUM", "HASHNODE", "PORTFOLIO", "OTHER"].map((option) => <option value={option} key={option}>{option}</option>)}</select> : <input required={["title", "company", "institution", "label", "url"].includes(field) || type === "experience" && field === "start_date"} disabled={field === "end_date" && Boolean(draft.currently_working)} type={inputType || "text"} value={draft[field] || ""} onChange={(event) => change(field, event.target.value)} />}</>}</label>)}</div><footer><button type="button" onClick={onCancel}>Cancel</button><button disabled={busy}>{busy ? <RefreshCw className="spin" size={14} /> : <Check size={14} />}Save</button></footer></form>;
 }
 
-function ProfileJourneyView({ profile, bundle, draft, setDraft, tab, setTab, editingProfile, setEditingProfile, recordEditor, setRecordEditor, identityFields, linkFields, beginProfileEdit, saveProfile, saveRecord, deleteRecord, uploadImage, avatarInput, bannerInput, busy, message, isOwner, session, openFeed, openWrite, openInbox, openStudio, signOut, relationshipAction, load }) {
+function ProfileJourneyView({ profile, bundle, draft, setDraft, tab, setTab, editingProfile, setEditingProfile, recordEditor, setRecordEditor, identityFields, linkFields, beginProfileEdit, saveProfile, saveRecord, deleteRecord, uploadImage, avatarInput, bannerInput, busy, message, isOwner, session, openFeed, openWrite, openInbox, openStudio, signOut, relationshipAction, load, usernameCheck, checkingUsername, checkUsername }) {
   const name = profile.display_name || "StackedIN member";
   const links = [["Website", profile.website_url, Globe2], ["GitHub", profile.github_url, SiGithub], ["GitLab", profile.gitlab_url, SiGitlab], ["LinkedIn", profile.linkedin_url, ExternalLink], ["Medium", profile.medium_url, SiMedium], ["Hashnode", profile.hashnode_url, SiHashnode], ...(bundle.links || []).map((link) => [link.label, link.url, Link2])].filter((item) => isSafeExternalUrl(item[1]));
   const signals = [profile.display_name, profile.headline, profile.about || profile.bio, profile.location, profile.industry, profile.avatar_url, profile.banner_url, profile.current_company, bundle.experiences.length, bundle.education.length, (profile.featured_skills || []).length, links.length];
@@ -616,13 +660,14 @@ function ProfileJourneyView({ profile, bundle, draft, setDraft, tab, setTab, edi
   const tabs = [["about", "About"], ["experience", "Experience"], ["skills", "Skills"], ["portfolio", "Portfolio"], ["activity", "Activity"]];
   const openRecord = (type, record = {}) => setRecordEditor({ type, record });
   const journeyRows = (type, rows, Icon, titleOf, subtitleOf, metaOf) => rows.map((item) => <div className="journey-row" key={item.id}><Icon size={21} /><section><h3>{titleOf(item)}</h3><p>{subtitleOf(item)}</p><span>{metaOf(item)}</span>{item.description && <p>{item.description}</p>}{item.skills?.length > 0 && <div>{item.skills.map((skill) => <b key={skill}>{skill}</b>)}</div>}</section>{isOwner && <div><button aria-label={`Edit ${type}`} onClick={() => openRecord(type, item)}><PenTool size={13} /></button><button aria-label={`Delete ${type}`} onClick={() => deleteRecord(type, item.id)}><Trash2 size={13} /></button></div>}</div>);
-  return <div className="profile-page"><header className="feed-topbar"><button className="feed-logo" onClick={openFeed}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value="Professional profile" readOnly /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button>{isOwner && <><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button></>}<button className="active feed-avatar" onClick={() => isOwner && beginProfileEdit("about")}><b>{name.charAt(0).toUpperCase()}</b><span>{isOwner ? "Me" : "Profile"}</span></button></nav></header><main className="profile-journey-shell"><section className="profile-journey-hero"><div className="profile-journey-banner" style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined}>{isOwner && <div className="profile-media-actions"><button onClick={() => bannerInput.current?.click()}><Camera size={14} />Change banner</button>{profile.banner_url && <button aria-label="Remove banner" onClick={() => profileHub.updateProfile(session.user.id, { banner_url: null }).then(load)}><Trash2 size={14} /></button>}<input ref={bannerInput} hidden type="file" accept="image/*" onChange={(event) => uploadImage(event, "banner")} /></div>}</div><div className="profile-journey-identity"><div className="profile-journey-avatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : name.charAt(0).toUpperCase()}{isOwner && <button aria-label="Change profile photo" onClick={() => avatarInput.current?.click()}><Camera size={14} /></button>}<input ref={avatarInput} hidden type="file" accept="image/*" onChange={(event) => uploadImage(event, "avatar")} /></div><section><div><h1>{name}</h1><CheckCircle2 size={19} /></div><p>{profile.headline || [profile.current_job_title, profile.current_company].filter(Boolean).join(" · ") || "StackedIN professional"}</p><span><MapPin size={14} />{[profile.location, profile.country].filter(Boolean).join(", ") || "Location not specified"}<Users size={14} />{bundle.counts.followers} followers<Users size={14} />{bundle.counts.connections} connections</span><div className="profile-skill-chips">{(profile.featured_skills || []).slice(0, 8).map((skill) => <b key={skill}>{skill}</b>)}</div><div className="profile-badge-chips">{(profile.featured_badges || []).slice(0, 5).map((badge) => <b key={badge}><Award size={12} />{badge}</b>)}</div></section><aside>{isOwner ? <><button className="primary" onClick={() => beginProfileEdit(tab === "skills" ? "skills" : tab === "portfolio" ? "links" : "about")}><PenTool size={15} />Edit {tab === "skills" ? "skills" : tab === "portfolio" ? "links" : "profile"}</button><button onClick={openWrite}><Plus size={15} />Add post</button></> : <><button className="primary" disabled={busy || bundle.relationship.connectionStatus} onClick={() => relationshipAction("connect")}><Users size={15} />{bundle.relationship.connectionStatus === "PENDING" ? "Pending" : bundle.relationship.connectionStatus === "ACCEPTED" ? "Connected" : "Connect"}</button><button disabled={bundle.relationship.connectionStatus !== "ACCEPTED"} onClick={() => relationshipAction("message")}><MessageCircle size={15} />Message</button><button className={bundle.relationship.isFollowing ? "active" : ""} onClick={() => relationshipAction("follow")}><UserRound size={15} />{bundle.relationship.isFollowing ? "Following" : "Follow"}</button></>}</aside></div></section><nav className="profile-tabs">{tabs.map(([id, label]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>)}</nav>{message && <div className="profile-journey-message">{message}</div>}
-  {editingProfile && <div className="profile-edit-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setEditingProfile(null)}><section className="profile-base-editor" role="dialog" aria-modal="true"><header><div><span>Editing only this section</span><h2>{editingProfile === "skills" ? "Skills and recognition" : editingProfile === "links" ? "Professional profiles" : "About and identity"}</h2></div><button onClick={() => setEditingProfile(null)}><X size={16} /></button></header><div>{editingProfile === "about" && <>{identityFields.map(([field, label]) => <label key={field}>{label}<input type={field === "years_experience" ? "number" : "text"} value={draft[field] || ""} onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} /></label>)}<label className="wide">About<textarea value={draft.about || ""} onChange={(event) => setDraft((current) => ({ ...current, about: event.target.value }))} /></label></>}{editingProfile === "skills" && <><label className="wide">Featured skills<input value={Array.isArray(draft.featured_skills) ? draft.featured_skills.join(", ") : draft.featured_skills || ""} onChange={(event) => setDraft((current) => ({ ...current, featured_skills: event.target.value }))} placeholder="Azure, AI Architecture, .NET" /></label><label className="wide">Badges and recognitions<input value={Array.isArray(draft.featured_badges) ? draft.featured_badges.join(", ") : draft.featured_badges || ""} onChange={(event) => setDraft((current) => ({ ...current, featured_badges: event.target.value }))} placeholder="Top Voice, Community Builder" /></label></>}{editingProfile === "links" && linkFields.map(([field, label]) => <label key={field}>{label}<input type="url" value={draft[field] || ""} onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} placeholder="https://…" /></label>)}</div><footer><button onClick={() => setEditingProfile(null)}>Cancel</button><button onClick={saveProfile} disabled={busy}><Check size={15} />Save section</button></footer></section></div>}
+  return <div className="profile-page"><header className="feed-topbar"><button className="feed-logo" onClick={openFeed}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value="Professional profile" readOnly /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button>{isOwner && <><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button></>}<button className="active feed-avatar" onClick={() => isOwner && beginProfileEdit("about")}><b>{name.charAt(0).toUpperCase()}</b><span>{isOwner ? "Me" : "Profile"}</span></button></nav></header><main className="profile-journey-shell"><section className="profile-journey-hero"><div className="profile-journey-banner" style={profile.banner_url ? { backgroundImage: `url(${profile.banner_url})` } : undefined}>{isOwner && <div className="profile-media-actions"><button onClick={() => bannerInput.current?.click()}><Camera size={14} />Change banner</button>{profile.banner_url && <button aria-label="Remove banner" onClick={() => profileHub.updateProfile(session.user.id, { banner_url: null }).then(load)}><Trash2 size={14} /></button>}<input ref={bannerInput} hidden type="file" accept="image/*" onChange={(event) => uploadImage(event, "banner")} /></div>}</div><div className="profile-journey-identity"><div className="profile-journey-avatar">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : name.charAt(0).toUpperCase()}{isOwner && <button aria-label="Change profile photo" onClick={() => avatarInput.current?.click()}><Camera size={14} /></button>}<input ref={avatarInput} hidden type="file" accept="image/*" onChange={(event) => uploadImage(event, "avatar")} /></div><section><div><h1>{name}</h1><CheckCircle2 size={19} /></div><a className="profile-username" href={`#profile/${profile.username}`}>@{profile.username}</a><p>{profile.headline || [profile.current_job_title, profile.current_company].filter(Boolean).join(" · ") || "StackedIN professional"}</p><span><MapPin size={14} />{[profile.location, profile.country].filter(Boolean).join(", ") || "Location not specified"}<Users size={14} />{bundle.counts.followers} followers<Users size={14} />{bundle.counts.connections} connections</span><div className="profile-skill-chips">{(profile.featured_skills || []).slice(0, 8).map((skill) => <b key={skill}>{skill}</b>)}</div><div className="profile-badge-chips">{(profile.featured_badges || []).slice(0, 5).map((badge) => <b key={badge}><Award size={12} />{badge}</b>)}</div></section><aside>{isOwner ? <><button className="primary" onClick={() => beginProfileEdit(tab === "skills" ? "skills" : tab === "portfolio" ? "links" : "about")}><PenTool size={15} />Edit {tab === "skills" ? "skills" : tab === "portfolio" ? "links" : "profile"}</button><button onClick={openWrite}><Plus size={15} />Add post</button></> : <><button className="primary" disabled={busy || bundle.relationship.connectionStatus} onClick={() => relationshipAction("connect")}><Users size={15} />{bundle.relationship.connectionStatus === "PENDING" ? "Pending" : bundle.relationship.connectionStatus === "ACCEPTED" ? "Connected" : "Connect"}</button><button disabled={bundle.relationship.connectionStatus !== "ACCEPTED"} onClick={() => relationshipAction("message")}><MessageCircle size={15} />Message</button><button className={bundle.relationship.isFollowing ? "active" : ""} onClick={() => relationshipAction("follow")}><UserRound size={15} />{bundle.relationship.isFollowing ? "Following" : "Follow"}</button></>}</aside></div></section><nav className="profile-tabs">{tabs.map(([id, label]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>)}</nav>{message && <div className="profile-journey-message">{message}</div>}
+  {editingProfile && <div className="profile-edit-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setEditingProfile(null)}><section className="profile-base-editor" role="dialog" aria-modal="true"><header><div><span>Editing only this section</span><h2>{editingProfile === "skills" ? "Skills and recognition" : editingProfile === "links" ? "Professional profiles" : "About and identity"}</h2></div><button onClick={() => setEditingProfile(null)}><X size={16} /></button></header><div>{editingProfile === "about" && <><label className="wide">StackedIN username<div className={`profile-username-input ${usernameCheck?.available ? "available" : usernameCheck && !usernameCheck.available ? "unavailable" : ""}`}><b>@</b><input value={draft.username || ""} onChange={(event) => { const next = normalizeUsername(event.target.value); setDraft((current) => ({ ...current, username: next })); checkUsername(next); }} />{checkingUsername ? <RefreshCw className="spin" size={14} /> : usernameCheck?.available ? <CheckCircle2 size={14} /> : null}</div><small>{draft.username === profile.username ? `Your profile: #profile/${profile.username}` : usernameCheck?.available ? `Available · #profile/${usernameCheck.normalizedUsername}` : usernameCheck?.reason || "3–30 lowercase letters, numbers, periods, or underscores."}</small></label>{identityFields.map(([field, label]) => <label key={field}>{label}<input type={field === "years_experience" ? "number" : "text"} value={draft[field] || ""} onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} /></label>)}<label className="wide">About<textarea value={draft.about || ""} onChange={(event) => setDraft((current) => ({ ...current, about: event.target.value }))} /></label></>}{editingProfile === "skills" && <><label className="wide">Featured skills<input value={Array.isArray(draft.featured_skills) ? draft.featured_skills.join(", ") : draft.featured_skills || ""} onChange={(event) => setDraft((current) => ({ ...current, featured_skills: event.target.value }))} placeholder="Azure, AI Architecture, .NET" /></label><label className="wide">Badges and recognitions<input value={Array.isArray(draft.featured_badges) ? draft.featured_badges.join(", ") : draft.featured_badges || ""} onChange={(event) => setDraft((current) => ({ ...current, featured_badges: event.target.value }))} placeholder="Top Voice, Community Builder" /></label></>}{editingProfile === "links" && linkFields.map(([field, label]) => <label key={field}>{label}<input type="url" value={draft[field] || ""} onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} placeholder="https://…" /></label>)}</div><footer><button onClick={() => setEditingProfile(null)}>Cancel</button><button onClick={saveProfile} disabled={busy || draft.username !== profile.username && !usernameCheck?.available}><Check size={15} />Save section</button></footer></section></div>}
   {recordEditor && <div className="profile-edit-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setRecordEditor(null)}><ProfileRecordEditor type={recordEditor.type} record={recordEditor.record} onSave={saveRecord} onCancel={() => setRecordEditor(null)} busy={busy} /></div>}
   <div className="profile-journey-grid"><section className="profile-journey-main">{tab === "about" && <><article className="journey-card"><header><div><span>About</span><h2>Professional story</h2></div>{isOwner && <button onClick={() => beginProfileEdit("about")}><PenTool size={14} />Edit</button>}</header><p>{profile.about || profile.bio || "Add the story behind your work, decisions, and direction."}</p></article><article className="journey-card"><header><div><span>Education</span><h2>Learning journey</h2></div>{isOwner && <button onClick={() => openRecord("education")}><Plus size={14} />Add</button>}</header>{journeyRows("education", bundle.education, GraduationCap, (item) => item.institution, (item) => [item.degree, item.field_of_study].filter(Boolean).join(" · "), (item) => `${item.start_date || ""}${item.end_date ? ` — ${item.end_date}` : ""}`)}</article><article className="journey-card"><header><div><span>Recognition</span><h2>Achievements</h2></div>{isOwner && <button onClick={() => openRecord("achievement")}><Plus size={14} />Add</button>}</header>{journeyRows("achievement", bundle.achievements, Award, (item) => item.title, (item) => item.issuer, (item) => item.issued_on || "")}</article></>}{tab === "experience" && <article className="journey-card"><header><div><span>Career</span><h2>Experience</h2></div>{isOwner && <button onClick={() => openRecord("experience", { employment_type: "FULL_TIME" })}><Plus size={14} />Add experience</button>}</header>{journeyRows("experience", bundle.experiences, Building2, (item) => item.title, (item) => `${item.company} · ${String(item.employment_type || "").replaceAll("_", " ")}`, (item) => `${item.start_date || ""} — ${item.currently_working ? "Present" : item.end_date || "Present"}${item.location ? ` · ${item.location}` : ""}`)}</article>}{tab === "skills" && <article className="journey-card"><header><div><span>Expertise</span><h2>Skills and recognition</h2></div>{isOwner && <button onClick={() => beginProfileEdit("skills")}><PenTool size={14} />Edit</button>}</header><div className="journey-skills">{(profile.featured_skills || []).map((skill) => <span key={skill}>{skill}</span>)}</div><div className="journey-badges">{(profile.featured_badges || []).map((badge) => <span key={badge}><Award size={16} />{badge}</span>)}</div></article>}{tab === "portfolio" && <><article className="journey-card"><header><div><span>Selected work</span><h2>Portfolio</h2></div>{isOwner && <button onClick={() => openRecord("project")}><Plus size={14} />Add project</button>}</header><div className="journey-projects">{bundle.projects.map((item) => <article key={item.id}>{item.image_url && <img src={item.image_url} alt="" />}<h3>{item.title}</h3><p>{item.description}</p><div>{(item.skills || []).map((skill) => <b key={skill}>{skill}</b>)}</div><footer>{item.project_url && <a href={item.project_url} target="_blank" rel="noreferrer">View project <ExternalLink size={12} /></a>}{item.repository_url && <a href={item.repository_url} target="_blank" rel="noreferrer">Repository <SiGithub size={12} /></a>}{isOwner && <><button onClick={() => openRecord("project", item)}><PenTool size={13} /></button><button onClick={() => deleteRecord("project", item.id)}><Trash2 size={13} /></button></>}</footer></article>)}</div></article><article className="journey-card"><header><div><span>Links</span><h2>Professional presence</h2></div>{isOwner && <><button onClick={() => beginProfileEdit("links")}><PenTool size={14} />Edit profiles</button><button onClick={() => openRecord("link", { link_type: "OTHER" })}><Plus size={14} />Add link</button></>}</header><div className="journey-links">{links.map(([label, url, Icon]) => <a href={url} target="_blank" rel="noreferrer" key={`${label}-${url}`}><Icon size={18} /><span><strong>{label}</strong><small>{url}</small></span><ExternalLink size={13} /></a>)}</div></article></>}{tab === "activity" && <article className="journey-card"><header><div><span>Journey timeline</span><h2>Posts and professional activity</h2></div>{isOwner && <button onClick={openWrite}><Plus size={14} />Publish</button>}</header>{bundle.activities.map((item) => <div className="journey-activity" key={item.id}><div><FileText size={16} /></div><section><span>{item.content_type} · {formatDate(item.published_at)}</span><h3>{item.title}</h3><p>{item.description}</p><footer>{item.reaction_count || 0} reactions · {item.comment_count || 0} comments · {item.restack_count || 0} restacks</footer></section></div>)}</article>}</section><aside className="profile-journey-side"><article><span>Profile completeness</span><div className="completion-ring" style={{ "--completion": `${completion * 3.6}deg` }}><strong>{completion}%</strong><small>Complete</small></div></article><article><span>Professional signal</span><div className="signal-stats"><strong>{bundle.counts.publications}</strong><small>Publications</small><strong>{bundle.counts.followers}</strong><small>Followers</small><strong>{bundle.counts.connections}</strong><small>Connections</small></div></article>{links.length > 0 && <article><span>Connect elsewhere</span><div className="profile-side-links">{links.slice(0, 6).map(([label, url, Icon]) => <a href={url} target="_blank" rel="noreferrer" key={`${label}-${url}`}><Icon size={16} />{label}<ExternalLink size={11} /></a>)}</div></article>}{isOwner && <article><button className="profile-signout" onClick={signOut}><LogOut size={14} />Sign out</button></article>}</aside></div></main></div>;
 }
-function ProfileExperience({ session, targetProfileId, openFeed, openWrite, openInbox, openStudio, signOut }) {
+function ProfileExperience({ session, targetProfileRef, openFeed, openWrite, openInbox, openStudio, signOut }) {
   const [context, setContext] = useState(null);
+  const [targetProfileId, setTargetProfileId] = useState(null);
   const [bundle, setBundle] = useState(null);
   const [tab, setTab] = useState("about");
   const [editingProfile, setEditingProfile] = useState(null);
@@ -630,10 +675,22 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
   const [recordEditor, setRecordEditor] = useState(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [usernameCheck, setUsernameCheck] = useState(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const usernameTimer = useRef(null);
   const avatarInput = useRef(null);
   const bannerInput = useRef(null);
   const isOwner = targetProfileId === session.user.id;
+  useEffect(() => {
+    let cancelled = false;
+    setBundle(null);
+    profileHub.resolveProfileReference(targetProfileRef || session.user.id).then((id) => {
+      if (!cancelled) setTargetProfileId(id);
+    }).catch((error) => { if (!cancelled) setMessage(error.message || "Profile could not be found."); });
+    return () => { cancelled = true; };
+  }, [targetProfileRef, session.user.id]);
   const load = useCallback(async () => {
+    if (!targetProfileId) return;
     setBusy(true);
     try {
       const nextContext = context || await loadTenantContext(session.user.id);
@@ -651,6 +708,7 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
     load();
   }, [load]);
   useEffect(() => {
+    if (!targetProfileId) return undefined;
     const channel = profileHub.subscribe(targetProfileId, load);
     return () => {
       void supabase.removeChannel(channel);
@@ -660,6 +718,12 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
     setBusy(true);
     setMessage("");
     try {
+      if (draft.username !== bundle.profile.username) {
+        if (!usernameCheck?.available) throw new Error(usernameCheck?.reason || "Choose an available username.");
+        const claimedUsername = await profileHub.claimUsername(draft.username);
+        setDraft((current) => ({ ...current, username: claimedUsername }));
+        window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#profile/${encodeURIComponent(claimedUsername)}`);
+      }
       const fields = ["display_name", "headline", "about", "location", "country", "industry", "current_company", "current_job_title", "years_experience", "website_url", "github_url", "gitlab_url", "linkedin_url", "medium_url", "hashnode_url", "avatar_url", "banner_url", "featured_skills", "featured_badges"];
       const changes = Object.fromEntries(fields.map((field) => [field, draft[field] ?? (field.startsWith("featured_") ? [] : null)]));
       for (const field of ["website_url", "github_url", "gitlab_url", "linkedin_url", "medium_url", "hashnode_url"]) if (changes[field] && !isSafeExternalUrl(changes[field])) throw new Error(`${field.replace("_url", "")} must start with https://`);
@@ -674,6 +738,22 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
     } finally {
       setBusy(false);
     }
+  };
+  const checkUsername = (value) => {
+    clearTimeout(usernameTimer.current);
+    if (value === bundle?.profile?.username) {
+      setCheckingUsername(false);
+      setUsernameCheck(null);
+      return;
+    }
+    if (value.length < 3) {
+      setUsernameCheck({ available: false, reason: "Use at least 3 characters.", suggestions: [] });
+      return;
+    }
+    setCheckingUsername(true);
+    usernameTimer.current = setTimeout(() => {
+      profileHub.checkUsernameAvailability(value).then(setUsernameCheck).catch((error) => setUsernameCheck({ available: false, reason: error.message, suggestions: [] })).finally(() => setCheckingUsername(false));
+    }, 280);
   };
   const uploadImage = async (event, kind) => {
     const file = event.target.files?.[0];
@@ -737,9 +817,10 @@ function ProfileExperience({ session, targetProfileId, openFeed, openWrite, open
   const linkFields = [["website_url", "Website"], ["github_url", "GitHub"], ["gitlab_url", "GitLab"], ["linkedin_url", "LinkedIn"], ["medium_url", "Medium"], ["hashnode_url", "Hashnode"]];
   const beginProfileEdit = (section) => {
     setDraft({ ...profile });
+    setUsernameCheck(null);
     setEditingProfile(section);
   };
-  return <ProfileJourneyView {...{ profile, bundle, draft, setDraft, tab, setTab, editingProfile, setEditingProfile, recordEditor, setRecordEditor, identityFields, linkFields, beginProfileEdit, saveProfile, saveRecord, deleteRecord, uploadImage, avatarInput, bannerInput, busy, message, isOwner, session, openFeed, openWrite, openInbox, openStudio, signOut, relationshipAction, load }} />;
+  return <ProfileJourneyView {...{ profile, bundle, draft, setDraft, tab, setTab, editingProfile, setEditingProfile, recordEditor, setRecordEditor, identityFields, linkFields, beginProfileEdit, saveProfile, saveRecord, deleteRecord, uploadImage, avatarInput, bannerInput, busy, message, isOwner, session, openFeed, openWrite, openInbox, openStudio, signOut, relationshipAction, load, usernameCheck, checkingUsername, checkUsername }} />;
 }
 function MessagingExperience({ session, initialConversationId, openFeed, openProfile, openWrite, openStudio }) {
   const [context, setContext] = useState(null);
@@ -925,7 +1006,7 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
     <div className="feed-layout">
       <aside className="feed-left"><section className="feed-profile" onClick={() => openProfile()} onKeyDown={(event) => {
     if (event.key === "Enter") openProfile();
-  }} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.headline || session.user.email}</p><span>{tenantContext?.profile?.current_job_title || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, network, searchRoute, profileRoute }) => <button key={label} onClick={() => profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio()}><Icon size={17} />{label}{network && networkSummary.connections > 0 ? <b>{networkSummary.connections}</b> : <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+  }} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.username ? `@${tenantContext.profile.username}` : "StackedIN member"}</p><span>{tenantContext?.profile?.headline || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, network, searchRoute, profileRoute }) => <button key={label} onClick={() => profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio()}><Icon size={17} />{label}{network && networkSummary.connections > 0 ? <b>{networkSummary.connections}</b> : <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
       <main className="feed-stream"><FeedComposer session={session} tenantContext={tenantContext} onPublished={loadNativeFeed} openArticle={openWrite} onToast={setToast} /><div className="feed-sort"><span>Live from your professional knowledge network</span><button>Relevance + freshness <ChevronRight size={13} /></button></div>{visibleNative.map((article) => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onOpenProfile={openProfile} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications become native references when their source is connected in XStudio.</p></div>}{visible.map((post) => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or publish the first native StackedIN post.</p></div>}</main>
       <aside className="feed-right"><FeedPeoplePanel people={feedPeople} busy={peopleBusy} onAction={peopleAction} onOpenNetwork={openNetwork} onOpenProfile={openProfile} /><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <button type="button" onClick={openStudio} key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></button>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
@@ -1115,7 +1196,7 @@ function NetworkExperience({ session, openFeed, openSearch, openProfile, openStu
     if (event.key === "Enter" && networkSearch.trim()) openSearch(networkSearch);
   }} placeholder="Search people, skills, topics…" /></label><nav><button onClick={openFeed}><Home size={18} /><span>Home</span></button><button className="active"><Users size={18} /><span>Network</span></button><button onClick={() => openSearch("")}><Search size={18} /><span>Search</span></button><button className="feed-avatar" onClick={openProfile}><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="network-layout">
-      <aside className="network-sidebar"><section className="feed-profile" onClick={() => openProfile()} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{session.user.email}</p><span>Recommendations shaped by your professional graph.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{tenantContext?.tenant?.name || "Personal workspace"}</strong><small>{tenantContext?.role || "member"}</small></div></section><button onClick={openFeed}><Home size={16} />Back to feed</button><button onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <aside className="network-sidebar"><section className="feed-profile" onClick={() => openProfile()} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.username ? `@${tenantContext.profile.username}` : "StackedIN member"}</p><span>Recommendations shaped by your professional graph.</span><div className="workspace-chip"><Layers3 size={12} /><strong>{tenantContext?.tenant?.name || "Personal workspace"}</strong><small>{tenantContext?.role || "member"}</small></div></section><button onClick={openFeed}><Home size={16} />Back to feed</button><button onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button onClick={signOut}><LogOut size={15} />Sign out</button></aside>
       <main className="network-main"><header><span>Professional knowledge graph</span><h1>People worth knowing</h1><p>Fewer suggestions. Better reasons. Every candidate passes privacy, relationship, and negative-feedback filters before appearing here.</p></header>
         {loading && <div className="network-state"><RefreshCw className="spin" size={24} /><h3>Finding useful professional overlap…</h3></div>}
         {!loading && error && <div className="network-state network-error"><ShieldCheck size={25} /><h3>Recommendations are not available yet</h3><p>{error}</p>{tenantId && <button onClick={() => loadRecommendations(tenantId)}>Try again</button>}</div>}
@@ -1524,9 +1605,15 @@ function App() {
     sessionStorage.setItem("stackedin-professional-search", query || "");
     navigate("search");
   };
-  const openProfile = (profileId) => {
-    const target = typeof profileId === "string" && /^[0-9a-f-]{36}$/i.test(profileId) ? profileId : session?.user?.id;
-    navigate(target && target !== session?.user?.id ? `profile-${target}` : "profile");
+  const openProfile = async (profileReference) => {
+    const requested = typeof profileReference === "string" ? profileReference : session?.user?.id;
+    if (!requested) return navigate("login");
+    try {
+      const username = /^[0-9a-f-]{36}$/i.test(requested) ? await profileHub.findUsername(requested) : normalizeUsername(requested);
+      navigate(username ? `profile/${encodeURIComponent(username)}` : "profile");
+    } catch {
+      navigate(requested === session?.user?.id ? "profile" : `profile-${requested}`);
+    }
   };
   const openInbox = (conversationId) => {
     if (conversationId) sessionStorage.setItem("stackedin-inbox-conversation", conversationId);
@@ -1539,12 +1626,12 @@ function App() {
     navigate("home");
   };
   if (!authReady) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><RefreshCw className="spin" /></div>;
-  const protectedRoute = ["feed", "network", "search", "profile", "inbox", "write", "studio"].includes(route) || route.startsWith("article-") || route.startsWith("profile-");
+  const protectedRoute = ["feed", "network", "search", "profile", "inbox", "write", "studio"].includes(route) || route.startsWith("article-") || route.startsWith("profile-") || route.startsWith("profile/");
   if (route === "login" || protectedRoute && !session) return <AuthView onBack={() => navigate("home")} />;
   if ((route === "feed" || route.startsWith("article-")) && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} openSearch={openSearch} openWrite={() => navigate("write")} openProfile={openProfile} openInbox={openInbox} signOut={signOut} />;
   if (route === "network" && session) return <NetworkExperience session={session} openFeed={() => navigate("feed")} openSearch={openSearch} openProfile={openProfile} openStudio={() => navigate("studio")} signOut={signOut} />;
   if (route === "search" && session) return <SearchExperience session={session} openFeed={() => navigate("feed")} openNetwork={() => navigate("network")} openProfile={openProfile} openStudio={() => navigate("studio")} signOut={signOut} />;
-  if ((route === "profile" || route.startsWith("profile-")) && session) return <ProfileExperience session={session} targetProfileId={route.startsWith("profile-") ? route.slice(8) : session.user.id} openFeed={() => navigate("feed")} openWrite={() => navigate("write")} openInbox={openInbox} openStudio={() => navigate("studio")} signOut={signOut} />;
+  if ((route === "profile" || route.startsWith("profile-") || route.startsWith("profile/")) && session) return <ProfileExperience session={session} targetProfileRef={route.startsWith("profile/") ? decodeURIComponent(route.slice(8)) : route.startsWith("profile-") ? route.slice(8) : session.user.id} openFeed={() => navigate("feed")} openWrite={() => navigate("write")} openInbox={openInbox} openStudio={() => navigate("studio")} signOut={signOut} />;
   if (route === "inbox" && session) return <MessagingExperience session={session} initialConversationId={sessionStorage.getItem("stackedin-inbox-conversation") || ""} openFeed={() => navigate("feed")} openProfile={openProfile} openWrite={() => navigate("write")} openStudio={() => navigate("studio")} />;
   if (route === "write" && session) return <WriteExperience session={session} openFeed={() => navigate("feed")} openProfile={openProfile} openStudio={() => navigate("studio")} />;
   if (route === "studio" && session) return <Dashboard session={session} onExit={() => navigate("feed")} onWrite={() => navigate("write")} />;

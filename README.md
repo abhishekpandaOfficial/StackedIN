@@ -77,6 +77,10 @@ introduced by migration `009`. Recoverable article Trash and restore controls
 are introduced by migration `010`. The unified feed composer, polls, social
 account metadata, and writing-signal scores are introduced by migration `011`.
 Sarvam-default AI quota routing is introduced by migration `012`.
+Canonical, case-insensitive usernames, profile URLs, live availability checks,
+OAuth username assignment, and the private username-login directory are
+introduced by migration `013`. Profile URLs use `#profile/username`; email is
+never shown on a public profile.
 
 For scheduled publishing on Vercel, configure the server-only
 `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables, then configure a Vercel

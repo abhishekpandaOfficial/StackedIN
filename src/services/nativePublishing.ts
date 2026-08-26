@@ -125,7 +125,7 @@ export class NativePublishingService {
   async listFeed(limit = 30): Promise<NativeArticle[]> {
     const { data, error } = await this.client
       .from("articles")
-      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,author:profiles!articles_author_profile_fk(id,slug,display_name,headline,avatar_url)")
+      .select("id,tenant_id,author_id,title,description,content_type,content_blocks,hashtags,tags,cover_image_url,reading_minutes,reaction_count,comment_count,share_count,restack_count,published_at,source_type,source_provider,external_url,author:profiles!articles_author_profile_fk(id,username,slug,display_name,headline,avatar_url)")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .order("id", { ascending: false })
@@ -252,7 +252,7 @@ export class NativePublishingService {
     const normalized = query.trim().replace(/[%_,()]/g, "").slice(0, 40);
     if (!normalized) return [];
     const { data, error } = await this.client.from("profiles")
-      .select("id,display_name,headline,avatar_url,slug")
+      .select("id,username,display_name,headline,avatar_url,slug")
       .or(`display_name.ilike.%${normalized}%,slug.ilike.%${normalized}%`)
       .limit(6);
     if (error) throw new Error(error.message);
@@ -416,7 +416,7 @@ export class NativePublishingService {
   async listComments(articleId: string): Promise<ArticleComment[]> {
     const { data, error } = await this.client
       .from("article_comments")
-      .select("id,article_id,author_profile_id,parent_comment_id,body,status,created_at,author:profiles!article_comments_author_profile_id_fkey(id,display_name,avatar_url,headline)")
+      .select("id,article_id,author_profile_id,parent_comment_id,body,status,created_at,author:profiles!article_comments_author_profile_id_fkey(id,username,display_name,avatar_url,headline)")
       .eq("article_id", articleId)
       .neq("status", "DELETED")
       .order("created_at", { ascending: true });

@@ -12,6 +12,7 @@ const xstudioMigration = readFileSync(resolve("supabase/migrations/202608250008_
 const cmsMigration = readFileSync(resolve("supabase/migrations/202608250009_xstudio_cms_and_scheduling.sql"), "utf8");
 const trashMigration = readFileSync(resolve("supabase/migrations/202608250010_xstudio_article_trash.sql"), "utf8");
 const composerMigration = readFileSync(resolve("supabase/migrations/202608250011_feed_composer_social_ai.sql"), "utf8");
+const usernameMigration = readFileSync(resolve("supabase/migrations/202608250013_canonical_usernames.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -66,6 +67,32 @@ describe("professional graph migration contract", () => {
     expect(migration).toContain("create or replace function public.set_article_search_document()");
     expect(migration).toContain("create trigger articles_set_search_document");
     expect(migration).not.toMatch(/search_document\s+tsvector\s+generated always/i);
+  });
+});
+
+describe("canonical username migration contract", () => {
+  it("enforces one case-insensitive username across every account", () => {
+    expect(usernameMigration).toContain("create unique index if not exists profiles_username_lower_unique_idx");
+    expect(usernameMigration).toContain("on public.profiles(lower(username))");
+    expect(usernameMigration).toContain("add constraint profiles_username_format_check");
+  });
+
+  it("provides public availability checks and authenticated claims", () => {
+    expect(usernameMigration).toContain("create or replace function public.check_username_availability");
+    expect(usernameMigration).toContain("grant execute on function public.check_username_availability(text) to anon, authenticated");
+    expect(usernameMigration).toContain("create or replace function public.claim_username");
+    expect(usernameMigration).toContain("grant execute on function public.claim_username(text) to authenticated");
+  });
+
+  it("keeps the email-to-username login directory private", () => {
+    expect(usernameMigration).toContain("alter table public.account_usernames enable row level security");
+    expect(usernameMigration).toContain("revoke all on public.account_usernames from anon, authenticated");
+  });
+
+  it("derives OAuth usernames while honoring manual signup choices", () => {
+    expect(usernameMigration).toContain("new.raw_user_meta_data ->> 'preferred_username'");
+    expect(usernameMigration).toContain("new.raw_user_meta_data ->> 'user_name'");
+    expect(usernameMigration).toContain("new.raw_user_meta_data ->> 'name'");
   });
 });
 

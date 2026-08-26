@@ -25,6 +25,32 @@ export interface InboxConversation {
 export class ProfileHubService {
   constructor(private readonly client: SupabaseClient) {}
 
+  async resolveProfileReference(reference: string): Promise<string> {
+    if (/^[0-9a-f-]{36}$/i.test(reference)) return reference;
+    const { data, error } = await this.client.from("profiles").select("id").ilike("username", reference).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data?.id) throw new Error("That StackedIN profile does not exist.");
+    return data.id;
+  }
+
+  async findUsername(profileId: string): Promise<string | null> {
+    const { data, error } = await this.client.from("profiles").select("username").eq("id", profileId).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data?.username ?? null;
+  }
+
+  async checkUsernameAvailability(username: string): Promise<{ normalizedUsername: string; available: boolean; reason?: string; suggestions: string[] }> {
+    const { data, error } = await this.client.rpc("check_username_availability", { requested_username: username });
+    if (error) throw new Error(error.message);
+    return data as { normalizedUsername: string; available: boolean; reason?: string; suggestions: string[] };
+  }
+
+  async claimUsername(username: string): Promise<string> {
+    const { data, error } = await this.client.rpc("claim_username", { requested_username: username });
+    if (error) throw new Error(error.message);
+    return data as string;
+  }
+
   async loadProfile(profileId: string, tenantId: string, viewerId: string): Promise<ProfileBundle> {
     const profileFields = "id,slug,username,display_name,headline,about,bio,location,country,industry,current_company,current_job_title,years_experience,avatar_url,banner_url,profile_completeness,quality_score,website_url,github_url,gitlab_url,linkedin_url,medium_url,hashnode_url,featured_skills,featured_badges,created_at,updated_at";
     const [profileResult, experiences, education, projects, achievements, links, activities, connectionResult, followResult, subscriptionResult, countsResult] = await Promise.all([

@@ -4,7 +4,7 @@ export async function loadTenantContext(userId) {
   if (!userId) return null;
 
   const [profileResult, membershipResult] = await Promise.all([
-    supabase.from("profiles").select("id, username, display_name, avatar_url, bio").eq("id", userId).maybeSingle(),
+    supabase.from("profiles").select("id, username, display_name, avatar_url, bio, headline, current_job_title").eq("id", userId).maybeSingle(),
     supabase
       .from("tenant_memberships")
       .select("role, tenant:tenants(id, name, slug, owner_id)")
