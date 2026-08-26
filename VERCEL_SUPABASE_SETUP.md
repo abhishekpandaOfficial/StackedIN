@@ -158,7 +158,7 @@ GitHub OAuth Apps accept a single callback URL, which is sufficient because Supa
    StackedIN feed entry.
 8. Confirm signup checks username availability before submission, then sign out
    and sign in using the username instead of the email address.
-9. Open `#profile/YOUR_USERNAME`, edit the username, and confirm both the old
+9. Open `/profile/YOUR_USERNAME`, edit the username, and confirm both the old
    handle and another account cannot claim the new one.
 
 Username login uses the existing server-only `SUPABASE_SERVICE_ROLE_KEY` to

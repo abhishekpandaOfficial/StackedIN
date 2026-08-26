@@ -4,6 +4,19 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/feed", "destination": "/index.html" },
+    { "source": "/feed/:path*", "destination": "/index.html" },
+    { "source": "/network", "destination": "/index.html" },
+    { "source": "/search", "destination": "/index.html" },
+    { "source": "/profile", "destination": "/index.html" },
+    { "source": "/profile/:path*", "destination": "/index.html" },
+    { "source": "/inbox", "destination": "/index.html" },
+    { "source": "/write", "destination": "/index.html" },
+    { "source": "/studio", "destination": "/index.html" },
+    { "source": "/login", "destination": "/index.html" },
+    { "source": "/article/:path*", "destination": "/index.html" }
+  ],
   "crons": [
     {
       "path": "/api/publish-scheduled",
