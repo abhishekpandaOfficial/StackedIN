@@ -37,7 +37,7 @@ function. The repository configures one daily Hobby-compatible execution at
 In Supabase, open **SQL Editor → New query**, paste the complete contents of:
 
 every SQL file in `supabase/migrations` in filename order, from `001` through
-`011`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
+`014`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
 revision history, content schedule, and distribution queue. Migration `010`
 adds recoverable article Trash and guarded restore operations. Migration `011`
 adds the unified feed composer, mentions, social account metadata, polls, and
@@ -45,6 +45,9 @@ writing-signal scores.
 Migration `013` adds canonical usernames, instant availability checks,
 name-derived Google/GitHub handles, username profile URLs, and secure
 email-or-username sign-in.
+Migration `014` makes published public work globally readable while enforcing
+author-only access to XStudio drafts, Trash, revisions, delivery jobs, and
+security-definer CMS mutations.
 
 Then choose **Run** once. It creates:
 
@@ -59,6 +62,7 @@ Then choose **Run** once. It creates:
 - a backend-only scheduled-publishing function.
 - soft-deleted articles that can be reviewed and restored safely as drafts.
 - globally unique public usernames with private email-to-username login mapping.
+- author-isolated XStudio content with a shared public publishing feed.
 
 The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
 

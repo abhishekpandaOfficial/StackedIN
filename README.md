@@ -79,7 +79,9 @@ account metadata, and writing-signal scores are introduced by migration `011`.
 Sarvam-default AI quota routing is introduced by migration `012`.
 Canonical, case-insensitive usernames, profile URLs, live availability checks,
 OAuth username assignment, and the private username-login directory are
-introduced by migration `013`. Profile URLs use `#profile/username`; email is
+introduced by migration `013`. Author-only XStudio drafts, revisions, Trash,
+and delivery operations with a globally readable public feed are enforced by
+migration `014`. Profile URLs use `#profile/username`; email is
 never shown on a public profile.
 
 For scheduled publishing on Vercel, configure the server-only
