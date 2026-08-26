@@ -193,7 +193,8 @@ function PlatformIcon({ name, size = 15 }) {
   if (name === "Substack") return <SiSubstack size={size} aria-hidden="true" />;
   if (name === "Medium") return <SiMedium size={size} aria-hidden="true" />;
   if (name === "Hashnode") return <SiHashnode size={size} aria-hidden="true" />;
-  return <span className="linkedin-glyph" style={{ width: size, height: size, fontSize: size * 0.72 }} aria-hidden="true">in</span>;
+  if (name === "LinkedIn") return <span className="linkedin-glyph" style={{ width: size, height: size, fontSize: size * 0.72 }} aria-hidden="true">in</span>;
+  return <Rss size={size} aria-hidden="true" />;
 }
 function MetricCard({ label, value, note, icon: Icon, accent }) {
   return <article className={`metric-card tone-${accent}`}>
@@ -450,14 +451,14 @@ function AuthView({ onBack }) {
     </div></section>
   </div>;
 }
-function FeedCard({ post, liked, saved, onLike, onSave, onShare }) {
+function FeedCard({ post, liked, saved, onLike, onSave, onShare, onHide }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scoreOpen, setScoreOpen] = useState(false);
   const score = scoreWritingSignals(`${post.title || ""} ${post.description || ""}`);
   return <article className="feed-card">
-    <header><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="" /><div><strong>Abhishek Panda <CheckCircle2 size={13} /></strong><span>AI Architect · .NET · Multi-Cloud · FDE Mindset</span><small>{formatDate(post.publishedAt)} · <Globe2 size={11} /></small></div><div className="post-menu-wrap"><button aria-label="More options" onClick={() => setMenuOpen(value => !value)}><MoreHorizontal size={18} /></button>{menuOpen && <div className="post-action-menu"><button onClick={() => { setScoreOpen(true); setMenuOpen(false); }}><BrainCircuit size={17} />AI writing signal</button><button onClick={onSave}><Bookmark size={17} />{saved ? "Unsave post" : "Save post"}</button></div>}</div></header>
+    <header><span className="external-profile-mark"><PlatformIcon name={post.platform || "Substack"} size={20} /></span><div><strong>Abhishek Panda <CheckCircle2 size={13} /><a className="provider-identity-chip" href={post.url} target="_blank" rel="noreferrer"><PlatformIcon name={post.platform || "Substack"} size={11} />{post.platform || "Substack"}</a></strong><span>External publication reference</span><small>{formatDate(post.publishedAt)} · <Globe2 size={11} /></small></div><div className="post-menu-wrap"><button aria-label="More options" onClick={() => setMenuOpen(value => !value)}><MoreHorizontal size={18} /></button>{menuOpen && <div className="post-action-menu"><button onClick={() => { setScoreOpen(true); setMenuOpen(false); }}><BrainCircuit size={17} />AI writing signal</button><button onClick={onSave}><Bookmark size={17} />{saved ? "Unsave post" : "Save post"}</button><button onClick={onHide}><EyeOff size={17} />Hide from StackedIN</button></div>}</div></header>
     <div className="feed-copy"><p>{post.description}</p><div className="feed-tags">{(post.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag.replace(/\s+/g, "")}</span>)}</div></div>
-    <div className={`feed-article-cover feed-cover-${(post.pillar || "architecture").length % 5}`}><span><PlatformIcon name={post.platform || "Substack"} size={14} />{post.platform || "Substack"} reference</span><small>{post.pillar}</small><h2>{post.title}</h2><p>{post.series}</p><div>External knowledge reference · connect this source in Studio</div></div>
+    <a className={`feed-article-cover feed-cover-${(post.pillar || "architecture").length % 5}`} href={post.url} target="_blank" rel="noreferrer"><span><PlatformIcon name={post.platform || "Substack"} size={14} />Read on {post.platform || "the publisher"} <ExternalLink size={11} /></span><small>{post.pillar}</small><h2>{post.title}</h2><p>{post.series}</p><div>Open the complete article on its original publication</div></a>
     <div className="feed-engagement"><span><Eye size={13} />{compactNumber.format(post.views || 0)} views</span><span>{compactNumber.format(post.shares || 0)} shares</span></div>
     <footer><button className={liked ? "active" : ""} onClick={onLike}><Heart size={17} fill={liked ? "currentColor" : "none"} />Like</button><button onClick={onShare}><MessageCircle size={17} />Discuss</button><button onClick={onShare}><Share2 size={17} />Share</button><button className={saved ? "active" : ""} onClick={onSave}><Bookmark size={17} fill={saved ? "currentColor" : "none"} />Save</button></footer>{scoreOpen && <AIScoreDialog score={score} onClose={() => setScoreOpen(false)} />}
   </article>;
@@ -470,7 +471,7 @@ const REACTIONS = [
   { id: "SUPPORT", emoji: "\u{1F64C}", label: "Support" },
   { id: "CURIOUS", emoji: "\u{1F914}", label: "Curious" }
 ];
-function NativeFeedCard({ article, tenantContext, onRefresh, onNetworkRefresh, onOpenProfile, onToast }) {
+function NativeFeedCard({ article, tenantContext, onRefresh, onNetworkRefresh, onOpenProfile, onEditArticle, onToast }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
@@ -487,9 +488,27 @@ function NativeFeedCard({ article, tenantContext, onRefresh, onNetworkRefresh, o
   const tenantId = tenantContext?.tenant?.id;
   const profileId = tenantContext?.profile?.id;
   const isOwnPost = profileId === article.author_id;
+  const isExternal = article.source_type !== "USER";
+  const providerName = article.source_provider ? article.source_provider.charAt(0) + article.source_provider.slice(1).toLowerCase() : "RSS";
+  const externalUrl = isSafeExternalUrl(article.external_url) ? article.external_url : null;
   const writingScore = article.writingScore || scoreWritingSignals(`${article.title || ""} ${article.description || ""} ${(article.content_blocks || []).map(block => block.text || block.code || block.caption || block.label || "").join(" ")}`);
   const articleUrl = () => {
-    return new URL(routePathFor(`article/${article.id}`), window.location.origin);
+    return externalUrl ? new URL(externalUrl) : new URL(routePathFor(`article/${article.id}`), window.location.origin);
+  };
+  const trashOwnPost = async () => {
+    if (!isOwnPost || isExternal || !window.confirm("Move this StackedIN post to Trash? You can restore it later from XStudio.")) return;
+    setBusy("trash");
+    setError("");
+    try {
+      await nativePublishing.trashCMSArticle(article.id);
+      setMenuOpen(false);
+      onToast?.("Moved to XStudio Trash. You can restore it at any time.");
+      await onRefresh();
+    } catch (trashError) {
+      setError(trashError.message || "This post could not be moved to Trash.");
+    } finally {
+      setBusy("");
+    }
   };
   const loadComments = async () => {
     setBusy("comments");
@@ -647,13 +666,13 @@ ${url}`)}`;
     if (event.key === "Enter") onOpenProfile(article.author_id);
   }}>{article.author?.avatar_url ? <img src={article.author.avatar_url} alt="" /> : authorName.charAt(0).toUpperCase()}</div><div><strong className="native-author-name" role="button" tabIndex={0} onClick={() => onOpenProfile(article.author_id)} onKeyDown={(event) => {
     if (event.key === "Enter") onOpenProfile(article.author_id);
-  }}>{authorName}<CheckCircle2 size={13} /></strong><span>{article.author?.headline || "StackedIN professional"}</span><small>{formatDate(article.published_at)} · {article.reading_minutes} min read · <Globe2 size={10} /></small></div><div className="post-menu-wrap"><button className="post-more" aria-label="Post options" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}><MoreHorizontal size={19} /></button>{menuOpen && <div className="post-action-menu"><button onClick={save}><Bookmark size={17} />{article.viewerSaved ? "Unsave post" : "Save post"}</button><button onClick={() => { setScoreOpen(true); setMenuOpen(false); }}><BrainCircuit size={17} />AI writing signal</button>{!isOwnPost && <><button onClick={() => authorAction("follow")}><UserRound size={17} />{article.viewerFollowingAuthor ? "Unfollow author" : "Follow author"}</button><button onClick={() => authorAction("subscribe")}><BellRing size={17} />{article.viewerSubscribedAuthor ? "Unsubscribe from posts" : "Subscribe to posts"}</button><button onClick={() => authorAction("disconnect")}><UserMinus size={17} />Disconnect</button></>}<button onClick={() => preference("HIDDEN")}><EyeOff size={17} />Hide post</button><button onClick={() => preference("NOT_INTERESTED")}><ThumbsUp className="thumb-down" size={17} />Not interested</button><button onClick={report}><Flag size={17} />Report post</button></div>}</div></header>
-    {article.content_type !== "POST" && <section className="native-article-intro"><h2>{article.title}</h2>{article.description && <p>{article.description}</p>}<div>{(article.hashtags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div></section>}
+  }}>{authorName}<CheckCircle2 size={13} />{isExternal && <a className="provider-identity-chip" href={externalUrl || undefined} target="_blank" rel="noreferrer"><PlatformIcon name={providerName} size={11} />{providerName}</a>}</strong><span>{isExternal ? `Published on ${providerName}` : article.author?.headline || "StackedIN professional"}</span><small>{formatDate(article.published_at)} · {article.reading_minutes} min read · <Globe2 size={10} /></small></div><div className="post-menu-wrap"><button className="post-more" aria-label="Post options" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}><MoreHorizontal size={19} /></button>{menuOpen && <div className="post-action-menu">{isOwnPost && !isExternal && <><button onClick={() => { setMenuOpen(false); onEditArticle?.(article); }}><PenTool size={17} />Edit in XStudio</button><button disabled={busy === "trash"} onClick={trashOwnPost}><Trash2 size={17} />Move to Trash</button></>}<button onClick={save}><Bookmark size={17} />{article.viewerSaved ? "Unsave post" : "Save post"}</button><button onClick={() => { setScoreOpen(true); setMenuOpen(false); }}><BrainCircuit size={17} />AI writing signal</button>{!isOwnPost && <><button onClick={() => authorAction("follow")}><UserRound size={17} />{article.viewerFollowingAuthor ? "Unfollow author" : "Follow author"}</button><button onClick={() => authorAction("subscribe")}><BellRing size={17} />{article.viewerSubscribedAuthor ? "Unsubscribe from posts" : "Subscribe to posts"}</button><button onClick={() => authorAction("disconnect")}><UserMinus size={17} />Disconnect</button></>}<button onClick={() => preference("HIDDEN")}><EyeOff size={17} />{isExternal ? "Hide from StackedIN" : "Hide post"}</button><button onClick={() => preference("NOT_INTERESTED")}><ThumbsUp className="thumb-down" size={17} />Not interested</button><button onClick={report}><Flag size={17} />Report post</button></div>}</div></header>
+    {article.content_type !== "POST" && <section className="native-article-intro">{externalUrl ? <a className="native-external-title" href={externalUrl} target="_blank" rel="noreferrer"><h2>{article.title}</h2><ExternalLink size={18} /></a> : <h2>{article.title}</h2>}{article.description && <p>{article.description}</p>}<div>{(article.hashtags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div></section>}
     {article.cover_image_url && <img className="native-cover" src={article.cover_image_url} alt="" />}
     <ContentBlocks blocks={article.content_blocks || []} />
     {article.content_type === "POST" && <div className="native-post-hashtags">{(article.hashtags || []).map(tag => <span key={tag}>#{tag}</span>)}</div>}
     {article.poll && <section className="native-poll"><header><div><BarChart3 size={16} /><strong>{article.poll.question}</strong></div><span>{new Date(article.poll.ends_at) > new Date() ? `Ends ${formatDate(article.poll.ends_at)}` : "Poll closed"}</span></header><div>{article.poll.options.map(option => { const percent = article.poll.total_votes ? Math.round(option.vote_count / article.poll.total_votes * 100) : 0; const selected = article.poll.viewerOptionId === option.id; return <button className={selected ? "selected" : ""} disabled={Boolean(pollBusy) || new Date(article.poll.ends_at) <= new Date()} key={option.id} onClick={() => votePoll(option.id)}><span><b>{option.label}</b><strong>{percent}%</strong></span><i><em style={{ width: `${percent}%` }} /></i></button>; })}</div><footer>{article.poll.total_votes} vote{article.poll.total_votes === 1 ? "" : "s"}{article.poll.viewerOptionId && <span>Vote recorded · choose another option to change it</span>}</footer></section>}
-    {article.source_type !== "USER" && <div className="native-source-note"><Rss size={13} />Imported from {article.source_provider || article.source_type} as an internal knowledge reference.</div>}
+    {isExternal && <a className="native-source-note" href={externalUrl || undefined} target="_blank" rel="noreferrer"><PlatformIcon name={providerName} size={13} /><span><strong>Read the complete article on {providerName}</strong>Verified external reference · opens the original publication</span><ExternalLink size={13} /></a>}
     <section className="reaction-summary"><div>{REACTIONS.filter((reaction) => article.reactionSummary?.[reaction.id]).map((reaction) => <span key={reaction.id}>{reaction.emoji}<b>{article.reactionSummary[reaction.id]}</b></span>)}</div><span>{article.reaction_count || 0} reactions · {article.comment_count || 0} comments · {article.restack_count || 0} restacks · {article.share_count || 0} shares</span></section>
     <footer className="native-actions"><div className="reaction-control"><button className={article.viewerReaction ? "active" : ""} disabled={busy === "reaction"} onClick={() => react(article.viewerReaction || "LIKE")}><span>{REACTIONS.find((item) => item.id === article.viewerReaction)?.emoji || <ThumbsUp size={16} />}</span>{REACTIONS.find((item) => item.id === article.viewerReaction)?.label || "React"}</button><div className="reaction-hover-menu">{REACTIONS.map((reaction) => <button key={reaction.id} className={article.viewerReaction === reaction.id ? "active" : ""} onClick={() => react(reaction.id)} title={reaction.label} aria-label={reaction.label}>{reaction.emoji}</button>)}</div></div><button onClick={toggleDiscussion}>{busy === "comments" ? <RefreshCw className="spin" size={16} /> : <MessageCircle size={16} />}Comment</button><div className="action-popover-wrap"><button className={article.viewerRestacked ? "active" : ""} onClick={() => setRestackOpen((value) => !value)}><Repeat2 size={16} />Restack</button>{restackOpen && <div className="action-popover restack-popover">{article.viewerRestacked && <button onClick={removeRestack}><X size={15} />Undo restack</button>}<button onClick={() => restack(null)}><Repeat2 size={15} />Restack instantly</button><button onClick={() => {
     setRestackThoughtsOpen(true);
@@ -1071,6 +1090,7 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
   const [search, setSearch] = useState("");
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-liked-${session.user.id}`) || "[]")));
   const [saved, setSaved] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-saved-${session.user.id}`) || "[]")));
+  const [hiddenExternal, setHiddenExternal] = useState(() => new Set(JSON.parse(localStorage.getItem(`stackedin-hidden-external-${session.user.id}`) || "[]")));
   const [toast, setToast] = useState("");
   const [feedPreferences, setFeedPreferences] = useState(() => {
     try { return { compact: false, hideExternal: false, reduceMotion: false, ...JSON.parse(localStorage.getItem(`stackedin-feed-preferences:${session.user.id}`) || "{}") }; }
@@ -1124,9 +1144,9 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
     if (feedPreferences.hideExternal || !["all", "saved"].includes(feedMode)) return [];
     return posts.filter((post) => {
       const matchesMode = feedMode === "all" || saved.has(post.url);
-      return matchesMode && `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase());
+      return matchesMode && !hiddenExternal.has(post.url) && `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase());
     }).slice(0, 30);
-  }, [posts, search, feedMode, saved, feedPreferences.hideExternal]);
+  }, [posts, search, feedMode, saved, hiddenExternal, feedPreferences.hideExternal]);
   const visibleNative = useMemo(() => nativeArticles.filter((article) => {
     const matchesMode = feedMode === "following" ? article.viewerFollowingAuthor || article.author_id === session.user.id
       : feedMode === "subscribed" ? article.viewerSubscribedAuthor
@@ -1149,6 +1169,17 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
     } catch {
       window.open(post.url, "_blank", "noopener");
     }
+  };
+  const hideExternalReference = (post) => {
+    const next = new Set(hiddenExternal);
+    next.add(post.url);
+    localStorage.setItem(`stackedin-hidden-external-${session.user.id}`, JSON.stringify([...next]));
+    setHiddenExternal(next);
+    setToast(`${post.platform || "External"} article hidden from your feed.`);
+  };
+  const editNativeArticle = (article) => {
+    sessionStorage.setItem(editorArticleKey(session.user.id), article.id);
+    openWrite();
   };
   const peopleAction = async (person, action) => {
     const tenantId = tenantContext?.tenant?.id;
@@ -1192,7 +1223,7 @@ function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, o
       <aside className="feed-left"><section className="feed-profile" onClick={() => openProfile()} onKeyDown={(event) => {
     if (event.key === "Enter") openProfile();
   }} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.username ? `@${tenantContext.profile.username}` : "StackedIN member"}</p><span>{tenantContext?.profile?.headline || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, mode: linkMode, action, badge }) => <button className={linkMode === feedMode ? "active" : ""} key={label} onClick={action}><Icon size={17} />{label}{badge > 0 ? <b>{badge}</b> : <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
-      <main className="feed-stream"><FeedComposer session={session} tenantContext={tenantContext} onPublished={loadNativeFeed} openArticle={openWrite} onToast={setToast} /><div className="feed-sort"><span>{feedModeCopy[0]}</span><button>{feedModeCopy[1]} <ChevronRight size={13} /></button></div>{visibleNative.map((article) => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onOpenProfile={openProfile} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications become native references when their source is connected in XStudio.</p></div>}{visible.map((post) => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No posts in this view yet</h3><p>{feedMode === "following" ? "Follow professionals to build this feed." : feedMode === "subscribed" ? "Subscribe to an author to receive their new posts here." : feedMode === "saved" ? "Save a post or article and it will appear here." : "Try a broader topic or publish the first native StackedIN post."}</p></div>}</main>
+      <main className="feed-stream"><FeedComposer session={session} tenantContext={tenantContext} onPublished={loadNativeFeed} openArticle={openWrite} onToast={setToast} /><div className="feed-sort"><span>{feedModeCopy[0]}</span><button>{feedModeCopy[1]} <ChevronRight size={13} /></button></div>{visibleNative.map((article) => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onOpenProfile={openProfile} onEditArticle={editNativeArticle} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>Provider badges open the original publication. You can hide any reference from your personal feed.</p></div>}{visible.map((post) => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} onHide={() => hideExternalReference(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No posts in this view yet</h3><p>{feedMode === "following" ? "Follow professionals to build this feed." : feedMode === "subscribed" ? "Subscribe to an author to receive their new posts here." : feedMode === "saved" ? "Save a post or article and it will appear here." : "Try a broader topic or publish the first native StackedIN post."}</p></div>}</main>
       <aside className="feed-right"><FeedPeoplePanel people={feedPeople} busy={peopleBusy} onAction={peopleAction} onOpenNetwork={openNetwork} onOpenProfile={openProfile} /><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <button type="button" onClick={openStudio} key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></button>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="/">About</a><a href="/">Privacy</a><a href="/">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
@@ -1420,11 +1451,16 @@ function SourceConnectionPanel({ onImported }) {
     setBusy(true);
     setMessage("");
     try {
-      const source = await nativePublishing.connectPublicSource(context.tenant.id, context.profile.id, provider, url);
-      if (provider === "LINKEDIN") setMessage("LinkedIn is connected for secure sharing. Automatic import will activate only after approved OAuth API access is configured.");
+      if (provider === "LINKEDIN") {
+        await nativePublishing.connectPublicSource(context.tenant.id, context.profile.id, provider, url);
+        setMessage("LinkedIn identity saved for secure sharing. Automatic article import requires approved LinkedIn OAuth API access.");
+      }
       else {
-        const count = await nativePublishing.synchronizeSource(source);
-        setMessage(`${count} ${provider.toLowerCase()} posts synchronized into your StackedIN feed.`);
+        setMessage(`Verifying the ${provider.toLowerCase()} identity and public feed…`);
+        const verification = await nativePublishing.verifyPublicSource(provider, url);
+        const source = await nativePublishing.connectPublicSource(context.tenant.id, context.profile.id, provider, url, verification);
+        const count = await nativePublishing.synchronizeSource(source, verification);
+        setMessage(`Verified ${verification.identity}. ${count} public article${count === 1 ? "" : "s"} synchronized into your StackedIN feed.`);
         onImported?.();
       }
       setUrl("");
@@ -1439,8 +1475,9 @@ function SourceConnectionPanel({ onImported }) {
     setBusy(true);
     setMessage("");
     try {
-      const count = await nativePublishing.synchronizeSource(source);
-      setMessage(`${count} posts synchronized from ${source.provider}.`);
+      const verification = await nativePublishing.verifyPublicSource(source.provider, source.profile_url);
+      const count = await nativePublishing.synchronizeSource(source, verification);
+      setMessage(`Verified ${verification.identity}. ${count} article${count === 1 ? "" : "s"} synchronized from ${source.provider}.`);
       await load();
       onImported?.();
     } catch (syncError) {
@@ -1463,7 +1500,11 @@ function SourceConnectionPanel({ onImported }) {
       setBusy(false);
     }
   };
-  return <section className="source-connection-panel xstudio-source-panel"><div><span>XStudio source engine</span><h3>Connect, verify, and synchronize</h3><p>Public Substack, Medium, Hashnode, and RSS feeds import into StackedIN as internal reference articles. LinkedIn stays share-only until its approved OAuth publishing API is connected.</p></div><form onSubmit={connect}><select value={provider} onChange={(event) => setProvider(event.target.value)}><option>SUBSTACK</option><option>MEDIUM</option><option>HASHNODE</option><option>LINKEDIN</option><option>RSS</option></select><input required type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://your-publication-or-profile" /><button disabled={busy || !context}>{busy ? <RefreshCw className="spin" size={14} /> : <Plus size={14} />}Connect & sync</button></form>{message && <div className="source-message">{message}</div>}<div className="connected-source-list">{sources.map((source) => <article key={source.id}><div><PlatformIcon name={source.provider === "SUBSTACK" ? "Substack" : source.provider === "MEDIUM" ? "Medium" : source.provider === "HASHNODE" ? "Hashnode" : "LinkedIn"} size={18} /></div><section><strong>{source.provider}</strong><span>{source.profile_url}</span><small>{source.last_synced_at ? `${source.last_post_count || 0} posts \xB7 synced ${formatDate(source.last_synced_at)}` : source.last_error || "Waiting for first synchronization"}</small></section><em className={`source-status status-${source.status.toLowerCase()}`}>{source.status.replace("_", " ")}</em><footer>{source.capabilities?.import && <button disabled={busy} onClick={() => synchronize(source)}><RefreshCw size={12} />Sync now</button>}<button disabled={busy} onClick={() => disconnect(source)}><Trash2 size={12} />Disconnect</button></footer></article>)}{!sources.length && <p>No sources connected yet. Your first sync is one URL away.</p>}</div></section>;
+  return <section className="source-connection-panel xstudio-source-panel"><div><span>XStudio source engine</span><h3>Connect, verify, and synchronize</h3><p>Verification reaches the provider’s public endpoint, confirms at least one readable article, and records the resolved feed. LinkedIn stays share-only until approved OAuth API access is connected.</p></div><form onSubmit={connect}><select value={provider} onChange={(event) => setProvider(event.target.value)}><option>SUBSTACK</option><option>MEDIUM</option><option>HASHNODE</option><option>LINKEDIN</option><option>RSS</option></select><input required type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://your-publication-or-profile" /><button disabled={busy || !context}>{busy ? <RefreshCw className="spin" size={14} /> : <ShieldCheck size={14} />}{provider === "LINKEDIN" ? "Save identity" : "Verify & connect"}</button></form>{message && <div className="source-message">{message}</div>}<div className="connected-source-list">{sources.map((source) => {
+    const providerName = source.provider === "SUBSTACK" ? "Substack" : source.provider === "MEDIUM" ? "Medium" : source.provider === "HASHNODE" ? "Hashnode" : source.provider === "LINKEDIN" ? "LinkedIn" : "RSS";
+    const verified = source.status === "ACTIVE" && Boolean(source.last_synced_at && source.feed_url);
+    return <article key={source.id}><div><PlatformIcon name={providerName} size={18} /></div><section><strong>{source.handle ? `@${String(source.handle).replace(/^@/, "")}` : providerName}{verified && <span className="verified-source-label"><ShieldCheck size={10} />Verified public feed</span>}</strong><a href={source.profile_url} target="_blank" rel="noreferrer">{source.profile_url}<ExternalLink size={10} /></a><small>{source.last_synced_at ? `${source.last_post_count || 0} posts · verified ${formatSyncTime(source.last_synced_at)}` : source.last_error || "Waiting for verification"}</small>{source.feed_url && <a className="resolved-feed-link" href={source.feed_url} target="_blank" rel="noreferrer"><Rss size={10} />Resolved feed</a>}</section><em className={`source-status status-${source.status.toLowerCase()}`}>{verified ? "VERIFIED" : source.status.replace("_", " ")}</em><footer>{source.capabilities?.import && <button disabled={busy} onClick={() => synchronize(source)}><RefreshCw size={12} />Verify & sync</button>}<button disabled={busy} onClick={() => disconnect(source)}><Trash2 size={12} />Disconnect</button></footer></article>;
+  })}{!sources.length && <p>No sources connected yet. Your first verified sync is one URL away.</p>}</div></section>;
 }
 function CMSOperationsView({ view, articles, jobs, onWrite, error, userId }) {
   const openArticle = (articleId) => {

@@ -105,6 +105,20 @@ export interface PublicationSource {
   last_sync_source?: string | null;
 }
 
+export interface PublicSourceVerification {
+  verified: true;
+  provider: PublicationSource["provider"];
+  profileUrl: string;
+  feedUrl: string;
+  handle: string | null;
+  identity: string;
+  syncSource: string;
+  discovered: number;
+  verifiedAt: string;
+  latestItem: { title: string; url: string; publishedAt: string } | null;
+  posts: Array<Record<string, unknown>>;
+}
+
 export interface SocialAccount {
   id: string;
   provider: Exclude<DistributionPlatform, "STACKEDIN">;
@@ -499,7 +513,21 @@ export class NativePublishingService {
     return (data ?? []) as PublicationSource[];
   }
 
-  async connectPublicSource(tenantId: string, ownerProfileId: string, provider: PublicationSource["provider"], profileUrl: string): Promise<PublicationSource> {
+  async verifyPublicSource(provider: PublicationSource["provider"], profileUrl: string): Promise<PublicSourceVerification> {
+    const { data: sessionData } = await this.client.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) throw new Error("Your session expired. Sign in again before verifying this source.");
+    const response = await fetch("/api/xstudio-sync", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ provider, profileUrl, mode: "verify" }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "The provider could not be verified.");
+    return payload as PublicSourceVerification;
+  }
+
+  async connectPublicSource(tenantId: string, ownerProfileId: string, provider: PublicationSource["provider"], profileUrl: string, verification?: PublicSourceVerification): Promise<PublicationSource> {
     let url: URL;
     try { url = new URL(profileUrl); } catch { throw new Error("Enter a complete HTTPS profile or publication URL."); }
     if (url.protocol !== "https:") throw new Error("Publication sources must use HTTPS.");
@@ -509,6 +537,8 @@ export class NativePublishingService {
       owner_profile_id: ownerProfileId,
       provider,
       profile_url: url.toString(),
+      feed_url: verification?.feedUrl ?? null,
+      handle: verification?.handle ?? null,
       status: linkedin ? "REAUTH_REQUIRED" : "PENDING",
       import_mode: "REFERENCE",
       capabilities: { import: !linkedin, direct_publish: false, share: true },
@@ -518,20 +548,18 @@ export class NativePublishingService {
     return data as PublicationSource;
   }
 
-  async synchronizeSource(source: PublicationSource): Promise<number> {
+  async synchronizeSource(source: PublicationSource, verifiedPayload?: PublicSourceVerification): Promise<number> {
     if (source.provider === "LINKEDIN") throw new Error("LinkedIn synchronization requires approved OAuth API access.");
-    const { data: sessionData } = await this.client.auth.getSession();
-    const accessToken = sessionData.session?.access_token;
-    if (!accessToken) throw new Error("Your session expired. Sign in again before synchronizing.");
-    const response = await fetch("/api/xstudio-sync", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${accessToken}` }, body: JSON.stringify({ provider: source.provider, profileUrl: source.profile_url }) });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      await this.client.from("publication_sources").update({ status: "ERROR", last_error: payload.error || "Public source synchronization failed" }).eq("id", source.id);
-      throw new Error(payload.error || "Public source synchronization failed");
+    let payload: PublicSourceVerification;
+    try {
+      payload = verifiedPayload ?? await this.verifyPublicSource(source.provider, source.profile_url);
+    } catch (verificationError) {
+      await this.client.from("publication_sources").update({ status: "ERROR", last_error: verificationError instanceof Error ? verificationError.message : "Public source verification failed" }).eq("id", source.id);
+      throw verificationError;
     }
     const { data, error } = await this.client.rpc("import_publication_batch", { requested_source_id: source.id, requested_posts: payload.posts ?? [], requested_sync_source: payload.syncSource ?? "PUBLIC_FEED" });
     if (error) throw new Error(error.message);
-    await this.client.from("publication_sources").update({ feed_url: payload.feedUrl || null }).eq("id", source.id);
+    await this.client.from("publication_sources").update({ feed_url: payload.feedUrl || null, handle: payload.handle || null, last_error: null }).eq("id", source.id);
     return Number(data || 0);
   }
 

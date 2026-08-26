@@ -43,6 +43,14 @@ const parseFeed = xml => {
   }).filter(item => item.title && /^https:\/\//i.test(item.url));
 };
 
+const feedIdentity = xml => decodeXml(rawBetween(xml.match(/<(channel|feed)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/i)?.[2] || xml, "title"));
+const handleFrom = (provider, profile) => {
+  if (provider === "SUBSTACK") return profile.hostname.split(".")[0] || null;
+  if (provider === "MEDIUM") return profile.pathname.replace(/^\/|\/$/g, "").split("/")[0] || null;
+  if (provider === "HASHNODE") return profile.hostname === "hashnode.com" ? profile.pathname.match(/@([^/]+)/)?.[1] || null : profile.hostname.split(".")[0] || null;
+  return null;
+};
+
 const fetchText = async (url, accept = "application/rss+xml,application/xml,text/xml,*/*") => {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 12000);
   try {
@@ -78,12 +86,13 @@ export default async function handler(request, response) {
     if (!["SUBSTACK","MEDIUM","HASHNODE","RSS","LINKEDIN"].includes(provider)) throw new Error("Unsupported publication provider");
     if (provider === "LINKEDIN") return json(response, 422, { error: "LinkedIn does not provide a general public author feed. Approved LinkedIn OAuth API access is required." });
 
-    let posts = []; let feedUrl = profile.toString(); let syncSource = `${provider} public feed`;
+    let posts = []; let feedUrl = profile.toString(); let syncSource = `${provider} public feed`; let identity = "";
     if (provider === "SUBSTACK") {
       if (!profile.hostname.endsWith(".substack.com")) throw new Error("Use a valid Substack publication URL");
       feedUrl = `${profile.origin}/api/v1/archive?sort=new&search=&offset=0&limit=100`;
       const payload = JSON.parse(await fetchText(feedUrl, "application/json"));
       posts = payload.slice(0, 100).map(item => ({ title: item.title, description: item.subtitle || "", url: item.canonical_url, publishedAt: item.post_date, coverImage: item.cover_image || null, tags: [], ...classify(item.title || "") }));
+      identity = profile.hostname.replace(/\.substack\.com$/i, "");
       syncSource = "Substack archive API";
     } else {
       if (provider === "MEDIUM") {
@@ -94,10 +103,26 @@ export default async function handler(request, response) {
         if (!username) throw new Error("Use a Hashnode profile or publication URL");
         feedUrl = `https://${username}.hashnode.dev/rss.xml`;
       }
-      posts = parseFeed(await fetchText(feedUrl));
+      const xml = await fetchText(feedUrl);
+      posts = parseFeed(xml);
+      identity = feedIdentity(xml);
     }
     posts = posts.map(post => ({ ...post, url: normalize(post.url), publishedAt: normalizeDate(post.publishedAt) })).filter(post => post.title && post.url);
-    return json(response, 200, { provider, feedUrl, syncSource, posts, discovered: posts.length });
+    if (!posts.length) throw new Error("The provider was reached, but no public articles were found in its feed.");
+    const handle = handleFrom(provider, profile);
+    return json(response, 200, {
+      verified: true,
+      provider,
+      profileUrl: profile.toString(),
+      feedUrl,
+      handle,
+      identity: identity || handle || profile.hostname,
+      syncSource,
+      posts,
+      discovered: posts.length,
+      verifiedAt: new Date().toISOString(),
+      latestItem: posts[0] ? { title: posts[0].title, url: posts[0].url, publishedAt: posts[0].publishedAt } : null,
+    });
   } catch (error) {
     const message = error?.name === "AbortError" ? "The public source timed out" : error?.message || "Source synchronization failed";
     return json(response, 400, { error: message });
