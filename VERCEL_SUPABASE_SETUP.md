@@ -60,20 +60,28 @@ The public 45-post catalogue remains a global read-only discovery feed. New work
 
 ## AI writing assistance
 
-Add these server-only Vercel variables for the providers you want to enable:
+Add this single server-only Vercel variable for the default StackedIN provider:
 
 ```text
-OPENAI_API_KEY=...
-OPENAI_WRITING_MODEL=YOUR_ENABLED_OPENAI_MODEL
-ANTHROPIC_API_KEY=...
-ANTHROPIC_WRITING_MODEL=YOUR_ENABLED_CLAUDE_MODEL
+SARVAM_API_KEY=YOUR_SARVAM_API_KEY
 ```
 
-Do not prefix these variables with `VITE_`. The browser never receives them.
+Do not prefix it with `VITE_`. The browser never receives it. XStudio uses
+`sarvam-105b` by default. Members can optionally choose OpenAI or Anthropic,
+paste their own key, test it, and select from the live models available to that
+key. Personal keys are sent only to the authenticated server endpoint for model
+testing and generation, retained in application memory for the current browser
+session, and forgotten on page reload. They are never written to Supabase,
+browser storage, source control, or Vercel.
+
 The deterministic AI/human writing signal works without either provider key;
 it is a probabilistic stylistic indicator, not proof of authorship.
 Authenticated AI drafting is limited to 20 generations per member in a rolling
 24-hour window before a paid quota system is introduced.
+
+After migration `011`, also run
+`supabase/migrations/202608250012_sarvam_default_ai.sql` once so the quota ledger
+accepts the Sarvam provider.
 
 See `SOCIAL_PUBLISHING_SETUP.md` for provider connection modes and official
 setup links.

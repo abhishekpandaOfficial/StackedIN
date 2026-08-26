@@ -22,7 +22,7 @@ A living multi-platform publishing dashboard for Abhishek Panda's writing on
 - Provides realtime reactions, comments, restacks, notifications, connection requests, and direct messages.
 - Lets XStudio owners connect a public feed and import it into their native StackedIN library on demand.
 - Provides an XStudio CMS with a Notion-style slash-command editor, LinkedIn-style article banners, local recovery, autosave, revision history, SEO controls, live preview, recoverable Trash, a content calendar, and a distribution queue.
-- Adds a unified LinkedIn-style feed composer with `@` mentions, hashtags, photos, videos, documents, polls, AI-assisted drafting, writing-signal scores, and secure multi-platform handoffs.
+- Adds a unified LinkedIn-style feed composer with `@` mentions, hashtags, photos, videos, documents, polls, Sarvam-first AI drafting, optional session-only OpenAI/Anthropic BYOK routing, live model selection, writing-signal scores, and secure multi-platform handoffs.
 - Publishes or schedules StackedIN-native content and prepares safe handoff packages for external provider editors.
 
 ## Automatic multi-platform sync
@@ -76,6 +76,7 @@ The production XStudio CMS, revisions, scheduling, and distribution queue are
 introduced by migration `009`. Recoverable article Trash and restore controls
 are introduced by migration `010`. The unified feed composer, polls, social
 account metadata, and writing-signal scores are introduced by migration `011`.
+Sarvam-default AI quota routing is introduced by migration `012`.
 
 For scheduled publishing on Vercel, configure the server-only
 `SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables, then configure a Vercel
