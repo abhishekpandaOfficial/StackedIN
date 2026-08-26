@@ -75,6 +75,7 @@ describe("canonical username migration contract", () => {
     expect(usernameMigration).toContain("create unique index if not exists profiles_username_lower_unique_idx");
     expect(usernameMigration).toContain("on public.profiles(lower(username))");
     expect(usernameMigration).toContain("add constraint profiles_username_format_check");
+    expect(usernameMigration).toContain("grant execute on function public.username_is_valid(text) to authenticated");
   });
 
   it("provides public availability checks and authenticated claims", () => {

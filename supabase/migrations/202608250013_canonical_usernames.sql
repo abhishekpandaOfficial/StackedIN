@@ -35,6 +35,7 @@ $$;
 
 revoke all on function public.normalize_username(text) from public;
 revoke all on function public.username_is_valid(text) from public;
+grant execute on function public.username_is_valid(text) to authenticated;
 
 -- Give existing accounts a readable canonical handle based on their profile.
 -- The temporary value prevents collisions while the set is rebuilt.
