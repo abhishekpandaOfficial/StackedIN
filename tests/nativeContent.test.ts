@@ -98,4 +98,23 @@ describe("native publishing service", () => {
     expect(rpc).toHaveBeenNthCalledWith(1, "trash_cms_article", { requested_article_id: "article-1" });
     expect(rpc).toHaveBeenNthCalledWith(2, "restore_cms_article", { requested_article_id: "article-1" });
   });
+
+  it("publishes one feed post with mentions, destinations, and writing signals", async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: { id: "post-1" }, error: null });
+    const service = new NativePublishingService({ rpc } as never);
+    await service.publishFeedPost({
+      tenantId: "tenant-1",
+      body: "I shipped the first version today. #BuildInPublic",
+      blocks: [{ id: "p1", type: "paragraph", text: "I shipped the first version today." }],
+      hashtags: ["BuildInPublic"],
+      mentions: ["00000000-0000-0000-0000-000000000001"],
+      distribution: ["STACKEDIN", "X"],
+      writingScore: { humanScore: 70, aiScore: 30, confidence: "low", confidencePercent: 48, method: "signals-v1", signals: ["first person"], disclaimer: "Not proof." },
+    });
+    expect(rpc).toHaveBeenCalledWith("publish_feed_post", expect.objectContaining({
+      requested_distribution: ["STACKEDIN", "X"],
+      requested_hashtags: ["BuildInPublic"],
+      requested_mentions: ["00000000-0000-0000-0000-000000000001"],
+    }));
+  });
 });

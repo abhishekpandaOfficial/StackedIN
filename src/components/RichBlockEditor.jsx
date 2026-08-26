@@ -28,6 +28,13 @@ function SafeVideo({ block }) {
   </figure>;
 }
 
+function RichInlineText({ text = "" }) {
+  return String(text).split(/((?:^|\s)[@#][a-zA-Z0-9_.-]+)/g).filter(Boolean).map((part, index) => {
+    const match = part.match(/^(\s*)([@#][a-zA-Z0-9_.-]+)$/);
+    return match ? <span key={`${match[2]}-${index}`}>{match[1]}<b className="native-inline-token">{match[2]}</b></span> : part;
+  });
+}
+
 export function ContentBlocks({ blocks = [] }) {
   return <div className="native-content-blocks">{blocks.map(block => {
     if (block.type === "heading") return <h2 key={block.id}>{block.text}</h2>;
@@ -43,7 +50,7 @@ export function ContentBlocks({ blocks = [] }) {
     if (block.type === "table") return <div className="native-table-wrap" key={block.id}><table><tbody>{(block.rows || []).map((row, rowIndex) => <tr key={`${block.id}-${rowIndex}`}>{row.map((cell, cellIndex) => rowIndex === 0 ? <th key={cellIndex}>{cell}</th> : <td key={cellIndex}>{cell}</td>)}</tr>)}</tbody></table></div>;
     if (block.type === "button") return <p className="native-button-wrap" key={block.id}><a href={block.url} target="_blank" rel="noreferrer">{block.label}</a></p>;
     if (block.type === "divider") return <hr key={block.id} />;
-    return <p key={block.id}>{block.text}</p>;
+    return <p key={block.id}><RichInlineText text={block.text} /></p>;
   })}</div>;
 }
 

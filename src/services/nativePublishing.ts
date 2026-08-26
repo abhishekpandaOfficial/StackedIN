@@ -1,5 +1,5 @@
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import type { ArticleComment, ContentBlock, NativeArticle, NativeContentType, NativeReaction } from "../domain/nativeContent";
+import type { ArticleComment, ContentBlock, NativeArticle, NativeContentType, NativeReaction, WritingSignalScore } from "../domain/nativeContent";
 import { normalizeHashtags, validateContentBlocks } from "../domain/nativeContent";
 
 export interface SaveNativeArticleInput {
@@ -16,7 +16,7 @@ export interface SaveNativeArticleInput {
 }
 
 export type CMSStatus = "draft" | "scheduled" | "published" | "archived";
-export type DistributionPlatform = "STACKEDIN" | "SUBSTACK" | "MEDIUM" | "HASHNODE" | "LINKEDIN";
+export type DistributionPlatform = "STACKEDIN" | "SUBSTACK" | "MEDIUM" | "HASHNODE" | "LINKEDIN" | "INSTAGRAM" | "X" | "THREADS";
 
 export interface CMSDistributionTarget {
   platform: DistributionPlatform;
@@ -105,6 +105,20 @@ export interface PublicationSource {
   last_sync_source?: string | null;
 }
 
+export interface SocialAccount {
+  id: string;
+  provider: Exclude<DistributionPlatform, "STACKEDIN">;
+  status: "DISCONNECTED" | "HANDOFF_READY" | "CONNECTING" | "CONNECTED" | "REAUTH_REQUIRED" | "ERROR";
+  connection_method: "HANDOFF" | "OAUTH" | "TOKEN";
+  handle: string | null;
+  display_name: string | null;
+  profile_url: string | null;
+  capabilities: { share?: boolean; direct_publish?: boolean };
+  token_expires_at: string | null;
+  last_verified_at: string | null;
+  last_error: string | null;
+}
+
 export class NativePublishingService {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -123,13 +137,16 @@ export class NativePublishingService {
     const viewerId = authData.user?.id;
     const articleIds = articles.map(article => article.id);
     const authorIds = [...new Set(articles.map(article => article.author_id))];
-    const [reactionResult, saveResult, restackResult, preferenceResult, followResult, subscriptionResult] = await Promise.all([
+    const [reactionResult, saveResult, restackResult, preferenceResult, followResult, subscriptionResult, scoreResult, pollResult, pollVoteResult] = await Promise.all([
       this.client.from("article_reactions").select("article_id,reaction_type,profile_id").in("article_id", articleIds),
       viewerId ? this.client.from("article_saves").select("article_id").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
       viewerId ? this.client.from("article_restacks").select("article_id,thoughts").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
       viewerId ? this.client.from("article_preferences").select("article_id,preference").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
       viewerId ? this.client.from("follows").select("followed_profile_id").eq("follower_profile_id", viewerId).in("followed_profile_id", authorIds) : Promise.resolve({ data: [] }),
       viewerId ? this.client.from("profile_subscriptions").select("creator_profile_id").eq("subscriber_profile_id", viewerId).in("creator_profile_id", authorIds) : Promise.resolve({ data: [] }),
+      this.client.from("article_writing_scores").select("article_id,human_score,ai_score,confidence,confidence_percent,method,signals,disclaimer").in("article_id", articleIds),
+      this.client.from("article_polls").select("article_id,question,ends_at,total_votes,options:article_poll_options(id,label,option_index,vote_count)").in("article_id", articleIds),
+      viewerId ? this.client.from("article_poll_votes").select("article_id,option_id").eq("profile_id", viewerId).in("article_id", articleIds) : Promise.resolve({ data: [] }),
     ]);
     const reactions = reactionResult.data ?? [];
     const ownReactions = new Map((reactions ?? []).filter(item => item.profile_id === viewerId).map(item => [item.article_id, item.reaction_type as NativeReaction]));
@@ -145,6 +162,12 @@ export class NativePublishingService {
     const hidden = new Set((preferenceResult.data ?? []).map(item => item.article_id));
     const followed = new Set((followResult.data ?? []).map(item => item.followed_profile_id));
     const subscribed = new Set((subscriptionResult.data ?? []).map(item => item.creator_profile_id));
+    const scores = new Map((scoreResult.data ?? []).map(item => [item.article_id, {
+      humanScore: item.human_score, aiScore: item.ai_score, confidence: item.confidence,
+      confidencePercent: item.confidence_percent, method: item.method, signals: item.signals, disclaimer: item.disclaimer,
+    }]));
+    const pollVotes = new Map((pollVoteResult.data ?? []).map(item => [item.article_id, item.option_id]));
+    const polls = new Map((pollResult.data ?? []).map(item => [item.article_id, { ...item, options: [...(item.options ?? [])].sort((a, b) => a.option_index - b.option_index), viewerOptionId: pollVotes.get(item.article_id) ?? null }]));
     return articles
       .filter(article => !hidden.has(article.id))
       .map(article => ({
@@ -156,7 +179,84 @@ export class NativePublishingService {
         viewerRestackThoughts: restacks.get(article.id) ?? null,
         viewerFollowingAuthor: followed.has(article.author_id),
         viewerSubscribedAuthor: subscribed.has(article.author_id),
+        writingScore: scores.get(article.id) ?? null,
+        poll: polls.get(article.id) ?? null,
       }));
+  }
+
+  async publishFeedPost(input: {
+    tenantId: string;
+    body: string;
+    blocks: ContentBlock[];
+    hashtags: string[] | string;
+    mentions: string[];
+    distribution: DistributionPlatform[];
+    writingScore: WritingSignalScore;
+  }): Promise<NativeArticle> {
+    const { data, error } = await this.client.rpc("publish_feed_post", {
+      requested_tenant_id: input.tenantId,
+      requested_body: input.body.trim(),
+      requested_blocks: input.blocks,
+      requested_hashtags: normalizeHashtags(input.hashtags),
+      requested_mentions: [...new Set(input.mentions)],
+      requested_distribution: [...new Set(["STACKEDIN", ...input.distribution])],
+      requested_writing_score: input.writingScore,
+    });
+    if (error) {
+      if (/publish_feed_post|schema cache|function.*does not exist/i.test(error.message)) throw new Error("Apply Supabase migration 011 to activate the unified feed composer.");
+      throw new Error(error.message);
+    }
+    return data as NativeArticle;
+  }
+
+  async createPoll(articleId: string, question: string, options: string[], durationHours: number): Promise<void> {
+    const { error } = await this.client.rpc("create_article_poll", {
+      requested_article_id: articleId,
+      requested_question: question.trim(),
+      requested_options: options.map(option => option.trim()).filter(Boolean),
+      requested_duration_hours: durationHours,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async votePoll(articleId: string, optionId: string): Promise<void> {
+    const { error } = await this.client.rpc("vote_article_poll", { requested_article_id: articleId, requested_option_id: optionId });
+    if (error) throw new Error(error.message);
+  }
+
+  async listSocialAccounts(): Promise<SocialAccount[]> {
+    const { data, error } = await this.client.from("social_accounts")
+      .select("id,provider,status,connection_method,handle,display_name,profile_url,capabilities,token_expires_at,last_verified_at,last_error")
+      .order("provider");
+    if (error) {
+      if (/social_accounts|schema cache|relation.*does not exist/i.test(error.message)) return [];
+      throw new Error(error.message);
+    }
+    return (data ?? []) as SocialAccount[];
+  }
+
+  async configureSocialHandoff(tenantId: string, provider: SocialAccount["provider"], handle: string, profileUrl: string): Promise<SocialAccount> {
+    const { data, error } = await this.client.rpc("configure_social_handoff", {
+      requested_tenant_id: tenantId, requested_provider: provider, requested_handle: handle, requested_profile_url: profileUrl,
+    });
+    if (error) throw new Error(error.message);
+    return data as SocialAccount;
+  }
+
+  async disconnectSocialAccount(accountId: string): Promise<void> {
+    const { error } = await this.client.rpc("disconnect_social_account", { requested_account_id: accountId });
+    if (error) throw new Error(error.message);
+  }
+
+  async searchMentions(query: string): Promise<Array<{ id: string; display_name: string | null; headline: string | null; avatar_url: string | null; slug: string | null }>> {
+    const normalized = query.trim().replace(/[%_,()]/g, "").slice(0, 40);
+    if (!normalized) return [];
+    const { data, error } = await this.client.from("profiles")
+      .select("id,display_name,headline,avatar_url,slug")
+      .or(`display_name.ilike.%${normalized}%,slug.ilike.%${normalized}%`)
+      .limit(6);
+    if (error) throw new Error(error.message);
+    return data ?? [];
   }
 
   async save(input: SaveNativeArticleInput): Promise<NativeArticle> {
@@ -165,7 +265,7 @@ export class NativePublishingService {
     const { data, error } = await this.client.rpc("save_native_article", {
       requested_tenant_id: input.tenantId,
       requested_article_id: input.articleId ?? null,
-      requested_title: input.title.trim() || (input.status === "draft" ? "Untitled draft" : input.title),
+      requested_title: input.title.trim() || (input.status === "draft" ? "New article" : input.title),
       requested_description: input.description,
       requested_content_type: input.contentType,
       requested_blocks: input.blocks,
@@ -289,6 +389,21 @@ export class NativePublishingService {
     const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "webp";
     const path = `${userId}/${crypto.randomUUID()}.${extension}`;
     const { error } = await this.client.storage.from("article-media").upload(path, file, { cacheControl: "31536000", upsert: false });
+    if (error) throw new Error(error.message);
+    return this.client.storage.from("article-media").getPublicUrl(path).data.publicUrl;
+  }
+
+  async uploadAttachment(userId: string, file: File): Promise<string> {
+    const allowed = file.type.startsWith("image/") || file.type.startsWith("video/") || [
+      "application/pdf", "text/plain", "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ].includes(file.type);
+    if (!allowed || file.size > 50 * 1024 * 1024) throw new Error("Choose an image, MP4/WebM video, PDF, Office document, or text file under 50 MB.");
+    const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+    const path = `${userId}/${crypto.randomUUID()}.${extension}`;
+    const { error } = await this.client.storage.from("article-media").upload(path, file, { cacheControl: "31536000", upsert: false, contentType: file.type });
     if (error) throw new Error(error.message);
     return this.client.storage.from("article-media").getPublicUrl(path).data.publicUrl;
   }
@@ -446,6 +561,10 @@ export class NativePublishingService {
       .on("postgres_changes", { event: "*", schema: "public", table: "connections" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "article_revisions" }, onChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "distribution_jobs" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_writing_scores" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_polls" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_poll_options" }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "article_poll_votes" }, onChange)
       .subscribe();
   }
 }

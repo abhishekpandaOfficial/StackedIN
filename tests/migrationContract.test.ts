@@ -11,6 +11,7 @@ const profileHubMigration = readFileSync(resolve("supabase/migrations/2026082500
 const xstudioMigration = readFileSync(resolve("supabase/migrations/202608250008_xstudio_imports_and_messaging.sql"), "utf8");
 const cmsMigration = readFileSync(resolve("supabase/migrations/202608250009_xstudio_cms_and_scheduling.sql"), "utf8");
 const trashMigration = readFileSync(resolve("supabase/migrations/202608250010_xstudio_article_trash.sql"), "utf8");
+const composerMigration = readFileSync(resolve("supabase/migrations/202608250011_feed_composer_social_ai.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -352,5 +353,45 @@ describe("XStudio recoverable Trash migration contract", () => {
     expect(trashMigration).toContain("Restore this article from Trash before editing it.");
     expect(trashMigration).toContain("status = 'CANCELLED'");
     expect(trashMigration).toContain("status <> 'PUBLISHED'");
+  });
+});
+
+describe("unified feed composer and social publishing contract", () => {
+  it.each([
+    "create table if not exists public.social_accounts",
+    "create table if not exists public.social_account_credentials",
+    "create table if not exists public.article_writing_scores",
+    "create table if not exists public.ai_writing_usage",
+    "create table if not exists public.article_polls",
+    "create or replace function public.publish_feed_post",
+    "create or replace function public.vote_article_poll",
+    "create or replace function public.reserve_ai_writing_generation",
+  ])("contains %s", statement => expect(composerMigration.toLowerCase()).toContain(statement));
+
+  it("supports the requested publishing destinations", () => {
+    for (const platform of ["SUBSTACK", "MEDIUM", "HASHNODE", "LINKEDIN", "INSTAGRAM", "X", "THREADS"]) {
+      expect(composerMigration).toContain(`'${platform}'`);
+    }
+  });
+
+  it("keeps connector tokens outside frontend-readable tables", () => {
+    expect(composerMigration).toContain("revoke all on public.social_account_credentials from public, anon, authenticated");
+    expect(composerMigration).not.toMatch(/grant\s+select\s+on\s+public\.social_account_credentials\s+to\s+authenticated/i);
+  });
+
+  it("labels unconnected delivery honestly as a handoff", () => {
+    expect(composerMigration).toContain("else 'HANDOFF_READY'");
+    expect(composerMigration).toContain("else 'HANDOFF' end");
+  });
+
+  it("validates attachment URLs and complementary writing scores", () => {
+    expect(composerMigration).toContain("Attachments require secure HTTPS URLs.");
+    expect(composerMigration).toContain("check (human_score + ai_score = 100)");
+  });
+
+  it("rate limits expensive AI generation server-side", () => {
+    expect(composerMigration).toContain("if used_count>=20");
+    expect(composerMigration).toContain("pg_advisory_xact_lock");
+    expect(composerMigration).toContain("revoke all on public.ai_writing_usage from public, anon, authenticated");
   });
 });

@@ -75,6 +75,34 @@ export interface NativeArticle {
   viewerRestackThoughts?: string | null;
   viewerFollowingAuthor?: boolean;
   viewerSubscribedAuthor?: boolean;
+  writingScore?: WritingSignalScore | null;
+  poll?: ArticlePoll | null;
+}
+
+export interface WritingSignalScore {
+  humanScore: number;
+  aiScore: number;
+  confidence: "very low" | "low" | "medium" | "high";
+  confidencePercent: number;
+  method: string;
+  signals: string[];
+  disclaimer: string;
+}
+
+export interface ArticlePollOption {
+  id: string;
+  label: string;
+  option_index: number;
+  vote_count: number;
+}
+
+export interface ArticlePoll {
+  article_id: string;
+  question: string;
+  ends_at: string;
+  total_votes: number;
+  options: ArticlePollOption[];
+  viewerOptionId?: string | null;
 }
 
 export interface ArticleComment {

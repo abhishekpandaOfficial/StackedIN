@@ -37,9 +37,11 @@ function. The repository configures one daily Hobby-compatible execution at
 In Supabase, open **SQL Editor → New query**, paste the complete contents of:
 
 every SQL file in `supabase/migrations` in filename order, from `001` through
-`010`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
+`011`. Do not skip an earlier file. Migration `009` creates the XStudio CMS,
 revision history, content schedule, and distribution queue. Migration `010`
-adds recoverable article Trash and guarded restore operations.
+adds recoverable article Trash and guarded restore operations. Migration `011`
+adds the unified feed composer, mentions, social account metadata, polls, and
+writing-signal scores.
 
 Then choose **Run** once. It creates:
 
@@ -55,6 +57,26 @@ Then choose **Run** once. It creates:
 - soft-deleted articles that can be reviewed and restored safely as drafts.
 
 The public 45-post catalogue remains a global read-only discovery feed. New workspace-owned content belongs in `articles` with a `tenant_id`.
+
+## AI writing assistance
+
+Add these server-only Vercel variables for the providers you want to enable:
+
+```text
+OPENAI_API_KEY=...
+OPENAI_WRITING_MODEL=YOUR_ENABLED_OPENAI_MODEL
+ANTHROPIC_API_KEY=...
+ANTHROPIC_WRITING_MODEL=YOUR_ENABLED_CLAUDE_MODEL
+```
+
+Do not prefix these variables with `VITE_`. The browser never receives them.
+The deterministic AI/human writing signal works without either provider key;
+it is a probabilistic stylistic indicator, not proof of authorship.
+Authenticated AI drafting is limited to 20 generations per member in a rolling
+24-hour window before a paid quota system is introduced.
+
+See `SOCIAL_PUBLISHING_SETUP.md` for provider connection modes and official
+setup links.
 
 ## 3. Configure Supabase URLs
 
