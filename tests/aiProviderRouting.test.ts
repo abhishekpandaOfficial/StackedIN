@@ -41,6 +41,6 @@ describe("AI API routing contract", () => {
 
   it("allows all three providers in the quota function", () => {
     expect(migration).toContain("('sarvam','openai','anthropic')");
+    expect(migration).toContain("pg_advisory_xact_lock");
   });
 });
-

@@ -20,6 +20,7 @@ begin
   if auth.uid() is null or requested_provider not in ('sarvam','openai','anthropic') then
     raise exception 'not authorized' using errcode='42501';
   end if;
+  perform pg_advisory_xact_lock(hashtextextended(auth.uid()::text,1));
   select count(*) into used_count
   from public.ai_writing_usage
   where profile_id=auth.uid() and created_at > now()-interval '24 hours';
@@ -33,4 +34,3 @@ $$;
 
 revoke all on function public.reserve_ai_writing_generation(text) from public;
 grant execute on function public.reserve_ai_writing_generation(text) to authenticated;
-
