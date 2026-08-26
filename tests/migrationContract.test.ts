@@ -13,6 +13,7 @@ const cmsMigration = readFileSync(resolve("supabase/migrations/202608250009_xstu
 const trashMigration = readFileSync(resolve("supabase/migrations/202608250010_xstudio_article_trash.sql"), "utf8");
 const composerMigration = readFileSync(resolve("supabase/migrations/202608250011_feed_composer_social_ai.sql"), "utf8");
 const usernameMigration = readFileSync(resolve("supabase/migrations/202608250013_canonical_usernames.sql"), "utf8");
+const xstudioIsolationMigration = readFileSync(resolve("supabase/migrations/202608250014_xstudio_user_isolation.sql"), "utf8");
 
 describe("professional graph migration contract", () => {
   it.each([
@@ -421,5 +422,25 @@ describe("unified feed composer and social publishing contract", () => {
     expect(composerMigration).toContain("if used_count>=20");
     expect(composerMigration).toContain("pg_advisory_xact_lock");
     expect(composerMigration).toContain("revoke all on public.ai_writing_usage from public, anon, authenticated");
+  });
+});
+
+describe("XStudio per-user isolation migration contract", () => {
+  it("keeps public published work globally readable and private work author-only", () => {
+    expect(xstudioIsolationMigration).toContain("(status = 'published' and visibility = 'public')");
+    expect(xstudioIsolationMigration).toContain("or author_id = auth.uid()");
+    expect(xstudioIsolationMigration).not.toContain("or public.is_tenant_member(tenant_id)");
+  });
+
+  it("isolates revision history and distribution operations by author", () => {
+    expect(xstudioIsolationMigration).toContain("create policy \"Authors read own article revisions\"");
+    expect(xstudioIsolationMigration).toContain("create policy \"Authors read own distribution jobs\"");
+    expect(xstudioIsolationMigration).toContain("requested_by = auth.uid()");
+  });
+
+  it("guards security-definer CMS writes from cross-user mutation", () => {
+    expect(xstudioIsolationMigration).toContain("create or replace function public.enforce_xstudio_article_owner()");
+    expect(xstudioIsolationMigration).toContain("create trigger articles_enforce_xstudio_owner");
+    expect(xstudioIsolationMigration).toContain("XStudio content can only be changed by its author.");
   });
 });

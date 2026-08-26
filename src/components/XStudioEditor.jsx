@@ -13,6 +13,8 @@ import { ContentBlocks, createContentBlock, RichBlockEditor } from "./RichBlockE
 const publishing = new NativePublishingService(supabase);
 const LinkedInIcon = ({ size = 16 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.4 7.7H1.8V22h3.6V7.7ZM3.6 2A2.1 2.1 0 1 0 3.6 6.2 2.1 2.1 0 0 0 3.6 2Zm18.6 11.8c0-4.3-2.3-6.3-5.4-6.3-2.5 0-3.6 1.4-4.2 2.3V7.7H9V22h3.6v-7.1c0-1.9.4-3.8 2.8-3.8 2.4 0 2.4 2.2 2.4 3.9v7h3.6l.8-8.2Z" /></svg>;
 const RECOVERY_KEY = "xstudio-cms-recovery-v1";
+const editorArticleKey = userId => `xstudio-editor-article:${userId}`;
+const recoveryKey = userId => `${RECOVERY_KEY}:${userId}`;
 const EDITORS = {
   SUBSTACK: "https://substack.com/home/post/p-redirect",
   MEDIUM: "https://medium.com/new-story",
@@ -132,8 +134,8 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
   const suppressAutosave = useRef(false);
 
   const patchDraft = useCallback(patch => setDraft(current => ({ ...current, ...(typeof patch === "function" ? patch(current) : patch) })), []);
-  const loadLibrary = useCallback(async tenantId => {
-    const items = await publishing.listCMSArticles(tenantId);
+  const loadLibrary = useCallback(async (tenantId, authorId) => {
+    const items = await publishing.listCMSArticles(tenantId, authorId);
     setArticles(items);
     return items;
   }, []);
@@ -142,21 +144,23 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
     setError("");
     try {
       const [article, articleRevisions, distributionJobs] = await Promise.all([
-        publishing.getCMSArticle(articleId), publishing.listRevisions(articleId), publishing.listDistributionJobs(context?.tenant?.id || "", articleId),
+        publishing.getCMSArticle(articleId, context?.tenant?.id || "", session.user.id),
+        publishing.listRevisions(articleId, session.user.id),
+        publishing.listDistributionJobs(context?.tenant?.id || "", articleId, session.user.id),
       ]);
       setDraft(articleToDraft(article));
       setSelectedTrash(null);
       setRevisions(articleRevisions);
       setJobs(distributionJobs);
-      sessionStorage.setItem("xstudio-editor-article", articleId);
-      localStorage.setItem(RECOVERY_KEY, JSON.stringify(articleToDraft(article)));
+      sessionStorage.setItem(editorArticleKey(session.user.id), articleId);
+      localStorage.setItem(recoveryKey(session.user.id), JSON.stringify(articleToDraft(article)));
       setSaveState(`Saved ${formatMoment(article.updated_at)}`);
     } catch (loadError) {
       setError(loadError.message || "This article could not be loaded.");
     } finally {
       setBusy("");
     }
-  }, [context?.tenant?.id]);
+  }, [context?.tenant?.id, session.user.id]);
 
   useEffect(() => {
     let active = true;
@@ -164,17 +168,20 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
       if (!active) return;
       setContext(loaded);
       try {
-        const items = await loadLibrary(loaded.tenant.id);
-        const requestedId = sessionStorage.getItem("xstudio-editor-article");
+        const items = await loadLibrary(loaded.tenant.id, session.user.id);
+        const requestedId = sessionStorage.getItem(editorArticleKey(session.user.id));
         const requested = items.find(item => item.id === requestedId && !item.deleted_at);
         if (requested) {
           setDraft(articleToDraft(requested));
-          const [history, queue] = await Promise.all([publishing.listRevisions(requested.id), publishing.listDistributionJobs(loaded.tenant.id, requested.id)]);
+          const [history, queue] = await Promise.all([
+            publishing.listRevisions(requested.id, session.user.id),
+            publishing.listDistributionJobs(loaded.tenant.id, requested.id, session.user.id),
+          ]);
           setRevisions(history);
           setJobs(queue);
         } else {
           try {
-            const recovered = JSON.parse(localStorage.getItem(RECOVERY_KEY) || "null");
+            const recovered = JSON.parse(localStorage.getItem(recoveryKey(session.user.id)) || "null");
             if (recovered && !recovered.id) setDraft({ ...emptyDraft(), ...recovered });
           } catch { /* Ignore an invalid local recovery snapshot. */ }
         }
@@ -189,7 +196,7 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
 
   useEffect(() => {
     if (!initialized.current || suppressAutosave.current || selectedTrash) return;
-    localStorage.setItem(RECOVERY_KEY, JSON.stringify(draft));
+    localStorage.setItem(recoveryKey(session.user.id), JSON.stringify(draft));
     setSaveState("Unsaved changes");
     clearTimeout(saveTimer.current);
     if (!context?.tenant?.id || !draft.title.trim()) return;
@@ -253,10 +260,14 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
       setDraft(current => current.id === saved.id && current.slug === (saved.slug || current.slug)
         ? current
         : { ...current, id: saved.id, slug: saved.slug || current.slug });
-      sessionStorage.setItem("xstudio-editor-article", saved.id);
-      localStorage.setItem(RECOVERY_KEY, JSON.stringify(next));
+      sessionStorage.setItem(editorArticleKey(session.user.id), saved.id);
+      localStorage.setItem(recoveryKey(session.user.id), JSON.stringify(next));
       setSaveState(`Saved ${new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit" }).format(new Date())}`);
-      const [items, history, queue] = await Promise.all([loadLibrary(context.tenant.id), publishing.listRevisions(saved.id), publishing.listDistributionJobs(context.tenant.id, saved.id)]);
+      const [items, history, queue] = await Promise.all([
+        loadLibrary(context.tenant.id, session.user.id),
+        publishing.listRevisions(saved.id, session.user.id),
+        publishing.listDistributionJobs(context.tenant.id, saved.id, session.user.id),
+      ]);
       setArticles(items);
       setRevisions(history);
       setJobs(queue);
@@ -274,8 +285,8 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
   const newDraft = () => {
     suppressAutosave.current = true;
     clearTimeout(saveTimer.current);
-    sessionStorage.removeItem("xstudio-editor-article");
-    localStorage.removeItem(RECOVERY_KEY);
+    sessionStorage.removeItem(editorArticleKey(session.user.id));
+    localStorage.removeItem(recoveryKey(session.user.id));
     setDraft(emptyDraft());
     setSelectedTrash(null);
     setConfirmTrash(null);
@@ -334,10 +345,10 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
         setRevisions([]);
         setJobs([]);
         setSelectedTrash(trashed);
-        sessionStorage.removeItem("xstudio-editor-article");
-        localStorage.removeItem(RECOVERY_KEY);
+        sessionStorage.removeItem(editorArticleKey(session.user.id));
+        localStorage.removeItem(recoveryKey(session.user.id));
       }
-      await loadLibrary(context.tenant.id);
+      await loadLibrary(context.tenant.id, session.user.id);
       setNotice("Article moved to Trash. You can restore it whenever you need it.");
     } catch (trashError) {
       setError(trashError.message || "The article could not be moved to Trash.");
@@ -351,7 +362,7 @@ export default function XStudioEditor({ session, openFeed, openProfile, openStud
     setError("");
     try {
       const restored = await publishing.restoreCMSArticle(article.id);
-      await loadLibrary(context.tenant.id);
+      await loadLibrary(context.tenant.id, session.user.id);
       setSelectedTrash(null);
       setLibraryView("all");
       setNotice("Article restored as a draft. Review it before publishing again.");

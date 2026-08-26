@@ -77,6 +77,8 @@ import { scoreWritingSignals } from "./src/domain/writingSignals.js";
 import "./studio.css";
 const DATA_URL = `${import.meta.env.BASE_URL}posts.json`;
 const METRICS_KEY = "stackcraft-studio-article-metrics-v1";
+const LEGACY_CATALOGUE_OWNER_USERNAMES = new Set(["abhishekpanda", "abhishekpandaofficial"]);
+const editorArticleKey = userId => `xstudio-editor-article:${userId}`;
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: Activity },
   { id: "cms", label: "Content CMS", icon: PenTool },
@@ -88,10 +90,10 @@ const NAV_ITEMS = [
   { id: "series", label: "Series map", icon: Workflow }
 ];
 const PLATFORMS = [
-  { name: "Substack", handle: "pandaabhishek", profile: "https://pandaabhishek.substack.com/", editor: "https://pandaabhishek.substack.com/publish/post", color: "#ff6719", feed: "Automatic public feed" },
-  { name: "Medium", handle: "@official.abhishekpanda", profile: "https://medium.com/@official.abhishekpanda", editor: "https://medium.com/new-story", color: "#111111", feed: "Automatic public feed" },
-  { name: "Hashnode", handle: "@abhishekpanda", profile: "https://hashnode.com/@abhishekpanda", editor: "https://hashnode.com/draft/new", color: "#2962ff", feed: "Automatic public API" },
-  { name: "LinkedIn", handle: "iamabhishekpanda", profile: "https://www.linkedin.com/in/iamabhishekpanda/", editor: "https://www.linkedin.com/article/new/", color: "#0a66c2", feed: "Profile + secure editor handoff" }
+  { name: "Substack", handle: "Connect your publication", editor: "https://substack.com/home", color: "#ff6719", feed: "Automatic public feed" },
+  { name: "Medium", handle: "Connect your profile", editor: "https://medium.com/new-story", color: "#111111", feed: "Automatic public feed" },
+  { name: "Hashnode", handle: "Connect your blog", editor: "https://hashnode.com/draft/new", color: "#2962ff", feed: "Automatic public API" },
+  { name: "LinkedIn", handle: "Connect your profile", editor: "https://www.linkedin.com/article/new/", color: "#0a66c2", feed: "Profile + secure editor handoff" }
 ];
 const PILLAR_TONES = ["violet", "cyan", "lime", "amber", "rose", "blue", "mint", "orange", "indigo", "teal", "slate"];
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
@@ -129,9 +131,9 @@ const slugOf = (url) => {
     return url;
   }
 };
-const loadMetrics = () => {
+const loadMetrics = userId => {
   try {
-    return JSON.parse(localStorage.getItem(METRICS_KEY) || "{}");
+    return JSON.parse(localStorage.getItem(`${METRICS_KEY}:${userId}`) || "{}");
   } catch {
     return {};
   }
@@ -962,7 +964,7 @@ function MessagingExperience({ session, initialConversationId, openFeed, openPro
 function FeedPeoplePanel({ people, busy, onAction, onOpenNetwork, onOpenProfile }) {
   return <section className="feed-people-card"><header><div><span>Your professional graph</span><h3>People worth knowing</h3></div><Users size={17} /></header><div className="feed-people-list">{people.map((person) => <article key={person.profile_id}><button className="feed-person-avatar" onClick={() => onOpenProfile(person.profile_id)}>{person.avatar_url ? <img src={person.avatar_url} alt="" /> : person.display_name.charAt(0).toUpperCase()}</button><section><div><button className="feed-person-name" onClick={() => onOpenProfile(person.profile_id)}>{person.display_name}</button><em>{person.degree}{person.degree === 1 ? "st" : person.degree === 2 ? "nd" : "rd"}</em></div><span>{person.headline || person.current_company || "StackedIN professional"}</span><small>{person.reason}</small><footer><button className={person.is_following ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "follow")}><UserRound size={12} />{person.is_following ? "Following" : "Follow"}</button><button className={person.is_subscribed ? "active" : ""} disabled={Boolean(busy)} onClick={() => onAction(person, "subscribe")}><BellRing size={12} />{person.is_subscribed ? "Subscribed" : "Subscribe"}</button></footer></section></article>)}{!people.length && <p>Complete your profile and add interests to unlock stronger people recommendations.</p>}</div><button className="feed-people-more" onClick={onOpenNetwork}>Explore your network <ArrowRight size={13} /></button></section>;
 }
-function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrite, openProfile, openInbox, signOut }) {
+function FeedExperience({ session, feedMode = "all", openFeedMode, openStudio, openNetwork, openSearch, openWrite, openProfile, openInbox, signOut }) {
   const [catalogue, setCatalogue] = useState({ posts: [] });
   const [nativeArticles, setNativeArticles] = useState([]);
   const [tenantContext, setTenantContext] = useState(null);
@@ -1013,8 +1015,20 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
     return () => clearTimeout(timer);
   }, [toast]);
   const posts = useMemo(() => [...catalogue.posts || []].sort((a, b) => (safeDate(b.publishedAt)?.getTime() || b.id) - (safeDate(a.publishedAt)?.getTime() || a.id)), [catalogue.posts]);
-  const visible = useMemo(() => posts.filter((post) => `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())).slice(0, 30), [posts, search]);
-  const visibleNative = useMemo(() => nativeArticles.filter((article) => `${article.title} ${article.description} ${(article.hashtags || []).join(" ")} ${(article.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase())), [nativeArticles, search]);
+  const visible = useMemo(() => {
+    if (!["all", "saved"].includes(feedMode)) return [];
+    return posts.filter((post) => {
+      const matchesMode = feedMode === "all" || saved.has(post.url);
+      return matchesMode && `${post.title} ${post.description} ${post.pillar} ${(post.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase());
+    }).slice(0, 30);
+  }, [posts, search, feedMode, saved]);
+  const visibleNative = useMemo(() => nativeArticles.filter((article) => {
+    const matchesMode = feedMode === "following" ? article.viewerFollowingAuthor || article.author_id === session.user.id
+      : feedMode === "subscribed" ? article.viewerSubscribedAuthor
+        : feedMode === "saved" ? article.viewerSaved
+          : true;
+    return matchesMode && `${article.title} ${article.description} ${(article.hashtags || []).join(" ")} ${(article.tags || []).join(" ")}`.toLowerCase().includes(search.toLowerCase());
+  }), [nativeArticles, search, feedMode, session.user.id]);
   const recent = posts.slice(0, 10);
   const toggle = (type, url) => {
     const current = type === "liked" ? liked : saved;
@@ -1050,18 +1064,32 @@ function FeedExperience({ session, openStudio, openNetwork, openSearch, openWrit
   const name = tenantContext?.profile?.display_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split("@")[0] || "StackedIN member";
   const workspaceName = tenantContext?.tenant?.name || "Personal workspace";
   const initial = name.charAt(0).toUpperCase();
-  const featureLinks = [{ label: "My profile", icon: UserRound, profileRoute: true }, { label: "Professional search", icon: Search, searchRoute: true }, { label: "People worth knowing", icon: Users, network: true }, ...NAV_ITEMS.map((item) => ({ label: item.label, icon: item.icon }))];
+  const featureLinks = [
+    { label: "My profile", icon: UserRound, action: () => openProfile() },
+    { label: "Professional search", icon: Search, action: () => openSearch("") },
+    { label: "People worth knowing", icon: Users, action: openNetwork, badge: networkSummary.connections },
+    { label: "Following feed", icon: Users, mode: "following", action: () => openFeedMode("following") },
+    { label: "Subscriptions", icon: BellRing, mode: "subscribed", action: () => openFeedMode("subscribed") },
+    { label: "Saved posts", icon: Bookmark, mode: "saved", action: () => openFeedMode("saved") },
+    { label: "Messages & notifications", icon: MessageCircle, action: () => openInbox() },
+  ];
+  const feedModeCopy = {
+    all: ["Live from your professional knowledge network", "Relevance + freshness"],
+    following: ["Posts from professionals you follow", "Following"],
+    subscribed: ["New posts from your subscriptions", "Subscribed"],
+    saved: ["Your saved StackedIN posts and references", "Saved"],
+  }[feedMode] || ["Live from your professional knowledge network", "Relevance + freshness"];
   return <div className="feed-page">
     <header className="feed-topbar"><button className="feed-logo" onClick={() => {
     window.location.hash = "";
   }}><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /></button><label><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => {
     if (event.key === "Enter" && search.trim()) openSearch(search);
-  }} placeholder="Search articles—press Enter for people…" /></label><nav><button className="active"><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button><button className="feed-avatar" onClick={() => openProfile()}><b>{initial}</b><span>Me</span></button></nav></header>
+  }} placeholder="Search articles—press Enter for people…" /></label><nav><button className={feedMode === "all" ? "active" : ""} onClick={() => openFeedMode("all")}><Home size={18} /><span>Home</span></button><button onClick={openNetwork}><Users size={18} /><span>Network</span></button><button onClick={() => openInbox()}><Bell size={18} /><span>Inbox</span></button><button onClick={openWrite}><PenTool size={18} /><span>Write</span></button><button onClick={openStudio}><Sparkles size={18} /><span>XStudio</span></button><button className="feed-avatar" onClick={() => openProfile()}><b>{initial}</b><span>Me</span></button></nav></header>
     <div className="feed-layout">
       <aside className="feed-left"><section className="feed-profile" onClick={() => openProfile()} onKeyDown={(event) => {
     if (event.key === "Enter") openProfile();
-  }} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.username ? `@${tenantContext.profile.username}` : "StackedIN member"}</p><span>{tenantContext?.profile?.headline || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, network, searchRoute, profileRoute }) => <button key={label} onClick={() => profileRoute ? openProfile() : searchRoute ? openSearch("") : network ? openNetwork() : openStudio()}><Icon size={17} />{label}{network && networkSummary.connections > 0 ? <b>{networkSummary.connections}</b> : <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
-      <main className="feed-stream"><FeedComposer session={session} tenantContext={tenantContext} onPublished={loadNativeFeed} openArticle={openWrite} onToast={setToast} /><div className="feed-sort"><span>Live from your professional knowledge network</span><button>Relevance + freshness <ChevronRight size={13} /></button></div>{visibleNative.map((article) => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onOpenProfile={openProfile} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications become native references when their source is connected in XStudio.</p></div>}{visible.map((post) => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No articles found</h3><p>Try a broader topic or publish the first native StackedIN post.</p></div>}</main>
+  }} role="button" tabIndex={0}><div className="feed-profile-cover" /><div className="feed-profile-avatar">{tenantContext?.profile?.avatar_url ? <img src={tenantContext.profile.avatar_url} alt="" /> : initial}</div><h3>{name}</h3><p>{tenantContext?.profile?.username ? `@${tenantContext.profile.username}` : "StackedIN member"}</p><span>{tenantContext?.profile?.headline || "Building useful systems, one idea at a time."}</span><div className="workspace-chip"><Layers3 size={12} /><strong>{workspaceName}</strong>{tenantContext?.role && <small>{tenantContext.role}</small>}</div><div className="feed-network-metrics"><b>{networkSummary.followers}</b><small>Followers</small><b>{networkSummary.connections}</b><small>Connections</small><b>{networkSummary.following}</b><small>Following</small><b>{networkSummary.subscriptions}</b><small>Subscribed</small></div></section><nav>{featureLinks.map(({ label, icon: Icon, mode: linkMode, action, badge }) => <button className={linkMode === feedMode ? "active" : ""} key={label} onClick={action}><Icon size={17} />{label}{badge > 0 ? <b>{badge}</b> : <ChevronRight size={14} />}</button>)}</nav><button className="open-studio-button" onClick={openStudio}><Sparkles size={16} />Open XStudio</button><button className="feed-signout" onClick={signOut}><LogOut size={15} />Sign out</button></aside>
+      <main className="feed-stream"><FeedComposer session={session} tenantContext={tenantContext} onPublished={loadNativeFeed} openArticle={openWrite} onToast={setToast} /><div className="feed-sort"><span>{feedModeCopy[0]}</span><button>{feedModeCopy[1]} <ChevronRight size={13} /></button></div>{visibleNative.map((article) => <NativeFeedCard key={article.id} article={article} tenantContext={tenantContext} onRefresh={loadNativeFeed} onNetworkRefresh={() => loadFeedNetwork(tenantContext)} onOpenProfile={openProfile} onToast={setToast} />)}{visible.length > 0 && <div className="external-feed-divider"><span>Connected knowledge references</span><p>External publications become native references when their source is connected in XStudio.</p></div>}{visible.map((post) => <FeedCard key={post.url} post={post} liked={liked.has(post.url)} saved={saved.has(post.url)} onLike={() => toggle("liked", post.url)} onSave={() => toggle("saved", post.url)} onShare={() => share(post)} />)}{!visibleNative.length && !visible.length && <div className="feed-empty"><Search size={28} /><h3>No posts in this view yet</h3><p>{feedMode === "following" ? "Follow professionals to build this feed." : feedMode === "subscribed" ? "Subscribe to an author to receive their new posts here." : feedMode === "saved" ? "Save a post or article and it will appear here." : "Try a broader topic or publish the first native StackedIN post."}</p></div>}</main>
       <aside className="feed-right"><FeedPeoplePanel people={feedPeople} busy={peopleBusy} onAction={peopleAction} onOpenNetwork={openNetwork} onOpenProfile={openProfile} /><section className="recent-card"><header><div><span>Fresh from the stack</span><h3>Recent articles</h3></div><Rss size={17} /></header><div>{recent.map((post, index) => <button type="button" onClick={openStudio} key={post.url}><b>{String(index + 1).padStart(2, "0")}</b><div><strong>{post.title}</strong><span><PlatformIcon name={post.platform || "Substack"} size={10} />{post.platform || "Substack"} · {formatDate(post.publishedAt)}</span></div></button>)}</div><button onClick={openStudio}>Explore all articles <ArrowRight size={14} /></button></section><section className="code-card"><span>Code & collaboration</span><h3>Follow the builds</h3><a href="https://github.com/abhishekpandaOfficial" target="_blank" rel="noreferrer"><SiGithub size={22} /><div><strong>GitHub</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a><a href="https://gitlab.com/abhishekpandaOfficial/" target="_blank" rel="noreferrer"><SiGitlab size={23} /><div><strong>GitLab</strong><small>@abhishekpandaOfficial</small></div><ExternalLink size={14} /></a></section><footer className="feed-mini-footer"><a href="#">About</a><a href="#">Privacy</a><a href="#">Terms</a><span>StackedIN © 2026</span></footer></aside>
     </div>{toast && <div className="toast"><CheckCircle2 size={16} />{toast}</div>}
   </div>;
@@ -1336,13 +1364,13 @@ function SourceConnectionPanel({ onImported }) {
   };
   return <section className="source-connection-panel xstudio-source-panel"><div><span>XStudio source engine</span><h3>Connect, verify, and synchronize</h3><p>Public Substack, Medium, Hashnode, and RSS feeds import into StackedIN as internal reference articles. LinkedIn stays share-only until its approved OAuth publishing API is connected.</p></div><form onSubmit={connect}><select value={provider} onChange={(event) => setProvider(event.target.value)}><option>SUBSTACK</option><option>MEDIUM</option><option>HASHNODE</option><option>LINKEDIN</option><option>RSS</option></select><input required type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://your-publication-or-profile" /><button disabled={busy || !context}>{busy ? <RefreshCw className="spin" size={14} /> : <Plus size={14} />}Connect & sync</button></form>{message && <div className="source-message">{message}</div>}<div className="connected-source-list">{sources.map((source) => <article key={source.id}><div><PlatformIcon name={source.provider === "SUBSTACK" ? "Substack" : source.provider === "MEDIUM" ? "Medium" : source.provider === "HASHNODE" ? "Hashnode" : "LinkedIn"} size={18} /></div><section><strong>{source.provider}</strong><span>{source.profile_url}</span><small>{source.last_synced_at ? `${source.last_post_count || 0} posts \xB7 synced ${formatDate(source.last_synced_at)}` : source.last_error || "Waiting for first synchronization"}</small></section><em className={`source-status status-${source.status.toLowerCase()}`}>{source.status.replace("_", " ")}</em><footer>{source.capabilities?.import && <button disabled={busy} onClick={() => synchronize(source)}><RefreshCw size={12} />Sync now</button>}<button disabled={busy} onClick={() => disconnect(source)}><Trash2 size={12} />Disconnect</button></footer></article>)}{!sources.length && <p>No sources connected yet. Your first sync is one URL away.</p>}</div></section>;
 }
-function CMSOperationsView({ view, articles, jobs, onWrite, error }) {
+function CMSOperationsView({ view, articles, jobs, onWrite, error, userId }) {
   const openArticle = (articleId) => {
-    sessionStorage.setItem("xstudio-editor-article", articleId);
+    sessionStorage.setItem(editorArticleKey(userId), articleId);
     onWrite();
   };
   const startArticle = () => {
-    sessionStorage.removeItem("xstudio-editor-article");
+    sessionStorage.removeItem(editorArticleKey(userId));
     onWrite();
   };
   const counts = {
@@ -1364,8 +1392,9 @@ function CMSOperationsView({ view, articles, jobs, onWrite, error }) {
 }
 function Dashboard({ onExit, onWrite, session }) {
   const [catalogue, setCatalogue] = useState({ posts: [], source: "", lastSyncedAt: null });
+  const [workspaceContext, setWorkspaceContext] = useState(null);
   const [ownedImports, setOwnedImports] = useState([]);
-  const [metrics, setMetrics] = useState(loadMetrics);
+  const [metrics, setMetrics] = useState(() => loadMetrics(session.user.id));
   const [view, setView] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -1381,7 +1410,15 @@ function Dashboard({ onExit, onWrite, session }) {
   const [distributionJobs, setDistributionJobs] = useState([]);
   const [cmsError, setCmsError] = useState("");
   const fileRef = useRef(null);
+  const isLegacyCatalogueOwner = LEGACY_CATALOGUE_OWNER_USERNAMES.has(normalizeUsername(workspaceContext?.profile?.username));
   const fetchCatalogue = useCallback(async (manual = false) => {
+    if (!isLegacyCatalogueOwner) {
+      setCatalogue({ posts: [], source: "Your connected publications", lastSyncedAt: null });
+      setLoading(false);
+      setSyncing(false);
+      if (manual) setToast("Your connected sources and XStudio library are current.");
+      return;
+    }
     manual ? setSyncing(true) : setLoading(true);
     setError("");
     try {
@@ -1398,7 +1435,7 @@ function Dashboard({ onExit, onWrite, session }) {
       setLoading(false);
       setSyncing(false);
     }
-  }, []);
+  }, [isLegacyCatalogueOwner]);
   const fetchOwnedImports = useCallback(async () => {
     try {
       setOwnedImports(await nativePublishing.listOwnedImports());
@@ -1407,8 +1444,20 @@ function Dashboard({ onExit, onWrite, session }) {
     }
   }, []);
   useEffect(() => {
-    fetchCatalogue();
-  }, [fetchCatalogue]);
+    let active = true;
+    loadTenantContext(session.user.id).then((context) => {
+      if (active) setWorkspaceContext(context);
+    }).catch(() => {
+      if (active) {
+        setError("Your private XStudio workspace could not be loaded.");
+        setLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [session.user.id]);
+  useEffect(() => {
+    if (workspaceContext) void fetchCatalogue();
+  }, [workspaceContext, fetchCatalogue]);
   useEffect(() => {
     fetchOwnedImports();
   }, [fetchOwnedImports]);
@@ -1416,7 +1465,10 @@ function Dashboard({ onExit, onWrite, session }) {
     if (!session?.user?.id) return;
     try {
       const context = await loadTenantContext(session.user.id);
-      const [nativeArticles, queue] = await Promise.all([nativePublishing.listCMSArticles(context.tenant.id), nativePublishing.listDistributionJobs(context.tenant.id)]);
+      const [nativeArticles, queue] = await Promise.all([
+        nativePublishing.listCMSArticles(context.tenant.id, session.user.id),
+        nativePublishing.listDistributionJobs(context.tenant.id, undefined, session.user.id),
+      ]);
       setCmsArticles(nativeArticles);
       setDistributionJobs(queue);
       setCmsError("");
@@ -1511,7 +1563,7 @@ function Dashboard({ onExit, onWrite, session }) {
         };
         matched += 1;
       });
-      localStorage.setItem(METRICS_KEY, JSON.stringify(next));
+      localStorage.setItem(`${METRICS_KEY}:${session.user.id}`, JSON.stringify(next));
       setMetrics(next);
       setImportReport({ file: file.name, rows: rows.length, matched });
       setToast(`${matched} article metrics imported.`);
@@ -1527,20 +1579,20 @@ function Dashboard({ onExit, onWrite, session }) {
     return <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}><Icon size={17} /><span>{item.label}</span>{item.id === "library" && <em>{posts.length}</em>}</button>;
   })}</nav>
       <div className="sidebar-sync"><span className="live-dot" /><div><strong>Auto-discovery active</strong><span>Checks public publishing feeds every 6 hours</span></div></div>
-      <a className="sidebar-link" href="https://pandaabhishek.substack.com/" target="_blank" rel="noreferrer">Open main publication <ExternalLink size={14} /></a>
+      <button className="sidebar-link" onClick={() => setView("platforms")}>Manage my sources <ChevronRight size={14} /></button>
     </aside>
     <main className="studio-main">
       <header className="topbar">
         <div><span>Content intelligence</span><h1>{navTitle}</h1></div>
         <div className="topbar-actions">
           <button className="button secondary" onClick={() => fetchCatalogue(true)} disabled={syncing}><RefreshCw size={15} className={syncing ? "spin" : ""} />{syncing ? "Refreshing" : "Refresh snapshot"}</button>
-          <button className="button primary" onClick={() => { sessionStorage.removeItem("xstudio-editor-article"); onWrite(); }}><PenTool size={15} />Open CMS editor</button>
+          <button className="button primary" onClick={() => { sessionStorage.removeItem(editorArticleKey(session.user.id)); onWrite(); }}><PenTool size={15} />Open CMS editor</button>
         </div>
       </header>
       <div className="mobile-nav" aria-label="Mobile navigation">{NAV_ITEMS.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => setView(item.id)}>{item.label}</button>)}</div>
       {error && <div className="error-banner"><X size={17} />{error}<button onClick={() => fetchCatalogue()}>Retry</button></div>}
       {loading ? <div className="loading-state"><RefreshCw className="spin" /><p>Building your publishing map…</p></div> : <div className="view-frame">
-        {["cms", "calendar", "distribution"].includes(view) && <CMSOperationsView view={view} articles={cmsArticles} jobs={distributionJobs} onWrite={onWrite} error={cmsError} />}
+        {["cms", "calendar", "distribution"].includes(view) && <CMSOperationsView view={view} articles={cmsArticles} jobs={distributionJobs} onWrite={onWrite} error={cmsError} userId={session.user.id} />}
         {view === "overview" && <>
           <section className="intro-row">
             <div><span className="eyebrow">The signal behind the writing</span><h2>Your ideas, mapped like a living system.</h2><p>Published work across Substack, Medium, Hashnode, and LinkedIn is organised into platforms, pillars, and series—ready to search, audit, and extend.</p></div>
@@ -1571,9 +1623,9 @@ function Dashboard({ onExit, onWrite, session }) {
     const count = posts.filter((post) => (post.platform || "Substack") === item.name).length;
     return <article className="platform-card" key={item.name} style={{ "--platform-color": item.color }}>
               <div className="platform-card__head"><div className="platform-logo"><PlatformIcon name={item.name} size={25} /></div><span className="verified-chip"><CheckCircle2 size={12} />Official handoff</span></div>
-              <h3>{item.name}</h3><a className="platform-handle" href={item.profile} target="_blank" rel="noreferrer">{item.handle}<ExternalLink size={12} /></a>
+              <h3>{item.name}</h3><button className="platform-handle" onClick={() => setView("platforms")}>{item.handle}<ChevronRight size={12} /></button>
               <div className="platform-stats"><div><strong>{count}</strong><span>tracked posts</span></div><div><strong>{item.name === "LinkedIn" ? "Secure" : "6 hr"}</strong><span>{item.feed}</span></div></div>
-              <div className="platform-actions"><a className="button primary" href={item.editor} target="_blank" rel="noreferrer"><PlatformIcon name={item.name} size={15} />Write on {item.name}</a><a className="button secondary" href={item.profile} target="_blank" rel="noreferrer">View profile</a></div>
+              <div className="platform-actions"><a className="button primary" href={item.editor} target="_blank" rel="noreferrer"><PlatformIcon name={item.name} size={15} />Write on {item.name}</a><button className="button secondary" onClick={() => setView("platforms")}>Manage connection</button></div>
             </article>;
   })}</section>
           <div className="panel platform-help"><SectionHeading eyebrow="How it works" title="One studio, provider-managed security" /><p>XStudio indexes public feeds and opens official editors without storing provider passwords. LinkedIn automatic import remains capability-gated until approved OAuth API access exists.</p></div>
@@ -1680,9 +1732,9 @@ function App() {
     navigate("home");
   };
   if (!authReady) return <div className="auth-loading"><img src={`${import.meta.env.BASE_URL}stackedin-icon.webp`} alt="StackedIN" /><RefreshCw className="spin" /></div>;
-  const protectedRoute = ["feed", "network", "search", "profile", "inbox", "write", "studio"].includes(route) || route.startsWith("article-") || route.startsWith("profile-") || route.startsWith("profile/");
+  const protectedRoute = ["feed", "network", "search", "profile", "inbox", "write", "studio"].includes(route) || route.startsWith("feed/") || route.startsWith("article-") || route.startsWith("profile-") || route.startsWith("profile/");
   if (route === "login" || protectedRoute && !session) return <AuthView onBack={() => navigate("home")} />;
-  if ((route === "feed" || route.startsWith("article-")) && session) return <FeedExperience session={session} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} openSearch={openSearch} openWrite={() => navigate("write")} openProfile={openProfile} openInbox={openInbox} signOut={signOut} />;
+  if ((route === "feed" || route.startsWith("feed/") || route.startsWith("article-")) && session) return <FeedExperience session={session} feedMode={route.startsWith("feed/") ? route.slice(5) : "all"} openFeedMode={(mode) => navigate(mode === "all" ? "feed" : `feed/${mode}`)} openStudio={() => navigate("studio")} openNetwork={() => navigate("network")} openSearch={openSearch} openWrite={() => navigate("write")} openProfile={openProfile} openInbox={openInbox} signOut={signOut} />;
   if (route === "network" && session) return <NetworkExperience session={session} openFeed={() => navigate("feed")} openSearch={openSearch} openProfile={openProfile} openStudio={() => navigate("studio")} signOut={signOut} />;
   if (route === "search" && session) return <SearchExperience session={session} openFeed={() => navigate("feed")} openNetwork={() => navigate("network")} openProfile={openProfile} openStudio={() => navigate("studio")} signOut={signOut} />;
   if ((route === "profile" || route.startsWith("profile-") || route.startsWith("profile/")) && session) return <ProfileExperience session={session} targetProfileRef={route.startsWith("profile/") ? decodeURIComponent(route.slice(8)) : route.startsWith("profile-") ? route.slice(8) : session.user.id} openFeed={() => navigate("feed")} openWrite={() => navigate("write")} openInbox={openInbox} openStudio={() => navigate("studio")} signOut={signOut} />;

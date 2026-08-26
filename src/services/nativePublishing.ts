@@ -318,34 +318,35 @@ export class NativePublishingService {
     return data as CMSArticle;
   }
 
-  async listCMSArticles(tenantId: string): Promise<CMSArticle[]> {
+  async listCMSArticles(tenantId: string, authorId: string): Promise<CMSArticle[]> {
     const current = await this.client.from("articles")
       .select(CMS_ARTICLE_FIELDS)
-      .eq("tenant_id", tenantId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
+      .eq("tenant_id", tenantId).eq("author_id", authorId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
     if (!current.error) return (current.data ?? []) as unknown as CMSArticle[];
     if (!isMissingTrashSchema(current.error)) throw new Error(current.error.message);
     const legacy = await this.client.from("articles")
       .select(LEGACY_CMS_ARTICLE_FIELDS)
-      .eq("tenant_id", tenantId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
+      .eq("tenant_id", tenantId).eq("author_id", authorId).eq("source_type", "USER").order("updated_at", { ascending: false }).limit(250);
     if (legacy.error) throw new Error(legacy.error.message);
     return (legacy.data ?? []).map(article => withTrashDefaults(article as Record<string, unknown>));
   }
 
-  async getCMSArticle(articleId: string): Promise<CMSArticle> {
+  async getCMSArticle(articleId: string, tenantId: string, authorId: string): Promise<CMSArticle> {
     const current = await this.client.from("articles")
       .select(CMS_ARTICLE_FIELDS)
-      .eq("id", articleId).single();
+      .eq("id", articleId).eq("tenant_id", tenantId).eq("author_id", authorId).single();
     if (!current.error) return current.data as unknown as CMSArticle;
     if (!isMissingTrashSchema(current.error)) throw new Error(current.error.message);
-    const legacy = await this.client.from("articles").select(LEGACY_CMS_ARTICLE_FIELDS).eq("id", articleId).single();
+    const legacy = await this.client.from("articles").select(LEGACY_CMS_ARTICLE_FIELDS)
+      .eq("id", articleId).eq("tenant_id", tenantId).eq("author_id", authorId).single();
     if (legacy.error) throw new Error(legacy.error.message);
     return withTrashDefaults(legacy.data as Record<string, unknown>);
   }
 
-  async listRevisions(articleId: string): Promise<ArticleRevision[]> {
+  async listRevisions(articleId: string, authorId: string): Promise<ArticleRevision[]> {
     const { data, error } = await this.client.from("article_revisions")
       .select("id,article_id,revision_no,title,description,content_blocks,metadata,created_at")
-      .eq("article_id", articleId).order("revision_no", { ascending: false }).limit(50);
+      .eq("article_id", articleId).eq("author_id", authorId).order("revision_no", { ascending: false }).limit(50);
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as ArticleRevision[];
   }
@@ -374,11 +375,12 @@ export class NativePublishingService {
     return data as CMSArticle;
   }
 
-  async listDistributionJobs(tenantId: string, articleId?: string): Promise<DistributionJob[]> {
+  async listDistributionJobs(tenantId: string, articleId?: string, requestedBy?: string): Promise<DistributionJob[]> {
     let query = this.client.from("distribution_jobs")
       .select("id,article_id,platform,status,delivery_mode,scheduled_for,platform_title,platform_excerpt,platform_tags,external_post_url,last_error,published_at,updated_at")
       .eq("tenant_id", tenantId).order("updated_at", { ascending: false }).limit(250);
     if (articleId) query = query.eq("article_id", articleId);
+    if (requestedBy) query = query.eq("requested_by", requestedBy);
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []) as DistributionJob[];
