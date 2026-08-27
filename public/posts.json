@@ -7,7 +7,7 @@
     "LinkedIn": "https://www.linkedin.com/in/iamabhishekpanda/"
   },
   "source": "Substack RSS mirror + Medium RSS + Hashnode RSS",
-  "lastSyncedAt": "2026-08-26T18:57:16.525Z",
+  "lastSyncedAt": "2026-08-27T01:59:38.140Z",
   "discoveredThisRun": 11,
   "posts": [
     {
@@ -646,7 +646,7 @@
       "description": "Enterprise Credit Card Fraud Detection MLOps",
       "platform": "Substack",
       "publishedAt": "2026-08-19 08:14:51",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!GV--!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F648367ba-b4b3-41e2-b09a-9fb904523d2f_1672x941.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -666,7 +666,7 @@
       "description": "FastAPI + Pydantic + MLflow Champion + Service Layer + Batch Inference + Swagger + Streamlit",
       "platform": "Substack",
       "publishedAt": "2026-08-19 10:09:09",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!0cL9!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F0f4e7e3c-2026-4978-9439-0037b2407955_1536x1024.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -686,7 +686,7 @@
       "description": "From Ensemble Learning → Fraud Probability → API → Dashboard → Docker → CI/CD → Cloud → Monitoring → Retraining",
       "platform": "Substack",
       "publishedAt": "2026-08-19 14:16:39",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!8Tfi!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fa2835584-2e02-402e-9da6-714f916097ec_1536x1024.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -706,7 +706,7 @@
       "description": "XGBoost exposes a scikit-learn-compatible estimator interface, including classification through XGBClassifier.",
       "platform": "Substack",
       "publishedAt": "2026-08-19 16:13:24",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!6c7g!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F84e5bb04-ecd6-44bc-b196-03d1cd297d0d_1536x1024.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -726,7 +726,7 @@
       "description": "🔥 Becoming a Deep Learning Expert: PyTorch, Computer Vision, Transformers & Enterprise AI Systems",
       "platform": "Substack",
       "publishedAt": "2026-08-20 07:27:02",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!4NAP!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F662ed822-8b46-4e4a-bb92-3e164efdd383_1536x1024.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -746,7 +746,7 @@
       "description": "From Artificial Neurons to Your First Neural Network",
       "platform": "Substack",
       "publishedAt": "2026-08-21 09:12:30",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!PD0H!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F7d6b34ac-06b0-4eed-9aaf-34d5c2e509aa_1672x941.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -766,7 +766,7 @@
       "description": "Azure × AWS × Google Cloud — AI, ML, GenAI, RAG, Agents, MLOps & Enterprise Architecture",
       "platform": "Substack",
       "publishedAt": "2026-08-22 13:20:12",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!_tVY!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F69a1abd1-1965-4d77-a595-2b4db9d84325_1672x941.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -786,7 +786,7 @@
       "description": "The Role That Connects Software Engineering, AI, Cloud, and Real Business Outcomes",
       "platform": "Substack",
       "publishedAt": "2026-08-24 09:58:51",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!QVVw!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F6d60c94a-050d-428d-a272-ef2502268e79_1672x941.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -806,7 +806,7 @@
       "description": ": Python + C# with Real-World Examples",
       "platform": "Substack",
       "publishedAt": "2026-08-24 19:37:43",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!0Cv7!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F53b15c80-ce86-4f75-8969-3dcab71006a5_2172x724.png",
       "status": "Published",
       "views": 0,
       "shares": 0
@@ -826,7 +826,7 @@
       "description": "SQL → Advanced SQL Problem Solving → Data Modeling → PostgreSQL → Warehouses → BigQuery/Snowflake → Python for Data → Spark → dbt → Airflow → Kafka → Lakehouse → Cloud Data Engineering → Power BI",
       "platform": "Substack",
       "publishedAt": "2026-08-24 21:24:48",
-      "coverImage": null,
+      "coverImage": "https://substackcdn.com/image/fetch/%24s_!NY1f!,w_2400,c_limit,f_auto,q_auto:good,fl_progressive:steep/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2Fd7c5f442-805c-409e-b7d9-56ba5656888a_1536x1024.png",
       "status": "Published",
       "views": 0,
       "shares": 0
