@@ -5,7 +5,7 @@ on:
     paths:
       - "src/careeros/**"
       - "src/services/careerOS.ts"
-      - "supabase/migrations/202608290015_careeros_foundation.sql"
+      - "supabase/migrations/20260829001*.sql"
       - "tests/**"
       - "package.json"
       - "scripts/copy-threeui-assets.mjs"
