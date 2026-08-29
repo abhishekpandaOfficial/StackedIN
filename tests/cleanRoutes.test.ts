@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const appSource = readFileSync(new URL("../substack_bw_dashboard.jsx", import.meta.url), "utf8");
 const mainSource = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
 const stackCraftLanding = readFileSync(new URL("../src/careeros/CareerOSLanding.jsx", import.meta.url), "utf8");
+const stackCraftStyles = readFileSync(new URL("../src/careeros/careeros.css", import.meta.url), "utf8");
 const stackCraftNavStyles = readFileSync(new URL("../stackcraft-nav.css", import.meta.url), "utf8");
 const assetCopySource = readFileSync(new URL("../scripts/copy-threeui-assets.mjs", import.meta.url), "utf8");
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
@@ -36,7 +37,7 @@ describe("clean application routes", () => {
     expect(stackCraftNavStyles).toContain(".nav-xstudio-capsule");
   });
 
-  it("integrates the exact configured ThreeUI Sylva Living Green hero", () => {
+  it("integrates the exact configured ThreeUI Sylva Living Green hero on StackedIN", () => {
     expect(mainSource).toContain('import { SylvaHero } from "@designcodeio/threeui"');
     expect(mainSource).toContain('import "@designcodeio/threeui/style.css"');
     expect(mainSource).toContain('<SylvaHero');
@@ -51,9 +52,14 @@ describe("clean application routes", () => {
     expect(mainSource).toContain('headingLetterSpacing={-0.006}');
     expect(assetCopySource).toContain('landing-pages/inner-green-3d.html');
     expect(assetCopySource).toContain('69c3694bd63f44ef9f007ebe4dac57a83e4402e0cdf6b54dd10b96dd4f05e197');
-    expect(assetCopySource).toContain('70ce084084902bc502f00c366405b661ecdff90dee95d363b36a6e146829e433');
-    expect(assetCopySource).toContain('337627390f499b3ae272cec9e2f83c817694a82f42e1aa10a7b26a2c7d679dff');
-    expect(assetCopySource).toContain('1ec8f6ee2750554b4bc59ff0b507d316a82a7ba37e0e5bebc41d3bd9b9faad46');
+  });
+
+  it("uses the authored text-free Temple Night renderer behind StackCraft", () => {
+    expect(stackCraftLanding).toContain('import { TempleNightScene } from "@designcodeio/threeui"');
+    expect(stackCraftLanding).toContain('<TempleNightScene variant="temple-night"');
+    expect(stackCraftLanding).not.toContain("<KageLandingPage");
+    expect(stackCraftStyles).toContain(".shader-frame--temple .temple-night-scene");
+    expect(stackCraftStyles).toContain(".shader-frame--temple .temple-night-canvas");
   });
 
   it("routes StackCraft landing and private workspace without breaking legacy CareerOS URLs", () => {
@@ -70,29 +76,7 @@ describe("clean application routes", () => {
   it("rewrites every first-class Vercel view to the SPA entry", () => {
     const sources = vercelConfig.rewrites.map((rewrite: { source: string }) => rewrite.source);
     expect(sources).toEqual(expect.arrayContaining([
-      "/feed",
-      "/feed/:path*",
-      "/network",
-      "/search",
-      "/profile",
-      "/profile/:path*",
-      "/inbox",
-      "/write",
-      "/studio",
-      "/login",
-      "/article/:path*",
-      "/Craft",
-      "/Craft/:path*",
-      "/craft",
-      "/craft/:path*",
-      "/stackcraft",
-      "/stackcraft/:path*",
-      "/careeros",
-      "/careeros/:path*",
-      "/career-os",
-      "/career-os/:path*",
-      "/career",
-      "/career/:path*",
+      "/feed", "/feed/:path*", "/network", "/search", "/profile", "/profile/:path*", "/inbox", "/write", "/studio", "/login", "/article/:path*", "/Craft", "/Craft/:path*", "/craft", "/craft/:path*", "/stackcraft", "/stackcraft/:path*", "/careeros", "/careeros/:path*", "/career-os", "/career-os/:path*", "/career", "/career/:path*",
     ]));
     expect(vercelConfig.rewrites.every((rewrite: { destination: string }) => rewrite.destination === "/")).toBe(true);
   });

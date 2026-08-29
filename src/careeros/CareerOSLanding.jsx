@@ -1,5 +1,5 @@
 import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
-import { KageLandingPage } from "@designcodeio/threeui";
+import { TempleNightScene } from "@designcodeio/threeui";
 import "@designcodeio/threeui/style.css";
 import "./careeros.css";
 
@@ -33,9 +33,9 @@ export default function CareerOSLanding() {
         </div>
       </header>
 
-      <section className="careeros-hero" aria-label="StackCraft global career agent">
-        <div className="shader-frame" aria-hidden="true">
-          <KageLandingPage headingFont="onest" bodyFont="onest" headingWeight="400" bodyWeight="300" primaryColor="#e0231c" headingSize={46} bodySize={17} headingLetterSpacing={-0.012} />
+      <section className="careeros-hero careeros-hero--temple" aria-label="StackCraft global career agent">
+        <div className="shader-frame shader-frame--temple" aria-hidden="true">
+          <TempleNightScene variant="temple-night" className="stackcraft-temple-night" />
         </div>
         <div className="careeros-hero__scrim" />
         <div className="careeros-hero__content">
