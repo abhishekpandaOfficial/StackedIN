@@ -1,121 +1,86 @@
-# StackedIN + XStudio
+# StackedIN + XStudio + CareerOS
 
-A living multi-platform publishing dashboard for Abhishek Panda's writing on
-[Substack](https://pandaabhishek.substack.com/),
-[Medium](https://medium.com/@official.abhishekpanda),
-[Hashnode](https://hashnode.com/@abhishekpanda), and
-[LinkedIn](https://www.linkedin.com/in/iamabhishekpanda/).
+StackedIN is evolving into an AI-native professional knowledge and career network. The existing publishing, professional graph, XStudio, feed, network, profile, and messaging features remain in place; CareerOS and AEON are being introduced as StackedIN Premium products.
 
-## What the site does
+## CareerOS V1
+
+The `careeros-v1` branch adds the first CareerOS product slice:
+
+- ThreeUI Kage-powered CareerOS landing experience;
+- `/careeros` public landing and `/careeros/app` authenticated workspace routes;
+- strict user-owned CareerOS records on top of the existing StackedIN tenant model;
+- private career baseline: current role, compensation, experience, relocation, sponsorship, notice period, and work preference;
+- private CV document vault;
+- target-country priorities, salary floors, visa/sponsorship requirements, and target roles;
+- Manual, Human-in-the-Loop, and Autonomous policy vocabulary with explicit autonomous consent;
+- job, multidimensional match, workflow, application, append-only timeline, subscription, usage, and AEON data models;
+- a 24-hour Career Audit trial model, with paid plan transitions reserved for a trusted payment backend;
+- application history views and CareerOS/AEON foundation UI;
+- CI validation for typecheck, tests, production Vite build, and ThreeUI Kage runtime assets.
+
+Autonomous job discovery/application, Temporal, LangGraph, Azure workers, WhatsApp, payment webhooks, and the AEON interview runtime are intentionally not faked in the browser foundation. They will be connected through the trusted execution plane in subsequent CareerOS phases.
+
+See `docs/architecture/careeros-v1.md` for privacy, consent, workflow, execution, and promotion boundaries.
+
+## Existing StackedIN capabilities
 
 - Tracks public Substack, Medium, and Hashnode posts in one searchable library.
-- Opens the official editor for Substack, Medium, Hashnode, or LinkedIn.
-- Uses provider-managed sign-in and never asks for or stores platform passwords.
-- Labels every article with its official publishing-platform icon.
+- Opens official external publishing editors instead of collecting external platform passwords.
 - Organises articles into content pillars, modules, tags, and structured series.
-- Shows portfolio counts, coverage, recent additions, and learning-path views.
-- Checks supported public feeds automatically every six hours through GitHub Actions.
-- Classifies newly discovered posts with deterministic topic rules.
-- Supports private platform analytics CSV imports for article views and shares.
-- Stores imported analytics only in the current browser.
 - Publishes native posts and rich-block articles directly to the StackedIN feed.
 - Provides realtime reactions, comments, restacks, notifications, connection requests, and direct messages.
-- Lets XStudio owners connect a public feed and import it into their native StackedIN library on demand.
-- Provides an XStudio CMS with a Notion-style slash-command editor, LinkedIn-style article banners, local recovery, autosave, revision history, SEO controls, live preview, recoverable Trash, a content calendar, and a distribution queue.
-- Adds a unified LinkedIn-style feed composer with `@` mentions, hashtags, photos, videos, documents, polls, Sarvam-first AI drafting, optional session-only OpenAI/Anthropic BYOK routing, live model selection, writing-signal scores, and secure multi-platform handoffs.
-- Publishes or schedules StackedIN-native content and prepares safe handoff packages for external provider editors.
-
-## Automatic multi-platform sync
-
-The sync workflow runs every six hours and can also be run manually from the
-GitHub Actions tab. It calls the sync script, which:
-
-1. Reads the Substack archive API with RSS fallback.
-2. Reads Medium's official profile RSS feed.
-3. Reads the Hashnode publication through its public GraphQL API.
-4. Merges discovered posts with `data/posts.seed.json`.
-5. Preserves curated taxonomy and platform labels for known posts.
-6. Writes and deploys the refreshed `public/posts.json` catalogue.
-
-The refresh button reloads the most recently deployed snapshot. The scheduled
-workflow discovers brand-new public posts on supported platforms.
-
-LinkedIn does not expose a general public author feed suitable for this static
-dashboard. XStudio therefore links to the official LinkedIn profile
-and publishing editor; the signed-in LinkedIn experience remains the source of
-truth for LinkedIn posts and analytics.
-
-Signed-in XStudio source synchronization is separate from the public catalogue
-snapshot. It imports up to 100 recent public entries from Substack, Medium,
-Hashnode, or a generic RSS feed through the authenticated Vercel function at
-`/api/xstudio-sync`. LinkedIn import remains disabled until an approved OAuth
-API integration is configured.
+- Provides XStudio CMS, revisions, scheduling, recoverable Trash, content calendar, distribution queue, imports, and social publishing handoffs.
+- Provides professional profile intelligence, search, recommendations, profile journeys, projects, education, achievements, and private inbox functionality.
 
 ## Local development
 
-Run `npm ci`, then `npm run sync:offline`, followed by `npm run dev`.
-Use `npm run sync:substack` when the machine has unrestricted internet access.
+Run:
 
-## Production build
+```bash
+npm install
+npm run sync:offline
+npm run dev
+```
 
-Run `npm run build`. GitHub Pages is deployed by the existing deployment
-workflow from the `master` branch. The included `vercel.json` also makes the
-same repository import-ready for Vercel, including the XStudio API function and
-production security headers. Client navigation uses hash routes, so no catch-all
-rewrite can intercept `/api` requests.
+For CareerOS validation:
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+The CareerOS build copies the installed ThreeUI landing-page runtime assets into `public/landing-pages` before Vite builds the application.
 
 ## Authentication and multitenancy
 
-StackedIN uses Supabase Auth for email/password, Google, and GitHub sign-in.
-The SQL migration in `supabase/migrations` adds profiles, workspaces, roles,
-tenant-scoped articles, automatic personal-workspace creation, and Row Level
-Security. Apply migrations in filename order. Profile journeys, inbox data,
-and realtime notifications are introduced by migration `007`; XStudio imports
-plus message edit/delete controls are introduced by migration `008`.
-The production XStudio CMS, revisions, scheduling, and distribution queue are
-introduced by migration `009`. Recoverable article Trash and restore controls
-are introduced by migration `010`. The unified feed composer, polls, social
-account metadata, and writing-signal scores are introduced by migration `011`.
-Sarvam-default AI quota routing is introduced by migration `012`.
-Canonical, case-insensitive usernames, profile URLs, live availability checks,
-OAuth username assignment, and the private username-login directory are
-introduced by migration `013`. Author-only XStudio drafts, revisions, Trash,
-and delivery operations with a globally readable public feed are enforced by
-migration `014`. Profile URLs use `/profile/username`; email is
-never shown on a public profile.
+StackedIN uses Supabase Auth for email/password, Google, and GitHub sign-in. Migration `001` creates personal tenants and memberships. Existing professional/network/XStudio migrations remain ordered in `supabase/migrations`.
 
-For scheduled publishing on Vercel, configure the server-only
-`SUPABASE_SERVICE_ROLE_KEY` and `CRON_SECRET` variables, then configure a Vercel
-Cron for `/api/publish-scheduled` at a frequency supported by the project plan.
-Never prefix either secret with `VITE_`. The endpoint can only execute the
-service-role-only `publish_due_articles()` RPC.
+CareerOS migration `202608290015_careeros_foundation.sql` is intentionally stricter than ordinary tenant collaboration: sensitive CareerOS rows require both tenant membership and exact `user_id = auth.uid()` ownership. Tenant administrators do not automatically gain access to another member's CV, salary, applications, workflows, usage, or AEON history.
 
-See [VERCEL_SUPABASE_SETUP.md](VERCEL_SUPABASE_SETUP.md) for the exact Vercel
-environment variables, Supabase URL allow list, Google Client ID, GitHub OAuth
-App, callback URL, and production verification steps.
+The `career-documents` Supabase Storage bucket is private and user-path isolated.
 
-## Professional graph roadmap
+## Production hosting direction
 
-Phase 1 of the StackedIN Professional Knowledge Graph is defined in
-`supabase/migrations/202608250002_professional_graph_foundation.sql`. It adds
-professional profile intelligence, canonical skills/topics, tenant-scoped graph
-relationships, first-class negative signals, recommendation logging, versioned
-embeddings, ranking configuration, feature flags, search indexes, and hardened
-RLS. See `docs/architecture/phase-1-professional-graph.md` for the design and
-security boundaries.
+- **Vercel:** StackedIN/CareerOS web experience.
+- **Supabase:** Auth, PostgreSQL, RLS, pgvector, private storage.
+- **Azure execution plane (next phases):** FastAPI/worker services, Azure Container Apps, Service Bus, Key Vault.
+- **Temporal:** durable long-running CareerOS workflows and approval waits.
+- **LangGraph:** bounded agent reasoning inside workflow activities.
+- **LiteLLM:** provider/model routing and cost control.
+- **Langfuse + OpenTelemetry:** AI and platform observability.
+- **WhatsApp Business Platform:** notifications and human approval interactions once connected server-side.
 
-Phase 2 adds explainable, negative-feedback-aware people recommendations and the
-protected `#network` experience. Its migration is
-`supabase/migrations/202608250003_people_recommendations_v1.sql`; implementation
-details and the ranking formula are documented in
-`docs/architecture/phase-2-people-recommendations.md`.
+## Subscription direction
 
-Run `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build` before
-promoting a migration or application change.
+Initial India launch model:
 
-## Private analytics import
+- 24-hour Career Audit trial;
+- ₹500/month StackedIN Premium;
+- ₹5,000/year StackedIN Premium.
 
-View and share counts are not public feed data. Export a CSV from the relevant
-platform and import it from **Analytics**. Recommended columns are `title`,
-`views`, `shares`, and `url`. Imported values stay in browser storage and are
-never committed.
+The database models these plans, but the browser cannot activate paid subscriptions. Paid transitions must be verified through a trusted payment webhook. Autonomous application remains unavailable during trial.
+
+## Deployment
+
+The repository is Vercel-ready through `vercel.json`, including clean SPA routes and security headers. Apply Supabase migrations in filename order before enabling the corresponding UI in production.
