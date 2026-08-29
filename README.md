@@ -52,6 +52,8 @@ npm run build
 
 The CareerOS build copies the installed ThreeUI landing-page runtime assets into `public/landing-pages` before Vite builds the application.
 
+Because ThreeUI changes the dependency graph, the feature branch CI regenerates a complete `package-lock.json`. That generated lock must be committed before merging so production installs can return to deterministic `npm ci` usage; do not hand-edit a partial npm lockfile.
+
 ## Authentication and multitenancy
 
 StackedIN uses Supabase Auth for email/password, Google, and GitHub sign-in. Migration `001` creates personal tenants and memberships. Existing professional/network/XStudio migrations remain ordered in `supabase/migrations`.
