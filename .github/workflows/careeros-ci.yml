@@ -8,7 +8,6 @@ on:
       - "supabase/migrations/202608290015_careeros_foundation.sql"
       - "tests/**"
       - "package.json"
-      - "package-lock.json"
       - "scripts/copy-threeui-assets.mjs"
       - "main.jsx"
       - "vercel.json"
@@ -29,7 +28,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
