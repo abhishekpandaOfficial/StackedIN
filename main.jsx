@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import Dashboard from "./substack_bw_dashboard.jsx";
 import CareerOSLanding from "./src/careeros/CareerOSLanding.jsx";
 import CareerOSWorkspace from "./src/careeros/CareerOSWorkspace.jsx";
+import "./stackcraft-nav.css";
 
 const route = window.location.pathname.replace(/^\/+|\/+$/g, "").toLowerCase();
 const careerLandingRoutes = new Set(["craft", "stackcraft", "careeros", "career-os", "career"]);
@@ -24,21 +25,53 @@ if (legacyWorkspaceRoutes.has(route)) window.history.replaceState({}, "", "/Craf
 
 function StackCraftNavLink() {
   useEffect(() => {
-    const nav = document.querySelector('.marketing-nav nav[aria-label="Marketing navigation"]');
-    if (!nav || nav.querySelector('[data-stackcraft-nav="true"]')) return undefined;
+    const header = document.querySelector(".marketing-nav");
+    const nav = header?.querySelector('nav[aria-label="Marketing navigation"]');
+    const xstudioButton = header?.querySelector(".nav-cta");
+    if (!header || !nav || !xstudioButton) return undefined;
 
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.stackcraftNav = "true";
-    button.textContent = "Craft";
-    button.title = "Open StackCraft";
-    button.setAttribute("aria-label", "Open StackCraft career operating system");
-    button.addEventListener("click", () => {
-      window.location.assign("/Craft");
-    });
-    nav.appendChild(button);
+    let navButton = nav.querySelector('[data-stackcraft-nav="true"]');
+    if (!navButton) {
+      navButton = document.createElement("button");
+      navButton.type = "button";
+      navButton.dataset.stackcraftNav = "true";
+      navButton.textContent = "Craft";
+      navButton.title = "Open StackCraft";
+      navButton.setAttribute("aria-label", "Open StackCraft career operating system");
+      navButton.addEventListener("click", () => window.location.assign("/Craft"));
+      nav.appendChild(navButton);
+    }
 
-    return () => button.remove();
+    let stackCraftButton = header.querySelector('[data-stackcraft-cta="true"]');
+    if (!stackCraftButton) {
+      stackCraftButton = document.createElement("button");
+      stackCraftButton.type = "button";
+      stackCraftButton.dataset.stackcraftCta = "true";
+      stackCraftButton.className = "nav-stackcraft-cta";
+      stackCraftButton.title = "Open StackCraft";
+      stackCraftButton.setAttribute("aria-label", "Open StackCraft career operating system");
+
+      const icon = document.createElement("span");
+      icon.className = "nav-stackcraft-cta__icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "S";
+
+      const label = document.createElement("span");
+      label.className = "nav-stackcraft-cta__label";
+      label.textContent = "Open StackCraft";
+
+      stackCraftButton.append(icon, label);
+      stackCraftButton.addEventListener("click", () => window.location.assign("/Craft"));
+      header.insertBefore(stackCraftButton, xstudioButton);
+    }
+
+    header.classList.add("marketing-nav--persistent");
+
+    return () => {
+      navButton?.remove();
+      stackCraftButton?.remove();
+      header.classList.remove("marketing-nav--persistent");
+    };
   }, []);
 
   return null;
