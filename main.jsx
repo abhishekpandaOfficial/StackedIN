@@ -1,5 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { SylvaHero } from "@designcodeio/threeui";
+import "@designcodeio/threeui/style.css";
 import Dashboard from "./substack_bw_dashboard.jsx";
 import CareerOSLanding from "./src/careeros/CareerOSLanding.jsx";
 import CareerOSWorkspace from "./src/careeros/CareerOSWorkspace.jsx";
@@ -57,32 +60,79 @@ function StackCraftRouteMeta() {
   return null;
 }
 
+function StackedINSylvaHero() {
+  const [host, setHost] = useState(null);
+
+  useEffect(() => {
+    let currentHost = null;
+
+    const install = () => {
+      const hero = document.querySelector(".marketing-hero");
+      if (!hero) return;
+      let nextHost = hero.querySelector('[data-stackedin-sylva="true"]');
+      if (!nextHost) {
+        nextHost = document.createElement("div");
+        nextHost.dataset.stackedinSylva = "true";
+        nextHost.className = "stackedin-sylva-hero";
+        hero.prepend(nextHost);
+      }
+      currentHost = nextHost;
+      setHost(nextHost);
+    };
+
+    install();
+    const observer = new MutationObserver(install);
+    observer.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      currentHost?.remove();
+      setHost(null);
+    };
+  }, []);
+
+  if (!host) return null;
+  return createPortal(
+    <div className="shader-frame stackedin-sylva-hero__frame">
+      <SylvaHero
+        variant="living-green"
+        headingFont="lexend"
+        bodyFont="lexend"
+        headingWeight="300"
+        bodyWeight="300"
+        primaryColor="#ffffff"
+        headingSize={63}
+        bodySize={16.5}
+        headingLetterSpacing={-0.006}
+      />
+    </div>,
+    host,
+  );
+}
+
 function StackCraftNavLink() {
   useEffect(() => {
     let activeHeader = null;
 
     const install = () => {
       const header = document.querySelector(".marketing-nav");
-      const nav = header?.querySelector('nav[aria-label="Marketing navigation"]');
       const xstudioButton = header?.querySelector(".nav-cta");
-      if (!header || !nav || !xstudioButton) return false;
+      if (!header || !xstudioButton) return false;
 
       activeHeader = header;
       header.classList.add("marketing-nav--persistent");
 
-      let navButton = nav.querySelector('[data-stackcraft-nav="true"]');
-      if (!navButton) {
-        navButton = document.createElement("button");
-        navButton.type = "button";
-        navButton.dataset.stackcraftNav = "true";
-        navButton.textContent = "Craft";
-        navButton.title = "Explore StackCraft";
-        navButton.setAttribute("aria-label", "Explore StackCraft career operating system");
-        navButton.addEventListener("click", () => window.location.assign("/Craft"));
-        nav.appendChild(navButton);
+      header.querySelector('[data-stackcraft-nav="true"]')?.remove();
+
+      let actions = header.querySelector('[data-product-actions="true"]');
+      if (!actions) {
+        actions = document.createElement("div");
+        actions.dataset.productActions = "true";
+        actions.className = "marketing-product-actions";
+        xstudioButton.parentNode?.insertBefore(actions, xstudioButton);
+        actions.appendChild(xstudioButton);
       }
 
-      let stackCraftButton = header.querySelector('[data-stackcraft-cta="true"]');
+      let stackCraftButton = actions.querySelector('[data-stackcraft-cta="true"]');
       if (!stackCraftButton) {
         stackCraftButton = document.createElement("button");
         stackCraftButton.type = "button";
@@ -103,9 +153,10 @@ function StackCraftNavLink() {
 
         stackCraftButton.append(icon, label);
         stackCraftButton.addEventListener("click", () => window.location.assign("/Craft/app"));
-        header.insertBefore(stackCraftButton, xstudioButton);
+        actions.insertBefore(stackCraftButton, xstudioButton);
       }
 
+      xstudioButton.classList.add("nav-xstudio-capsule");
       return true;
     };
 
@@ -115,8 +166,14 @@ function StackCraftNavLink() {
 
     return () => {
       observer.disconnect();
-      document.querySelector('[data-stackcraft-nav="true"]')?.remove();
       document.querySelector('[data-stackcraft-cta="true"]')?.remove();
+      const actions = document.querySelector('[data-product-actions="true"]');
+      const xstudioButton = actions?.querySelector(".nav-cta");
+      if (actions && xstudioButton) {
+        xstudioButton.classList.remove("nav-xstudio-capsule");
+        actions.parentNode?.insertBefore(xstudioButton, actions);
+        actions.remove();
+      }
       activeHeader?.classList.remove("marketing-nav--persistent");
     };
   }, []);
@@ -170,6 +227,6 @@ createRoot(document.getElementById("root")).render(
       ? <><CareerOSWorkspace /><StackCraftBrandingBridge /></>
       : careerLandingRoutes.has(route)
         ? <><CareerOSLanding /><StackCraftBrandingBridge /></>
-        : <><Dashboard /><StackCraftNavLink /></>}
+        : <><Dashboard /><StackedINSylvaHero /><StackCraftNavLink /></>}
   </React.StrictMode>,
 );
