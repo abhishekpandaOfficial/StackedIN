@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const supabaseSource = readFileSync(new URL("../supabase.js", import.meta.url), "utf8");
-const stackCraftWorkspace = readFileSync(new URL("../src/careeros/CareerOSWorkspace.jsx", import.meta.url), "utf8");
+const stackCraftWorkspace = readFileSync(new URL("../src/careeros/StackCraftWorkspace.jsx", import.meta.url), "utf8");
 const mainSource = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
 
 describe("StackCraft authentication boundary", () => {
@@ -13,8 +13,11 @@ describe("StackCraft authentication boundary", () => {
     expect(stackCraftWorkspace).not.toContain("createClient(");
   });
 
-  it("opens the private StackCraft dashboard on the same origin", () => {
-    expect(mainSource).toContain('window.location.assign("/Craft/app")');
+  it("uses the StackedIN login handoff and returns to the private StackCraft dashboard on the same origin", () => {
+    expect(mainSource).toContain('const STACKCRAFT_LOGIN = "/login?next=%2FCraft%2Fapp&product=stackcraft"');
+    expect(mainSource).toContain('window.location.replace(next)');
+    expect(mainSource).toContain('event==="SIGNED_IN"');
+    expect(stackCraftWorkspace).toContain('/login?next=%2FCraft%2Fapp&product=stackcraft');
     expect(mainSource).not.toContain("stackcraft.vercel.app");
     expect(mainSource).not.toContain("careeros.vercel.app");
   });
