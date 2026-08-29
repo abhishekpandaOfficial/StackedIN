@@ -23,24 +23,26 @@ describe("CareerOS foundation migration", () => {
     "create table if not exists public.aeon_sessions",
   ])("contains %s", statement => expect(migration.toLowerCase()).toContain(statement));
 
-  it("binds every private CareerOS table to the authenticated user as well as the tenant", () => {
+  it("binds private CareerOS data to the authenticated user as well as tenant membership", () => {
     expect(migration).toContain("user_id = auth.uid() and public.is_tenant_member(tenant_id)");
-    expect(migration).toContain("Career owner manages career_profiles");
-    expect(migration).toContain("Career owner manages career_applications");
+    expect(migration).toContain("'career_profiles','career_target_countries','career_target_roles','career_skills','career_documents'");
+    expect(migration).toContain("'career_workflows','career_jobs','career_job_matches','career_applications','aeon_sessions'");
+    expect(migration).toContain("create policy \"Career owner manages %s\"");
     expect(migration).toContain("Career owner reads usage");
   });
 
   it("keeps application history append-only", () => {
     expect(migration).toContain("Career owner reads application events");
     expect(migration).toContain("Career owner adds application events");
-    expect(migration).not.toContain("Career owner manages career_application_events");
+    expect(migration).not.toContain("'career_application_events','career_consents','career_subscriptions'");
   });
 
   it("creates the 24-hour audit and paid plan vocabulary without granting client-side paid upgrades", () => {
     expect(migration).toContain("now() + interval '24 hours'");
     expect(migration).toContain("plan in ('TRIAL','MONTHLY','ANNUAL')");
     expect(migration).toContain("plan = 'TRIAL'");
-    expect(migration).not.toContain("Career owner manages career_subscriptions");
+    expect(migration).toContain("Career owner reads subscription");
+    expect(migration).toContain("Career owner starts trial");
   });
 
   it("keeps CV storage private to the exact authenticated user", () => {
