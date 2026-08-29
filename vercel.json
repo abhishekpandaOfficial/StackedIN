@@ -15,7 +15,13 @@
     { "source": "/write", "destination": "/" },
     { "source": "/studio", "destination": "/" },
     { "source": "/login", "destination": "/" },
-    { "source": "/article/:path*", "destination": "/" }
+    { "source": "/article/:path*", "destination": "/" },
+    { "source": "/careeros", "destination": "/" },
+    { "source": "/careeros/:path*", "destination": "/" },
+    { "source": "/career-os", "destination": "/" },
+    { "source": "/career-os/:path*", "destination": "/" },
+    { "source": "/career", "destination": "/" },
+    { "source": "/career/:path*", "destination": "/" }
   ],
   "crons": [
     {
