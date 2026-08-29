@@ -32,6 +32,9 @@ describe("clean application routes", () => {
     expect(mainSource).toContain('label.textContent = "Open StackCraft"');
     expect(mainSource).toContain('header.classList.add("marketing-nav--persistent")');
     expect(mainSource).toContain('window.location.assign("/Craft")');
+    expect(mainSource).toContain('window.location.assign("/Craft/app")');
+    expect(mainSource).toContain('icon.src = "/stackcraft-mark.svg"');
+    expect(mainSource).toContain('setFavicon("/stackcraft-favicon.svg")');
     expect(stackCraftNavStyles).toContain("position:fixed!important");
     expect(stackCraftNavStyles).toContain(".nav-stackcraft-cta");
     expect(stackCraftLanding).toContain("<strong>StackCraft</strong>");
