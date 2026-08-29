@@ -1,0 +1,94 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const fail = (error: { message?: string } | null | undefined) => { if (error) throw new Error(error.message || "StackCraft request failed"); };
+
+export class StackCraftService {
+  constructor(private readonly client: SupabaseClient) {}
+
+  async loadWorkspace(tenantId:string,userId:string){
+    const [profile,countries,roles,applications,matches,subscription,documents,ingestion,identity,experiences,education,skills,workflows,runs,connections] = await Promise.all([
+      this.client.from("career_profiles").select("*").eq("tenant_id",tenantId).eq("user_id",userId).maybeSingle(),
+      this.client.from("career_target_countries").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("priority",{ascending:false}),
+      this.client.from("career_target_roles").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("priority",{ascending:false}),
+      this.client.from("career_applications").select("*,job:career_jobs(company_name,role_title,location_text,country_code,source,source_url,published_at,discovered_at),match:career_job_matches(overall_score,visa_score,compensation_score,freshness_score)").eq("tenant_id",tenantId).eq("user_id",userId).order("last_status_at",{ascending:false}).limit(250),
+      this.client.from("career_job_matches").select("*,job:career_jobs(company_name,role_title,location_text,country_code,source,source_url,published_at,discovered_at,sponsorship_signal,salary_min,salary_max,salary_currency)").eq("tenant_id",tenantId).eq("user_id",userId).order("overall_score",{ascending:false}).limit(100),
+      this.client.from("career_subscriptions").select("*").eq("tenant_id",tenantId).eq("user_id",userId).maybeSingle(),
+      this.client.from("career_documents").select("id,document_type,file_name,mime_type,created_at,metadata").eq("tenant_id",tenantId).eq("user_id",userId).order("created_at",{ascending:false}).limit(30),
+      this.client.from("career_ingestion_jobs").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("created_at",{ascending:false}).limit(30),
+      this.client.from("career_cv_identity").select("*").eq("tenant_id",tenantId).eq("user_id",userId).maybeSingle(),
+      this.client.from("career_experiences").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("started_on",{ascending:false,nullsFirst:false}),
+      this.client.from("career_educations").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("ended_on",{ascending:false,nullsFirst:false}),
+      this.client.from("career_skills").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("verified",{ascending:false}).limit(250),
+      this.client.from("career_workflows").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("updated_at",{ascending:false}),
+      this.client.from("career_workflow_runs").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("created_at",{ascending:false}).limit(30),
+      this.client.from("career_source_connections").select("*").eq("tenant_id",tenantId).eq("user_id",userId).order("created_at",{ascending:false}),
+    ]);
+    for(const r of [profile,countries,roles,applications,matches,subscription,documents,ingestion,identity,experiences,education,skills,workflows,runs,connections]) fail(r.error);
+    return {profile:profile.data,countries:countries.data||[],roles:roles.data||[],applications:applications.data||[],matches:matches.data||[],subscription:subscription.data,documents:documents.data||[],ingestion:ingestion.data||[],identity:identity.data,experiences:experiences.data||[],education:education.data||[],skills:skills.data||[],workflows:workflows.data||[],runs:runs.data||[],connections:connections.data||[]};
+  }
+
+  async ensureProfile(tenantId:string,userId:string){
+    const found=await this.client.from("career_profiles").select("*").eq("tenant_id",tenantId).eq("user_id",userId).maybeSingle(); fail(found.error); if(found.data)return found.data;
+    const created=await this.client.from("career_profiles").insert({tenant_id:tenantId,user_id:userId,agent_mode:"HITL"}).select("*").single(); fail(created.error); return created.data;
+  }
+
+  async ensureTrial(tenantId:string,userId:string){
+    const found=await this.client.from("career_subscriptions").select("*").eq("tenant_id",tenantId).eq("user_id",userId).maybeSingle(); fail(found.error); if(found.data)return found.data;
+    const created=await this.client.from("career_subscriptions").insert({tenant_id:tenantId,user_id:userId,plan:"TRIAL",price_minor:0,currency:"INR"}).select("*").single(); fail(created.error); return created.data;
+  }
+
+  async saveCareerProfile(tenantId:string,userId:string,changes:Record<string,unknown>){
+    const current=await this.ensureProfile(tenantId,userId);
+    const result=await this.client.from("career_profiles").update(changes).eq("id",current.id).eq("tenant_id",tenantId).eq("user_id",userId).select("*").single(); fail(result.error); return result.data;
+  }
+
+  async saveIdentity(tenantId:string,userId:string,changes:Record<string,unknown>){
+    const profile=await this.ensureProfile(tenantId,userId);
+    const result=await this.client.from("career_cv_identity").upsert({tenant_id:tenantId,user_id:userId,career_profile_id:profile.id,...changes,reviewed_at:new Date().toISOString(),extraction_status:"REVIEWED"},{onConflict:"tenant_id,user_id"}).select("*").single(); fail(result.error); return result.data;
+  }
+
+  async replaceCountries(tenantId:string,userId:string,countries:Array<Record<string,unknown>>){
+    if(countries.length>15) throw new Error("Select up to 15 target countries.");
+    const profile=await this.ensureProfile(tenantId,userId);
+    const del=await this.client.from("career_target_countries").delete().eq("tenant_id",tenantId).eq("user_id",userId).eq("career_profile_id",profile.id); fail(del.error);
+    if(!countries.length)return;
+    const ins=await this.client.from("career_target_countries").insert(countries.map(c=>({...c,tenant_id:tenantId,user_id:userId,career_profile_id:profile.id}))); fail(ins.error);
+  }
+
+  async replaceRoles(tenantId:string,userId:string,roles:string[]){
+    const profile=await this.ensureProfile(tenantId,userId);
+    const unique=[...new Set(roles.map(r=>r.trim()).filter(Boolean))].slice(0,20);
+    const del=await this.client.from("career_target_roles").delete().eq("tenant_id",tenantId).eq("user_id",userId).eq("career_profile_id",profile.id); fail(del.error);
+    if(!unique.length)return;
+    const ins=await this.client.from("career_target_roles").insert(unique.map((role_name,index)=>({tenant_id:tenantId,user_id:userId,career_profile_id:profile.id,role_name,priority:Math.max(10,100-index*5)}))); fail(ins.error);
+  }
+
+  async uploadAndParseCV(tenantId:string,userId:string,file:File){
+    const allowed=new Set(["application/pdf","application/vnd.openxmlformats-officedocument.wordprocessingml.document","text/plain"]);
+    if(!allowed.has(file.type)) throw new Error("Upload a PDF, DOCX, or TXT CV.");
+    if(file.size>15*1024*1024) throw new Error("CV must be 15 MB or smaller.");
+    const profile=await this.ensureProfile(tenantId,userId);
+    const ext=file.name.split(".").pop()?.replace(/[^a-z0-9]/gi,"").toLowerCase()||"pdf";
+    const path=`${userId}/${profile.id}/master-${crypto.randomUUID()}.${ext}`;
+    const upload=await this.client.storage.from("career-documents").upload(path,file,{upsert:false}); fail(upload.error);
+    const doc=await this.client.from("career_documents").insert({tenant_id:tenantId,user_id:userId,career_profile_id:profile.id,document_type:"MASTER_CV",file_name:file.name,storage_path:path,mime_type:file.type,metadata:{size:file.size}}).select("*").single();
+    if(doc.error){await this.client.storage.from("career-documents").remove([path]); fail(doc.error);}
+    const queue=await this.client.from("career_ingestion_jobs").insert({tenant_id:tenantId,user_id:userId,career_profile_id:profile.id,document_id:doc.data.id,status:"QUEUED",extraction_version:"cv-v1"}); fail(queue.error);
+    const parsed=await this.client.functions.invoke("stackcraft-cv-parse",{body:{documentId:doc.data.id}});
+    if(parsed.error) throw new Error(`CV is saved, but parsing could not start: ${parsed.error.message}`);
+    return {document:doc.data,parse:parsed.data};
+  }
+
+  async saveWorkflow(tenantId:string,userId:string,name:string,nodes:unknown[],edges:unknown[]){
+    const profile=await this.ensureProfile(tenantId,userId);
+    const existing=await this.client.from("career_workflows").select("id,version").eq("tenant_id",tenantId).eq("user_id",userId).eq("name",name).maybeSingle(); fail(existing.error);
+    if(existing.data){const result=await this.client.from("career_workflows").update({definition:{nodes,edges},status:"ACTIVE",version:Number(existing.data.version||1)+1}).eq("id",existing.data.id).eq("user_id",userId).select("*").single(); fail(result.error); return result.data;}
+    const result=await this.client.from("career_workflows").insert({tenant_id:tenantId,user_id:userId,career_profile_id:profile.id,name,status:"ACTIVE",trigger_type:"MANUAL",definition:{nodes,edges}}).select("*").single(); fail(result.error); return result.data;
+  }
+
+  async runWorkflow(tenantId:string,workflowId?:string){
+    const result=await this.client.functions.invoke("stackcraft-workflow-run",{body:{tenantId,workflowId}}); if(result.error) throw new Error(result.error.message); return result.data;
+  }
+
+  async workflowEvents(runId:string){const result=await this.client.from("career_workflow_run_events").select("*").eq("workflow_run_id",runId).order("occurred_at",{ascending:true}); fail(result.error); return result.data||[];}
+}

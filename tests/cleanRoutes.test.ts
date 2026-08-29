@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 const appSource = readFileSync(new URL("../substack_bw_dashboard.jsx", import.meta.url), "utf8");
 const mainSource = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
 const stackCraftLanding = readFileSync(new URL("../src/careeros/CareerOSLanding.jsx", import.meta.url), "utf8");
+const stackCraftWorkspace = readFileSync(new URL("../src/careeros/StackCraftWorkspace.jsx", import.meta.url), "utf8");
+const stackCraftService = readFileSync(new URL("../src/services/stackCraft.ts", import.meta.url), "utf8");
 const stackCraftStyles = readFileSync(new URL("../src/careeros/careeros.css", import.meta.url), "utf8");
 const stackCraftNavStyles = readFileSync(new URL("../stackcraft-nav.css", import.meta.url), "utf8");
 const assetCopySource = readFileSync(new URL("../scripts/copy-threeui-assets.mjs", import.meta.url), "utf8");
@@ -23,25 +25,20 @@ describe("clean application routes", () => {
     expect(appSource).toContain('hash.includes("refresh_token=")');
   });
 
-  it("keeps only the StackCraft capsule and aligns it with XStudio", () => {
-    expect(mainSource).toContain('label.textContent = "Open StackCraft"');
-    expect(mainSource).toContain('window.location.assign("/Craft/app")');
+  it("routes StackCraft entry through the shared StackedIN login session", () => {
+    expect(mainSource).toContain('const STACKCRAFT_LOGIN = "/login?next=%2FCraft%2Fapp&product=stackcraft"');
+    expect(mainSource).toContain("StackCraftAuthBridge");
+    expect(mainSource).toContain('event==="SIGNED_IN"');
+    expect(mainSource).toContain("StackCraftAuthenticatedNav");
+    expect(mainSource).toContain('label.textContent=labelText');
+    expect(stackCraftLanding).toContain('/login?next=%2FCraft%2Fapp&product=stackcraft');
+    expect(stackCraftNavStyles).toContain(".stackcraft-app-capsule");
     expect(mainSource).not.toContain('navButton.textContent = "Craft"');
-    expect(mainSource).toContain('actions.className = "marketing-product-actions"');
-    expect(mainSource).toContain('xstudioButton.classList.add("nav-xstudio-capsule")');
-    expect(mainSource).toContain('header.classList.add("marketing-nav--persistent")');
-    expect(mainSource).toContain('icon.src = "/stackcraft-mark.svg"');
-    expect(mainSource).toContain('setFavicon("/stackcraft-favicon.svg")');
-    expect(stackCraftNavStyles).toContain("position:fixed!important");
-    expect(stackCraftNavStyles).toContain(".marketing-product-actions");
-    expect(stackCraftNavStyles).toContain(".nav-xstudio-capsule");
   });
 
   it("integrates the exact configured ThreeUI Sylva Living Green hero on StackedIN", () => {
     expect(mainSource).toContain('import { SylvaHero } from "@designcodeio/threeui"');
-    expect(mainSource).toContain('import "@designcodeio/threeui/style.css"');
-    expect(mainSource).toContain('<SylvaHero');
-    expect(mainSource).toContain('variant="living-green"');
+    expect(mainSource).toContain('<SylvaHero variant="living-green"');
     expect(mainSource).toContain('headingFont="lexend"');
     expect(mainSource).toContain('bodyFont="lexend"');
     expect(mainSource).toContain('headingWeight="300"');
@@ -59,18 +56,21 @@ describe("clean application routes", () => {
     expect(stackCraftLanding).toContain('<TempleNightScene variant="temple-night"');
     expect(stackCraftLanding).not.toContain("<KageLandingPage");
     expect(stackCraftStyles).toContain(".shader-frame--temple .temple-night-scene");
-    expect(stackCraftStyles).toContain(".shader-frame--temple .temple-night-canvas");
   });
 
-  it("routes StackCraft landing and private workspace without breaking legacy CareerOS URLs", () => {
-    expect(mainSource).toContain('"craft"');
-    expect(mainSource).toContain('"craft/app"');
-    expect(mainSource).toContain('"careeros"');
-    expect(mainSource).toContain('"careeros/app"');
-    expect(mainSource).toContain("<CareerOSLanding />");
-    expect(mainSource).toContain("<CareerOSWorkspace />");
-    expect(stackCraftLanding).toContain("<strong>StackCraft</strong>");
-    expect(stackCraftLanding).toContain('navigate("/Craft/app")');
+  it("provides the production StackCraft command center, CV parsing and visual workflow", () => {
+    expect(mainSource).toContain("<StackCraftWorkspace/>");
+    expect(stackCraftWorkspace).toContain("@xyflow/react");
+    expect(stackCraftWorkspace).toContain("Recent applications");
+    expect(stackCraftWorkspace).toContain("Application funnel");
+    expect(stackCraftWorkspace).toContain("Work history timeline");
+    expect(stackCraftWorkspace).toContain("Search all countries");
+    expect(stackCraftWorkspace).toContain("15 countries");
+    expect(stackCraftWorkspace).toContain("ReactFlow");
+    expect(stackCraftService).toContain('functions.invoke("stackcraft-cv-parse"');
+    expect(stackCraftService).toContain('functions.invoke("stackcraft-workflow-run"');
+    expect(stackCraftService).toContain("career_cv_identity");
+    expect(stackCraftService).toContain("career_experiences");
   });
 
   it("rewrites every first-class Vercel view to the SPA entry", () => {

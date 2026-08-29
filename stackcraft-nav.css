@@ -3,56 +3,12 @@
 .marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"]{justify-self:center;display:flex!important;align-items:center!important;gap:clamp(14px,1.7vw,28px)!important;white-space:nowrap}
 .marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"] button{font-size:12px!important;letter-spacing:.01em!important;color:rgba(255,255,255,.72)!important;transition:color .18s ease,transform .18s ease!important}
 .marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"] button:hover{color:#fff!important;transform:translateY(-1px)}
-
 .marketing-product-actions{justify-self:end;display:flex;align-items:center;gap:9px;white-space:nowrap}
 .marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{height:42px!important;min-height:42px!important;border-radius:999px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;padding:0 15px!important;cursor:pointer!important;white-space:nowrap!important;font-size:11px!important;font-weight:800!important;letter-spacing:.01em!important;transition:transform .18s ease,border-color .18s ease,background .18s ease,box-shadow .18s ease!important;margin:0!important}
-.marketing-nav .nav-stackcraft-cta{border:1px solid rgba(159,219,178,.34)!important;color:#f4fff6!important;background:linear-gradient(180deg,rgba(29,57,39,.72),rgba(14,31,22,.78))!important;box-shadow:inset 0 1px rgba(255,255,255,.08),0 8px 26px rgba(9,28,17,.22)!important}
-.marketing-nav .nav-stackcraft-cta:hover{transform:translateY(-1px);border-color:rgba(190,246,205,.66)!important;background:linear-gradient(180deg,rgba(45,80,55,.9),rgba(19,43,29,.92))!important;box-shadow:inset 0 1px rgba(255,255,255,.12),0 12px 32px rgba(9,28,17,.32)!important}
-.marketing-nav .nav-stackcraft-cta__icon{width:24px;height:24px;border-radius:8px;display:block;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}
-.marketing-nav .nav-stackcraft-cta__label{display:inline-block}
-.marketing-nav .nav-xstudio-capsule{border:1px solid rgba(255,255,255,.16)!important;color:#fff!important;background:rgba(255,255,255,.075)!important;box-shadow:inset 0 1px rgba(255,255,255,.07)!important}
-.marketing-nav .nav-xstudio-capsule:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.32)!important;background:rgba(255,255,255,.12)!important}
-
-.stackedin-sylva-hero{position:absolute;inset:0;z-index:0;overflow:hidden;background:#09110c}
-.stackedin-sylva-hero__frame,.stackedin-sylva-hero__frame>.threeui-background,.stackedin-sylva-hero__frame .landing-page-frame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:100%!important}
-.stackedin-sylva-hero::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(5,9,7,.87) 0%,rgba(5,9,7,.66) 36%,rgba(5,9,7,.18) 69%,rgba(5,9,7,.08) 100%),linear-gradient(0deg,rgba(5,8,6,.82) 0%,rgba(5,8,6,.16) 48%,rgba(5,8,6,.2) 100%)}
-.marketing-hero{isolation:isolate;background:#09110c!important}
-.marketing-hero>.hero-noise,.marketing-hero>.hero-copy,.marketing-hero>.hero-stage,.marketing-hero>.scroll-cue{position:relative;z-index:4}
-.marketing-hero>.hero-noise{position:absolute}
-.marketing-hero .hero-copy{max-width:min(760px,56vw)}
-.marketing-hero .launch-pill{background:rgba(16,35,23,.54)!important;border-color:rgba(211,247,220,.18)!important;backdrop-filter:blur(10px)}
-.marketing-hero .hero-primary{box-shadow:0 12px 34px rgba(12,35,20,.28)}
-.marketing-hero .hero-stage{opacity:.88;filter:saturate(.92)}
-
-@media(max-width:1120px){
-  .marketing-nav.marketing-nav--persistent{grid-template-columns:minmax(132px,180px) 1fr auto!important;gap:14px!important;padding:0 20px!important}
-  .marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"]{gap:14px!important}
-  .marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{padding:0 12px!important}
-}
-
-@media(max-width:900px){
-  .marketing-nav.marketing-nav--persistent{grid-template-columns:1fr auto!important;min-height:70px!important}
-  .marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"]{display:none!important}
-  .marketing-product-actions{gap:7px}
-  .marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{height:38px!important;min-height:38px!important;padding:0 11px!important}
-  .marketing-nav .nav-stackcraft-cta__icon{width:22px;height:22px}
-  .marketing-hero .hero-copy{max-width:740px}
-}
-
-@media(max-width:620px){
-  .marketing-nav.marketing-nav--persistent{height:68px!important;min-height:68px!important;padding:0 12px!important;gap:8px!important}
-  .marketing-nav .marketing-brand{width:112px!important}
-  .marketing-product-actions{gap:6px}
-  .marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{height:36px!important;min-height:36px!important;padding:0 9px!important;font-size:10px!important;gap:6px!important}
-  .marketing-nav .nav-stackcraft-cta__icon{width:20px;height:20px;border-radius:7px}
-  .marketing-hero .hero-stage{opacity:.42}
-  .marketing-hero .hero-copy{max-width:none}
-}
-
-@media(max-width:430px){
-  .marketing-nav .marketing-brand{width:102px!important}
-  .marketing-nav .nav-stackcraft-cta__label{font-size:0}
-  .marketing-nav .nav-stackcraft-cta__label::after{content:"StackCraft";font-size:10px}
-  .marketing-nav .nav-xstudio-capsule{font-size:0!important;width:40px!important;padding:0!important}
-  .marketing-nav .nav-xstudio-capsule svg{margin:0!important}
-}
+.marketing-nav .nav-stackcraft-cta{border:1px solid rgba(159,219,178,.34)!important;color:#f4fff6!important;background:linear-gradient(180deg,rgba(29,57,39,.72),rgba(14,31,22,.78))!important;box-shadow:inset 0 1px rgba(255,255,255,.08),0 8px 26px rgba(9,28,17,.22)!important}.marketing-nav .nav-stackcraft-cta:hover{transform:translateY(-1px);border-color:rgba(190,246,205,.66)!important;background:linear-gradient(180deg,rgba(45,80,55,.9),rgba(19,43,29,.92))!important;box-shadow:inset 0 1px rgba(255,255,255,.12),0 12px 32px rgba(9,28,17,.32)!important}.marketing-nav .nav-stackcraft-cta__icon{width:24px;height:24px;border-radius:8px;display:block;object-fit:contain;filter:drop-shadow(0 3px 8px rgba(0,0,0,.18))}.marketing-nav .nav-stackcraft-cta__label{display:inline-block}.marketing-nav .nav-xstudio-capsule{border:1px solid rgba(255,255,255,.16)!important;color:#fff!important;background:rgba(255,255,255,.075)!important;box-shadow:inset 0 1px rgba(255,255,255,.07)!important}.marketing-nav .nav-xstudio-capsule:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.32)!important;background:rgba(255,255,255,.12)!important}
+.stackcraft-app-capsule{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;height:36px!important;padding:0 12px!important;margin:0 6px!important;border-radius:999px!important;border:1px solid rgba(224,35,28,.3)!important;background:linear-gradient(180deg,rgba(224,35,28,.14),rgba(224,35,28,.07))!important;color:inherit!important;font-size:12px!important;font-weight:700!important;cursor:pointer!important;white-space:nowrap!important}.stackcraft-app-capsule:hover{border-color:rgba(255,102,94,.55)!important;background:rgba(224,35,28,.16)!important}.stackcraft-app-capsule .nav-stackcraft-cta__icon{width:20px;height:20px;border-radius:6px}
+.stackedin-sylva-hero{position:absolute;inset:0;z-index:0;overflow:hidden;background:#09110c}.stackedin-sylva-hero__frame,.stackedin-sylva-hero__frame>.threeui-background,.stackedin-sylva-hero__frame .landing-page-frame{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;min-height:100%!important}.stackedin-sylva-hero::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(5,9,7,.87) 0%,rgba(5,9,7,.66) 36%,rgba(5,9,7,.18) 69%,rgba(5,9,7,.08) 100%),linear-gradient(0deg,rgba(5,8,6,.82) 0%,rgba(5,8,6,.16) 48%,rgba(5,8,6,.2) 100%)}.marketing-hero{isolation:isolate;background:#09110c!important}.marketing-hero>.hero-noise,.marketing-hero>.hero-copy,.marketing-hero>.hero-stage,.marketing-hero>.scroll-cue{position:relative;z-index:4}.marketing-hero>.hero-noise{position:absolute}.marketing-hero .hero-copy{max-width:min(760px,56vw)}.marketing-hero .launch-pill{background:rgba(16,35,23,.54)!important;border-color:rgba(211,247,220,.18)!important;backdrop-filter:blur(10px)}.marketing-hero .hero-primary{box-shadow:0 12px 34px rgba(12,35,20,.28)}.marketing-hero .hero-stage{opacity:.88;filter:saturate(.92)}
+@media(max-width:1120px){.marketing-nav.marketing-nav--persistent{grid-template-columns:minmax(132px,180px) 1fr auto!important;gap:14px!important;padding:0 20px!important}.marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"]{gap:14px!important}.marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{padding:0 12px!important}}
+@media(max-width:900px){.marketing-nav.marketing-nav--persistent{grid-template-columns:1fr auto!important;min-height:70px!important}.marketing-nav.marketing-nav--persistent nav[aria-label="Marketing navigation"]{display:none!important}.marketing-product-actions{gap:7px}.marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{height:38px!important;min-height:38px!important;padding:0 11px!important}.marketing-nav .nav-stackcraft-cta__icon{width:22px;height:22px}.marketing-hero .hero-copy{max-width:740px}}
+@media(max-width:620px){.marketing-nav.marketing-nav--persistent{height:68px!important;min-height:68px!important;padding:0 12px!important;gap:8px!important}.marketing-nav .marketing-brand{width:112px!important}.marketing-product-actions{gap:6px}.marketing-nav .nav-stackcraft-cta,.marketing-nav .nav-xstudio-capsule{height:36px!important;min-height:36px!important;padding:0 9px!important;font-size:10px!important;gap:6px!important}.marketing-nav .nav-stackcraft-cta__icon{width:20px;height:20px;border-radius:7px}.marketing-hero .hero-stage{opacity:.42}.marketing-hero .hero-copy{max-width:none}}
+@media(max-width:430px){.marketing-nav .marketing-brand{width:102px!important}.marketing-nav .nav-stackcraft-cta__label{font-size:0}.marketing-nav .nav-stackcraft-cta__label::after{content:"StackCraft";font-size:10px}.marketing-nav .nav-xstudio-capsule{font-size:0!important;width:40px!important;padding:0!important}.marketing-nav .nav-xstudio-capsule svg{margin:0!important}.stackcraft-app-capsule .nav-stackcraft-cta__label{display:none}}
