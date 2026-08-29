@@ -23,13 +23,13 @@ export default function CareerOSLanding() {
     <main className="careeros-landing">
       <header className="careeros-nav" aria-label="StackCraft navigation">
         <button className="careeros-brand" type="button" onClick={openStackedIn}>
-          <span className="careeros-brand__mark">S</span>
+          <img className="careeros-brand__logo" src="/stackcraft-mark.svg" alt="" aria-hidden="true" />
           <span><strong>StackCraft</strong><small>by StackedIN</small></span>
         </button>
         <div className="careeros-nav__actions">
           <span className="careeros-secure"><ShieldCheck size={15} /> Private by design</span>
           <button className="careeros-ghost" type="button" onClick={openStackedIn}>StackedIN</button>
-          <button className="careeros-primary" type="button" onClick={openStackCraft}>Start 24-hour audit <ArrowRight size={16} /></button>
+          <button className="careeros-primary" type="button" onClick={openStackCraft}>Open StackCraft <ArrowRight size={16} /></button>
         </div>
       </header>
 
@@ -43,7 +43,7 @@ export default function CareerOSLanding() {
           <h1>Your career should have an operating system.</h1>
           <p>StackCraft continuously discovers, qualifies and prepares global opportunities around your verified CV, technical stack, salary, target countries and relocation preferences.</p>
           <div className="careeros-hero__actions">
-            <button className="careeros-primary careeros-primary--large" type="button" onClick={openStackCraft}>Start free for 24 hours <ArrowRight size={17} /></button>
+            <button className="careeros-primary careeros-primary--large" type="button" onClick={openStackCraft}>Open StackCraft dashboard <ArrowRight size={17} /></button>
             <a className="careeros-secondary" href="#how-it-works">See how the agent works</a>
           </div>
           <div className="careeros-proof" aria-label="StackCraft capabilities">{benefits.map(benefit => <span key={benefit}><Check size={14} /> {benefit}</span>)}</div>
@@ -63,7 +63,7 @@ export default function CareerOSLanding() {
         <div><span className="careeros-eyebrow">24-hour Global Career Audit</span><h2>See what StackCraft understands before you subscribe.</h2><p>Get candidate profiling, country intelligence, job matching, visa and salary analysis, one tailored CV and an AEON readiness assessment.</p></div>
         <div className="careeros-price-card">
           <span>StackedIN Premium</span><strong>₹500 <small>/ month</small></strong><p>or ₹5,000 billed annually.</p>
-          <button type="button" onClick={openStackCraft}>Create StackCraft workspace <ArrowRight size={16} /></button>
+          <button type="button" onClick={openStackCraft}>Open StackCraft dashboard <ArrowRight size={16} /></button>
           <small>24-hour audit first. Autonomous submission remains disabled during the audit.</small>
         </div>
       </section>

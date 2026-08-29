@@ -1,0 +1,14 @@
+<svg width="760" height="180" viewBox="0 0 760 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="30" y1="20" x2="166" y2="164" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB34E"/>
+      <stop offset="0.52" stop-color="#FF7540"/>
+      <stop offset="1" stop-color="#E9402D"/>
+    </linearGradient>
+  </defs>
+  <rect x="10" y="10" width="160" height="160" rx="46" fill="#111216"/>
+  <path d="M37 54C37 45.716 43.716 39 52 39H127L106 59H63C58.029 59 54 63.029 54 68C54 72.971 58.029 77 63 77H111C131.987 77 149 94.013 149 115C149 135.987 131.987 153 111 153H39L59 133H110C120.493 133 129 124.493 129 114C129 103.507 120.493 95 110 95H63C48.641 95 37 83.359 37 69V54Z" fill="url(#g)"/>
+  <path d="M126 39L145 57L126 76H99L118 58L99 39H126Z" fill="#FFF6EC"/>
+  <text x="205" y="104" fill="#111216" font-family="Manrope, Inter, Arial, sans-serif" font-size="70" font-weight="800" letter-spacing="-4">StackCraft</text>
+  <text x="210" y="137" fill="#77737D" font-family="DM Sans, Inter, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="4">AI CAREER OPERATING SYSTEM</text>
+</svg>
