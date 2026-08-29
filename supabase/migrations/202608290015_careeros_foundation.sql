@@ -287,8 +287,6 @@ create index if not exists career_application_events_timeline_idx on public.care
 create index if not exists career_usage_user_created_idx on public.career_usage_events(user_id, tenant_id, created_at desc);
 create index if not exists aeon_sessions_user_created_idx on public.aeon_sessions(user_id, tenant_id, created_at desc);
 
--- Reuse the canonical StackedIN updated_at trigger helper.
-foreach_table:
 do $$
 declare table_name text;
 begin
@@ -303,9 +301,6 @@ begin
 end
 $$;
 
--- CareerOS data is deliberately stricter than ordinary tenant content: a tenant
--- administrator cannot read another member's CV, salary, applications, workflows,
--- usage, or interview history. Every sensitive row is bound to auth.uid().
 do $$
 declare table_name text;
 begin
@@ -320,7 +315,6 @@ begin
 end
 $$;
 
--- Mutable owner-only tables.
 do $$
 declare table_name text;
 begin
@@ -338,9 +332,6 @@ begin
 end
 $$;
 
--- Append-only / server-generated ledgers. Users may read their own rows. Application
--- events and consents may also be inserted by the authenticated owner; subscriptions,
--- usage, and workflow execution records are written by trusted backend workers.
 drop policy if exists "Career owner reads workflow runs" on public.career_workflow_runs;
 create policy "Career owner reads workflow runs" on public.career_workflow_runs for select to authenticated
 using (user_id = auth.uid() and public.is_tenant_member(tenant_id));
@@ -375,9 +366,6 @@ drop policy if exists "Career owner reads usage" on public.career_usage_events;
 create policy "Career owner reads usage" on public.career_usage_events for select to authenticated
 using (user_id = auth.uid() and public.is_tenant_member(tenant_id));
 
--- CVs and generated career documents live in a private bucket. Paths must start
--- with the authenticated user's UUID, preventing cross-user object access even
--- when two users share a future B2B tenant.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'career-documents',
