@@ -1,0 +1,52 @@
+name: CareerOS CI
+
+on:
+  pull_request:
+    paths:
+      - "src/careeros/**"
+      - "src/services/careerOS.ts"
+      - "supabase/migrations/20260829001*.sql"
+      - "tests/**"
+      - "package.json"
+      - "scripts/copy-threeui-assets.mjs"
+      - "main.jsx"
+      - "vercel.json"
+      - ".github/workflows/careeros-ci.yml"
+  push:
+    branches:
+      - careeros-v1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Upload generated npm lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: careeros-package-lock
+          path: package-lock.json
+          retention-days: 1
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      - name: Verify ThreeUI Kage runtime asset
+        run: test -f dist/landing-pages/kage.html

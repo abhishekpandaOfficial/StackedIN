@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node dev.mjs",
+    "prebuild": "node scripts/copy-threeui-assets.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
@@ -13,6 +14,7 @@
     "sync:offline": "node scripts/sync-substack.mjs --offline"
   },
   "dependencies": {
+    "@designcodeio/threeui": "^1.1.0",
     "@icons-pack/react-simple-icons": "^13.15.1",
     "@supabase/supabase-js": "^2.112.4",
     "@vitejs/plugin-react": "latest",
