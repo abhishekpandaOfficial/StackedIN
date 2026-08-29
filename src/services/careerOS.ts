@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CareerAgentMode = "MANUAL" | "HITL" | "AUTONOMOUS";
+export type EvidenceStatus = "UNVERIFIED" | "USER_CONFIRMED" | "SYSTEM_VERIFIED" | "REJECTED";
 
 export interface CareerProfileInput {
   current_title?: string | null;
@@ -31,14 +32,23 @@ export interface TargetCountryInput {
   enabled?: boolean;
 }
 
+export interface ManualEvidenceInput {
+  evidence_type: "EXPERIENCE" | "OUTCOME" | "SKILL" | "PROJECT" | "EDUCATION" | "CERTIFICATION" | "DOMAIN" | "ACHIEVEMENT" | "RESPONSIBILITY" | "OTHER";
+  claim_text: string;
+  normalized_key?: string | null;
+}
+
 export interface CareerOSDashboard {
-  profile: Record<string, unknown> | null;
-  countries: Array<Record<string, unknown>>;
-  roles: Array<Record<string, unknown>>;
-  applications: Array<Record<string, unknown>>;
-  matches: Array<Record<string, unknown>>;
-  subscription: Record<string, unknown> | null;
-  aeonSessions: Array<Record<string, unknown>>;
+  profile: Record<string, any> | null;
+  countries: Array<Record<string, any>>;
+  roles: Array<Record<string, any>>;
+  applications: Array<Record<string, any>>;
+  matches: Array<Record<string, any>>;
+  subscription: Record<string, any> | null;
+  aeonSessions: Array<Record<string, any>>;
+  documents: Array<Record<string, any>>;
+  ingestionJobs: Array<Record<string, any>>;
+  evidence: Array<Record<string, any>>;
 }
 
 const throwIfError = (error: { message: string } | null) => {
@@ -48,7 +58,7 @@ const throwIfError = (error: { message: string } | null) => {
 export class CareerOSService {
   constructor(private readonly client: SupabaseClient) {}
 
-  async ensureCareerProfile(tenantId: string, userId: string): Promise<Record<string, unknown>> {
+  async ensureCareerProfile(tenantId: string, userId: string): Promise<Record<string, any>> {
     const existing = await this.client
       .from("career_profiles")
       .select("*")
@@ -64,10 +74,10 @@ export class CareerOSService {
       .select("*")
       .single();
     throwIfError(error);
-    return data as Record<string, unknown>;
+    return data as Record<string, any>;
   }
 
-  async ensureTrial(tenantId: string, userId: string): Promise<Record<string, unknown>> {
+  async ensureTrial(tenantId: string, userId: string): Promise<Record<string, any>> {
     const existing = await this.client
       .from("career_subscriptions")
       .select("*")
@@ -83,11 +93,11 @@ export class CareerOSService {
       .select("*")
       .single();
     throwIfError(error);
-    return data as Record<string, unknown>;
+    return data as Record<string, any>;
   }
 
   async loadDashboard(tenantId: string, userId: string): Promise<CareerOSDashboard> {
-    const [profileResult, countriesResult, rolesResult, applicationsResult, matchesResult, subscriptionResult, aeonResult] = await Promise.all([
+    const [profileResult, countriesResult, rolesResult, applicationsResult, matchesResult, subscriptionResult, aeonResult, documentsResult, ingestionResult, evidenceResult] = await Promise.all([
       this.client.from("career_profiles").select("*").eq("tenant_id", tenantId).eq("user_id", userId).maybeSingle(),
       this.client.from("career_target_countries").select("*").eq("tenant_id", tenantId).eq("user_id", userId).order("priority", { ascending: false }),
       this.client.from("career_target_roles").select("*").eq("tenant_id", tenantId).eq("user_id", userId).order("priority", { ascending: false }),
@@ -95,24 +105,30 @@ export class CareerOSService {
       this.client.from("career_job_matches").select("*,job:career_jobs(company_name,role_title,location_text,country_code,source_url,published_at,discovered_at,sponsorship_signal,relocation_signal,salary_min,salary_max,salary_currency)").eq("tenant_id", tenantId).eq("user_id", userId).order("overall_score", { ascending: false }).limit(20),
       this.client.from("career_subscriptions").select("*").eq("tenant_id", tenantId).eq("user_id", userId).maybeSingle(),
       this.client.from("aeon_sessions").select("*").eq("tenant_id", tenantId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+      this.client.from("career_documents").select("id,document_type,file_name,mime_type,metadata,created_at").eq("tenant_id", tenantId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+      this.client.from("career_ingestion_jobs").select("*").eq("tenant_id", tenantId).eq("user_id", userId).order("created_at", { ascending: false }).limit(20),
+      this.client.from("career_evidence_items").select("*").eq("tenant_id", tenantId).eq("user_id", userId).order("created_at", { ascending: false }).limit(250),
     ]);
 
-    for (const result of [profileResult, countriesResult, rolesResult, applicationsResult, matchesResult, subscriptionResult, aeonResult]) {
+    for (const result of [profileResult, countriesResult, rolesResult, applicationsResult, matchesResult, subscriptionResult, aeonResult, documentsResult, ingestionResult, evidenceResult]) {
       throwIfError(result.error);
     }
 
     return {
-      profile: profileResult.data as Record<string, unknown> | null,
+      profile: profileResult.data as Record<string, any> | null,
       countries: countriesResult.data ?? [],
       roles: rolesResult.data ?? [],
       applications: applicationsResult.data ?? [],
       matches: matchesResult.data ?? [],
-      subscription: subscriptionResult.data as Record<string, unknown> | null,
+      subscription: subscriptionResult.data as Record<string, any> | null,
       aeonSessions: aeonResult.data ?? [],
+      documents: documentsResult.data ?? [],
+      ingestionJobs: ingestionResult.data ?? [],
+      evidence: evidenceResult.data ?? [],
     };
   }
 
-  async saveProfile(tenantId: string, userId: string, changes: CareerProfileInput): Promise<Record<string, unknown>> {
+  async saveProfile(tenantId: string, userId: string, changes: CareerProfileInput): Promise<Record<string, any>> {
     const profile = await this.ensureCareerProfile(tenantId, userId);
     const profileId = String(profile.id);
     const safeChanges = { ...changes };
@@ -128,7 +144,7 @@ export class CareerOSService {
       .select("*")
       .single();
     throwIfError(error);
-    return data as Record<string, unknown>;
+    return data as Record<string, any>;
   }
 
   async replaceTargetCountries(tenantId: string, userId: string, countries: TargetCountryInput[]): Promise<void> {
@@ -180,7 +196,7 @@ export class CareerOSService {
     throwIfError(error);
   }
 
-  async uploadMasterCV(tenantId: string, userId: string, file: File): Promise<Record<string, unknown>> {
+  async uploadMasterCV(tenantId: string, userId: string, file: File): Promise<Record<string, any>> {
     const allowed = new Set([
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -214,7 +230,56 @@ export class CareerOSService {
       await this.client.storage.from("career-documents").remove([storagePath]);
       throw new Error(error.message);
     }
-    return data as Record<string, unknown>;
+
+    const queue = await this.client
+      .from("career_ingestion_jobs")
+      .insert({
+        tenant_id: tenantId,
+        user_id: userId,
+        career_profile_id: careerProfileId,
+        document_id: data.id,
+        status: "QUEUED",
+      });
+    if (queue.error) {
+      await this.client.from("career_documents").delete().eq("id", data.id).eq("user_id", userId);
+      await this.client.storage.from("career-documents").remove([storagePath]);
+      throw new Error(queue.error.message);
+    }
+
+    return data as Record<string, any>;
+  }
+
+  async addManualEvidence(tenantId: string, userId: string, input: ManualEvidenceInput): Promise<Record<string, any>> {
+    const claim = input.claim_text.trim();
+    if (claim.length < 2) throw new Error("Evidence needs a meaningful claim.");
+    const profile = await this.ensureCareerProfile(tenantId, userId);
+    const { data, error } = await this.client
+      .from("career_evidence_items")
+      .insert({
+        tenant_id: tenantId,
+        user_id: userId,
+        career_profile_id: profile.id,
+        evidence_type: input.evidence_type,
+        normalized_key: input.normalized_key?.trim() || null,
+        claim_text: claim,
+        source_type: "USER",
+        verification_status: "USER_CONFIRMED",
+        confidence: 1,
+      })
+      .select("*")
+      .single();
+    throwIfError(error);
+    return data as Record<string, any>;
+  }
+
+  async reviewEvidence(tenantId: string, userId: string, evidenceId: string, status: Extract<EvidenceStatus, "USER_CONFIRMED" | "REJECTED">): Promise<void> {
+    const { error } = await this.client
+      .from("career_evidence_items")
+      .update({ verification_status: status })
+      .eq("id", evidenceId)
+      .eq("tenant_id", tenantId)
+      .eq("user_id", userId);
+    throwIfError(error);
   }
 
   async recordConsent(tenantId: string, userId: string, consentType: string, granted: boolean, version = "2026-08-29"): Promise<void> {
@@ -228,7 +293,7 @@ export class CareerOSService {
     throwIfError(error);
   }
 
-  async getApplicationHistory(tenantId: string, userId: string, applicationId: string): Promise<Array<Record<string, unknown>>> {
+  async getApplicationHistory(tenantId: string, userId: string, applicationId: string): Promise<Array<Record<string, any>>> {
     const { data, error } = await this.client
       .from("career_application_events")
       .select("*")
