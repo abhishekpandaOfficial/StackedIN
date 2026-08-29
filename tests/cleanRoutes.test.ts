@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const appSource = readFileSync(new URL("../substack_bw_dashboard.jsx", import.meta.url), "utf8");
 const mainSource = readFileSync(new URL("../main.jsx", import.meta.url), "utf8");
 const stackCraftLanding = readFileSync(new URL("../src/careeros/CareerOSLanding.jsx", import.meta.url), "utf8");
+const stackCraftNavStyles = readFileSync(new URL("../stackcraft-nav.css", import.meta.url), "utf8");
 const vercelConfig = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
 
 describe("clean application routes", () => {
@@ -27,8 +28,12 @@ describe("clean application routes", () => {
     expect(mainSource).toContain('"careeros/app"');
     expect(mainSource).toContain("<CareerOSLanding />");
     expect(mainSource).toContain("<CareerOSWorkspace />");
-    expect(mainSource).toContain('button.textContent = "Craft"');
+    expect(mainSource).toContain('navButton.textContent = "Craft"');
+    expect(mainSource).toContain('label.textContent = "Open StackCraft"');
+    expect(mainSource).toContain('header.classList.add("marketing-nav--persistent")');
     expect(mainSource).toContain('window.location.assign("/Craft")');
+    expect(stackCraftNavStyles).toContain("position:fixed!important");
+    expect(stackCraftNavStyles).toContain(".nav-stackcraft-cta");
     expect(stackCraftLanding).toContain("<strong>StackCraft</strong>");
     expect(stackCraftLanding).toContain('navigate("/Craft/app")');
   });
