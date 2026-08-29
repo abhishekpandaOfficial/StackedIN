@@ -31,10 +31,15 @@ describe("CareerOS foundation migration", () => {
     expect(migration).toContain("Career owner reads usage");
   });
 
-  it("keeps application history append-only", () => {
-    expect(migration).toContain("Career owner reads application events");
-    expect(migration).toContain("Career owner adds application events");
-    expect(migration).not.toContain("'career_application_events','career_consents','career_subscriptions'");
+  it("keeps application history append-only for the browser user", () => {
+    const mutablePolicyBlock = migration.split("drop policy if exists \"Career owner reads workflow runs\"")[0];
+    const applicationLedgerBlock = migration.split("drop policy if exists \"Career owner reads application events\"")[1]
+      ?.split("drop policy if exists \"Career owner reads consents\"")[0] ?? "";
+    expect(applicationLedgerBlock).toContain("for select to authenticated");
+    expect(applicationLedgerBlock).toContain("for insert to authenticated");
+    expect(applicationLedgerBlock).not.toContain("for update");
+    expect(applicationLedgerBlock).not.toContain("for delete");
+    expect(mutablePolicyBlock).not.toContain("'career_application_events'\n  ]");
   });
 
   it("creates the 24-hour audit and paid plan vocabulary without granting client-side paid upgrades", () => {
